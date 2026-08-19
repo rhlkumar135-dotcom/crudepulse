@@ -179,16 +179,37 @@ function isCacheFresh(key: string, ttlMs: number): boolean {
 
 // ── Real API fetchers ────────────────────────────────────────────────────────
 
+let gdeltLock: Promise<unknown[] | null> | null = null
+
 async function fetchGDELT(): Promise<unknown[] | null> {
+  // Deduplicate concurrent GDELT calls — only one in-flight at a time
+  if (gdeltLock) return gdeltLock
+  gdeltLock = fetchGDELTInner()
   try {
-    // GDELT DOC 2.0 API — no key required
-    // Query for oil-relevant events in the last 24h
+    return await gdeltLock
+  } finally {
+    gdeltLock = null
+  }
+}
+
+async function fetchGDELTInner(): Promise<unknown[] | null> {
+  try {
     const query = encodeURIComponent('("crude oil" OR "oil price" OR OPEC OR "oil production" OR "oil supply")')
     const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&maxrecords=50&format=json&sort=DateDesc&timespan=24h`
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
-    if (!res.ok) return null
-    const data = await res.json() as { articles?: Array<{ url: string; title: string; seendate: string; sourcecountry: string; domain: string; tone?: number }> }
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+    if (!res.ok) {
+      console.error(`GDELT returned ${res.status}`)
+      return null
+    }
+
+    const text = await res.text()
+    if (!text.startsWith('{')) {
+      console.error('GDELT returned non-JSON:', text.slice(0, 100))
+      return null
+    }
+
+    const data = JSON.parse(text) as { articles?: Array<{ url: string; title: string; seendate: string; sourcecountry: string; domain: string; tone?: number }> }
 
     if (!data.articles?.length) return null
 
@@ -203,7 +224,8 @@ async function fetchGDELT(): Promise<unknown[] | null> {
       category: inferCategory(a.title),
       severity: Math.min(1, Math.abs(a.tone ?? 0) / 10),
     }))
-  } catch {
+  } catch (e) {
+    console.error('GDELT fetch failed:', e)
     return null
   }
 }
