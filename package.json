@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@prisma/adapter-libsql": "^7.3.0",
+    "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.3.0",
     "@shogo-ai/sdk": "^1.10.0",
     "class-variance-authority": "^0.7.1",
@@ -29,6 +30,7 @@
     "lucide-react": "^0.563.0",
     "mobx": "^6.13.0",
     "mobx-react-lite": "^4.0.0",
+    "pg": "^8.23.0",
     "radix-ui": "^1.4.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
