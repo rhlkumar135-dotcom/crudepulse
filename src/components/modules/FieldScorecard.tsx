@@ -10,9 +10,9 @@ const metricLabels: Record<string, string> = {
   production: 'Prod.', reserves: 'Reserves', breakeven: 'B/E', rpRatio: 'R/P', apiGravity: 'API°',
 }
 
-function normalizeField(f: OilField) {
+function normalizeField(f: OilField, allFields: OilField[]) {
   return metrics.map(m => {
-    const vals = oilFields.map(ff => ff[m])
+    const vals = allFields.map((ff: any) => ff[m])
     const min = Math.min(...vals)
     const max = Math.max(...vals)
     return { metric: metricLabels[m], value: +(max > min ? ((f[m] - min) / (max - min)) * 100 : 50).toFixed(1), raw: f[m] }
@@ -23,7 +23,7 @@ export function FieldScorecard() {
   const { data } = useMarketData<{ fields: OilField[] }>('/api/market/fields')
   const oilFields = data?.fields || []
   const [selected, setSelected] = useState<OilField | null>(oilFields[0] || null)
-  const radarData = selected ? normalizeField(selected) : []
+  const radarData = selected ? normalizeField(selected, oilFields) : []
   const [sortKey, setSortKey] = useState<'production' | 'reserves' | 'rpRatio'>('production')
   const sortedFields = [...oilFields].sort((a: OilField, b: OilField) => b[sortKey] - a[sortKey])
 
@@ -32,6 +32,8 @@ export function FieldScorecard() {
     mature: { color: '#F5A623', bg: '#F5A62310' },
     declining: { color: '#EF4444', bg: '#EF444410' },
   }
+
+  if (!selected) return <div className="text-[10px] text-text-dim font-mono p-3">Loading fields...</div>
 
   return (
     <div className="space-y-3">

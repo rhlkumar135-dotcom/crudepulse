@@ -3,7 +3,7 @@ import { Anchor, Ship, Clock, TrendingUp, ArrowRight } from 'lucide-react'
 import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
 
-interface Chokepoint { id: string; name: string; throughput: number; share: number; riskLevel: number; incidents: number; restrictions: string; status: string; riskScore: number; trend: number[] }
+interface Chokepoint { id: string; name: string; shortName: string; throughput: number; share: number; riskLevel: number; incidents: number; restrictions: string; status: string; riskScore: number; trend: number[]; weeklyTrend: number[]; dailyVolume: number; vesselsToday: number; avgWaitHours: number; keyRoute: string; trendDirection: 'up' | 'down' | 'stable' }
 
 function riskColor(score: number): string {
   if (score >= 0.7) return '#EF4444'
@@ -111,9 +111,9 @@ export function ChokepointsMonitor() {
             <StatBlock
               icon={<TrendingUp size={9} />}
               label="Trend"
-              value={selected.trend === 'up' ? 'Rising' : selected.trend === 'down' ? 'Falling' : 'Stable'}
+              value={selected.trendDirection === 'up' ? 'Rising' : selected.trendDirection === 'down' ? 'Falling' : 'Stable'}
               unit=""
-              color={selected.trend === 'up' ? 'text-red' : selected.trend === 'down' ? 'text-teal' : 'text-text-dim'}
+              color={selected.trendDirection === 'up' ? 'text-red' : selected.trendDirection === 'down' ? 'text-teal' : 'text-text-dim'}
             />
           </div>
           <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/[0.04]">

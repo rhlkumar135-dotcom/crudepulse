@@ -44,7 +44,7 @@ export function StorageSatellite() {
         <div className="text-[9px] font-mono text-text-dim tracking-wider mb-1">US CRUDE STOCKS · 52 WEEKS (MMbbl)</div>
         <div className="h-[130px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
+            <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#141A22" />
               <XAxis dataKey="date" tick={{ fontSize: 7, fontFamily: 'IBM Plex Mono' }} tickLine={false} axisLine={false} interval={7} stroke="#141A22" />
               <YAxis tick={{ fontSize: 7 }} tickLine={false} axisLine={false} width={30} stroke="#141A22" />
