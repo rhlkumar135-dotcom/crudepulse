@@ -19,7 +19,7 @@ model User {
   stripeCustomerId String? @map("stripe_customer_id")
   stripeSubId      String? @map("stripe_sub_id")
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("users")
 }
