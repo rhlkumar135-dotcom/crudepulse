@@ -11,9 +11,9 @@ function createPrismaClient() {
   const url = process.env.DATABASE_URL
   if (url) {
     const adapter = new PrismaPg({ connectionString: url })
-    return new PrismaClient({ adapter })
+    return new PrismaClient({ adapter } as any)
   }
-  return new PrismaClient({})
+  return new PrismaClient() as any
 }
 
 export const prisma =
