@@ -1,7 +1,10 @@
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { Camera } from 'lucide-react'
-import { storageHistory, latestStorage } from '@/lib/mock-data/storage'
+import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
+
+interface StoragePoint { date: string; cushing: number; spRoc: number; totalUs: number }
+interface StorageResponse { history: StoragePoint[]; latest: StoragePoint }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -20,7 +23,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function StorageSatellite() {
-  const data = storageHistory.map(d => ({
+  const { data: apiData } = useMarketData<StorageResponse>('/api/market/storage')
+  const storageHistory = apiData?.history || []
+  const latestStorage = apiData?.latest || { cushing: 0, spRoc: 0, totalUs: 0 }
+  const chartData = storageHistory.map(d => ({
     date: d.date.slice(5), cushing: d.cushing, spRoc: d.spRoc, totalUs: d.totalUs,
   }))
 

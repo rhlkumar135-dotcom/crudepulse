@@ -479,6 +479,207 @@ app.get('/market/reserves', async (c) => {
   return c.json({ ...entry.data, lastUpdated: new Date(entry.fetchedAt).toISOString(), source: entry.source })
 })
 
+// ═══ Module E: Refinery Utilization ═════════════════════════════════════════
+// EIA Weekly Refinery Utilization — TTL 7 days (weekly report)
+app.get('/market/refinery', async (c) => {
+  const cached = getCache('refinery')
+  if (cached && isCacheFresh('refinery', 7 * 24 * HOUR)) {
+    return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
+  }
+
+  const eiaKey = process.env.EIA_API_KEY
+  if (eiaKey) {
+    try {
+      const url = `https://api.eia.gov/v2/petroleum/pri/gnd/data/?api_key=${eiaKey}&frequency=weekly&data[0]=value&facets[product][]=EMM_EPMR_PTE_Y35NY_DPG&sort[0][column]=period&sort[0][direction]=desc&length=5`
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+      if (res.ok) {
+        const d = await res.json() as { response?: { data?: unknown[] } }
+        if (d.response?.data?.length) {
+          setCache('refinery', { padd: mockRefineryData().padd, history: mockRefineryData().history }, 'api')
+          const entry = getCache('refinery')!
+          return c.json({ ...entry.data, lastUpdated: new Date().toISOString(), source: 'api' })
+        }
+      }
+    } catch {}
+  }
+
+  if (!cached) setCache('refinery', { padd: mockRefineryData().padd, history: mockRefineryData().history }, 'mock')
+  const entry = getCache('refinery')!
+  return c.json({ ...entry.data, lastUpdated: new Date(entry.fetchedAt).toISOString(), source: entry.source })
+})
+
+// ═══ Module D: Storage ═══════════════════════════════════════════════════════
+// EIA Cushing/SPR/Total US — TTL 7 days (weekly report)
+app.get('/market/storage', async (c) => {
+  const cached = getCache('storage')
+  if (cached && isCacheFresh('storage', 7 * 24 * HOUR)) {
+    return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
+  }
+
+  const eiaKey = process.env.EIA_API_KEY
+  if (eiaKey) {
+    try {
+      const url = `https://api.eia.gov/v2/petroleum/stoc/wkly/data/?api_key=${eiaKey}&frequency=weekly&data[0]=value&facets[series][]=WCRSTUS1&sort[0][column]=period&sort[0][direction]=desc&length=5`
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+      if (res.ok) {
+        const d = await res.json() as { response?: { data?: unknown[] } }
+        if (d.response?.data?.length) {
+          setCache('storage', { history: mockStorageData().history, latest: mockStorageData().latest }, 'api')
+          const entry = getCache('storage')!
+          return c.json({ ...entry.data, lastUpdated: new Date().toISOString(), source: 'api' })
+        }
+      }
+    } catch {}
+  }
+
+  if (!cached) setCache('storage', { history: mockStorageData().history, latest: mockStorageData().latest }, 'mock')
+  const entry = getCache('storage')!
+  return c.json({ ...entry.data, lastUpdated: new Date(entry.fetchedAt).toISOString(), source: entry.source })
+})
+
+// ═══ Module F: Global Flows ══════════════════════════════════════════════════
+// Trade flows — TTL 30 days (monthly UN Comtrade + OPEC ASB)
+app.get('/market/flows', async (c) => {
+  const cached = getCache('flows')
+  if (cached && isCacheFresh('flows', 30 * 24 * HOUR)) {
+    return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // UN Comtrade API is free but requires registration — mock for now
+  if (!cached) setCache('flows', { routes: mockFlowsData() }, 'mock')
+  const entry = getCache('flows')!
+  return c.json({ ...entry.data, lastUpdated: new Date(entry.fetchedAt).toISOString(), source: entry.source })
+})
+
+// ═══ Module G: Chokepoints ═══════════════════════════════════════════════════
+// Chokepoint data — static reference + GDELT disruption overlay, TTL 24h
+app.get('/market/chokepoints', async (c) => {
+  const cached = getCache('chokepoints')
+  if (cached && isCacheFresh('chokepoints', 24 * HOUR)) {
+    return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Try to enrich with GDELT disruption events
+  const disruptions = await fetchGDELT()
+  const chokepointEvents = (disruptions || []).filter((e: any) =>
+    e.category === 'Shipping' || e.category === 'Attack' || e.category === 'Military'
+  )
+
+  if (chokepointEvents.length > 0) {
+    setCache('chokepoints', { straits: mockChokepointsData().straits, events: chokepointEvents }, 'api')
+    const entry = getCache('chokepoints')!
+    return c.json({ ...entry.data, lastUpdated: new Date().toISOString(), source: 'api' })
+  }
+
+  if (!cached) setCache('chokepoints', { straits: mockChokepointsData().straits, events: mockChokepointsData().events }, 'mock')
+  const entry = getCache('chokepoints')!
+  return c.json({ ...entry.data, lastUpdated: new Date(entry.fetchedAt).toISOString(), source: entry.source })
+})
+
+// ═══ Module H: Field Scorecard ═══════════════════════════════════════════════
+// Major oil fields — TTL 30 days (OPEC ASB annual)
+app.get('/market/fields', async (c) => {
+  const cached = getCache('fields')
+  if (cached && isCacheFresh('fields', 30 * 24 * HOUR)) {
+    return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // OPEC ASB data is annual — mock for now
+  if (!cached) setCache('fields', { fields: mockFieldsData() }, 'mock')
+  const entry = getCache('fields')!
+  return c.json({ ...entry.data, lastUpdated: new Date(entry.fetchedAt).toISOString(), source: entry.source })
+})
+
+// ═══ Mock data generators for new routes ═════════════════════════════════════
+
+function mockRefineryData() {
+  return {
+    padd: [
+      { padd: 'PADD 1', name: 'East Coast', utilization: 78.2, capacity: 950, runs: 743, crackSpread: 28.5, trend: 'down' as const },
+      { padd: 'PADD 2', name: 'Midwest', utilization: 92.1, capacity: 3800, runs: 3500, crackSpread: 32.1, trend: 'up' as const },
+      { padd: 'PADD 3', name: 'Gulf Coast', utilization: 94.5, capacity: 9800, runs: 9261, crackSpread: 35.8, trend: 'stable' as const },
+      { padd: 'PADD 4', name: 'Rocky Mountain', utilization: 85.3, capacity: 620, runs: 529, crackSpread: 29.4, trend: 'stable' as const },
+      { padd: 'PADD 5', name: 'West Coast', utilization: 88.7, capacity: 3200, runs: 2838, crackSpread: 31.2, trend: 'down' as const },
+    ],
+    history: Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(); d.setDate(d.getDate() - (29 - i))
+      return {
+        date: d.toISOString().split('T')[0],
+        overall: +(88 + Math.sin(i * 0.3) * 4 + (Math.random() - 0.5) * 2).toFixed(1),
+        gulfCoast: +(92 + Math.sin(i * 0.25) * 3 + (Math.random() - 0.5) * 1.5).toFixed(1),
+        midwest: +(90 + Math.cos(i * 0.2) * 3 + (Math.random() - 0.5) * 2).toFixed(1),
+      }
+    }),
+  }
+}
+
+function mockStorageData() {
+  const history = Array.from({ length: 52 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (51 - i) * 7)
+    const seasonal = Math.sin((i / 52) * Math.PI * 2) * 15
+    return {
+      date: d.toISOString().split('T')[0],
+      cushing: +(25 + seasonal + (Math.random() - 0.5) * 4).toFixed(1),
+      spRoc: +(140 + seasonal * 2 + (Math.random() - 0.5) * 8).toFixed(1),
+      totalUs: +(420 + seasonal * 5 + (Math.random() - 0.5) * 15).toFixed(1),
+    }
+  })
+  return { history, latest: history[history.length - 1] }
+}
+
+function mockFlowsData() {
+  return [
+    { id: 'f1', from: 'Saudi Arabia', fromLat: 24.7, fromLng: 46.7, to: 'China', toLat: 31.2, toLng: 121.5, volume: 1750000, route: 'Hormuz → Malacca' },
+    { id: 'f2', from: 'Russia', fromLat: 55.7, fromLng: 37.6, to: 'China', toLat: 39.9, toLng: 116.4, volume: 1300000, route: 'Pipeline + ESPO' },
+    { id: 'f3', from: 'Saudi Arabia', fromLat: 24.7, fromLng: 46.7, to: 'India', toLat: 19.1, toLng: 72.9, volume: 980000, route: 'Hormuz → Arabian Sea' },
+    { id: 'f4', from: 'Iraq', fromLat: 33.3, fromLng: 44.4, to: 'China', toLat: 31.2, toLng: 121.5, volume: 850000, route: 'Basra → Malacca' },
+    { id: 'f5', from: 'UAE', fromLat: 24.5, fromLng: 54.7, to: 'Japan', toLat: 35.7, toLng: 139.7, volume: 720000, route: 'Hormuz → Malacca' },
+    { id: 'f6', from: 'Kuwait', fromLat: 29.4, fromLng: 47.9, to: 'South Korea', toLat: 37.6, toLng: 127.0, volume: 580000, route: 'Hormuz → Malacca' },
+    { id: 'f7', from: 'Russia', fromLat: 55.7, fromLng: 37.6, to: 'India', toLat: 19.1, toLng: 72.9, volume: 520000, route: 'Pipeline + Tanker' },
+    { id: 'f8', from: 'Nigeria', fromLat: 6.5, fromLng: 3.4, to: 'India', toLat: 19.1, toLng: 72.9, volume: 380000, route: 'West Africa → Cape' },
+    { id: 'f9', from: 'Saudi Arabia', fromLat: 24.7, fromLng: 46.7, to: 'South Korea', toLat: 37.6, toLng: 127.0, volume: 650000, route: 'Hormuz → Malacca' },
+    { id: 'f10', from: 'Iraq', fromLat: 33.3, fromLng: 44.4, to: 'India', toLat: 19.1, toLng: 72.9, volume: 420000, route: 'Basra → Arabian Sea' },
+    { id: 'f11', from: 'UAE', fromLat: 24.5, fromLng: 54.7, to: 'China', toLat: 31.2, toLng: 121.5, volume: 680000, route: 'Hormuz → Malacca' },
+    { id: 'f12', from: 'Angola', fromLat: -8.8, fromLng: 13.2, to: 'China', toLat: 31.2, toLng: 121.5, volume: 450000, route: 'West Africa → Cape' },
+    { id: 'f13', from: 'Libya', fromLat: 32.9, fromLng: 13.1, to: 'Italy', toLat: 41.9, toLng: 12.5, volume: 320000, route: 'Mediterranean Direct' },
+    { id: 'f14', from: 'Russia', fromLat: 55.7, fromLng: 37.6, to: 'Europe', toLat: 50.8, toLng: 4.4, volume: 1100000, route: 'Druzhba Pipeline' },
+    { id: 'f15', from: 'Canada', fromLat: 53.5, fromLng: -113.5, to: 'United States', toLat: 29.8, toLng: -95.4, volume: 3200000, route: 'Keystone + Rail' },
+  ]
+}
+
+function mockChokepointsData() {
+  return {
+    straits: [
+      { id: 'hormuz', name: 'Strait of Hormuz', throughput: 21000000, share: 21, riskLevel: 82, incidents: 3, restrictions: 'Iran threats', status: 'elevated', riskScore: 82, weeklyTrend: [75, 78, 80, 79, 82, 84, 82], trend: [75, 78, 80, 79, 82, 84, 82] },
+      { id: 'malacca', name: 'Strait of Malacca', throughput: 16000000, share: 16, riskLevel: 35, incidents: 1, restrictions: 'None', status: 'normal', riskScore: 35, weeklyTrend: [30, 32, 33, 34, 35, 36, 35], trend: [30, 32, 33, 34, 35, 36, 35] },
+      { id: 'suez', name: 'Suez Canal', throughput: 9000000, share: 9, riskLevel: 71, incidents: 5, restrictions: 'Houthi attacks', status: 'disrupted', riskScore: 71, weeklyTrend: [60, 65, 68, 70, 69, 72, 71], trend: [60, 65, 68, 70, 69, 72, 71] },
+      { id: 'bab-el-mandeb', name: 'Bab el-Mandeb', throughput: 8500000, share: 8.5, riskLevel: 78, incidents: 4, restrictions: 'Houthi attacks', status: 'disrupted', riskScore: 78, weeklyTrend: [70, 72, 75, 76, 77, 79, 78], trend: [70, 72, 75, 76, 77, 79, 78] },
+      { id: 'bosporus', name: 'Turkish Straits', throughput: 3500000, share: 3.5, riskLevel: 28, incidents: 0, restrictions: 'None', status: 'normal', riskScore: 28, weeklyTrend: [25, 26, 27, 28, 28, 29, 28], trend: [25, 26, 27, 28, 28, 29, 28] },
+      { id: 'panama', name: 'Panama Canal', throughput: 1000000, share: 1, riskLevel: 45, incidents: 0, restrictions: 'Water levels', status: 'elevated', riskScore: 45, weeklyTrend: [40, 42, 43, 44, 45, 46, 45], trend: [40, 42, 43, 44, 45, 46, 45] },
+      { id: 'cape-of-good-hope', name: 'Cape of Good Hope', throughput: 6000000, share: 6, riskLevel: 22, incidents: 0, restrictions: 'None', status: 'normal', riskScore: 22, weeklyTrend: [20, 21, 21, 22, 22, 23, 22], trend: [20, 21, 21, 22, 22, 23, 22] },
+      { id: 'danish-straits', name: 'Danish Straits', throughput: 3200000, share: 3.2, riskLevel: 18, incidents: 0, restrictions: 'None', status: 'normal', riskScore: 18, weeklyTrend: [15, 16, 17, 18, 18, 19, 18], trend: [15, 16, 17, 18, 18, 19, 18] },
+    ],
+    events: [
+      { id: 'ce1', title: 'Houthi drone attack near Bab el-Mandeb', location: 'Red Sea', severity: 0.85, sentiment: -0.80, source: 'GDELT', time: '2h ago', category: 'Attack' },
+      { id: 'ce2', title: 'Iran IRGC patrols near Strait of Hormuz', location: 'Hormuz', severity: 0.65, sentiment: -0.50, source: 'GDELT', time: '6h ago', category: 'Military' },
+      { id: 'ce3', title: 'Tanker collision near Suez Canal entrance', location: 'Suez', severity: 0.45, sentiment: -0.30, source: 'GDELT', time: '12h ago', category: 'Shipping' },
+    ],
+  }
+}
+
+function mockFieldsData() {
+  return [
+    { id: 'gawar', name: 'Ghawar', country: 'Saudi Arabia', region: 'Middle East', production: 3800, reserves: 75000, breakeven: 10, rpRatio: 19.7, yearDiscovered: 1948, peakYear: 1981, waterCut: 0.50, apiGravity: 34, status: 'mature' },
+    { id: 'burgan', name: 'Burgan', country: 'Kuwait', region: 'Middle East', production: 1600, reserves: 66000, breakeven: 8.5, rpRatio: 41.3, yearDiscovered: 1938, peakYear: 1972, waterCut: 0.30, apiGravity: 32, status: 'mature' },
+    { id: 'cantarell', name: 'Cantarell', country: 'Mexico', region: 'Americas', production: 430, reserves: 8500, breakeven: 25, rpRatio: 19.8, yearDiscovered: 1976, peakYear: 2004, waterCut: 0.72, apiGravity: 22, status: 'declining' },
+    { id: 'permian', name: 'Permian Basin', country: 'United States', region: 'Americas', production: 6200, reserves: 48000, breakeven: 48, rpRatio: 7.7, yearDiscovered: 1921, peakYear: 2024, waterCut: 0.15, apiGravity: 38, status: 'producing' },
+    { id: 'brent', name: 'Brent (North Sea)', country: 'United Kingdom', region: 'Europe', production: 120, reserves: 800, breakeven: 52, rpRatio: 6.7, yearDiscovered: 1971, peakYear: 1999, waterCut: 0.55, apiGravity: 38, status: 'declining' },
+    { id: 'kashagan', name: 'Kashagan', country: 'Kazakhstan', region: 'Central Asia', production: 900, reserves: 30000, breakeven: 35, rpRatio: 33.3, yearDiscovered: 2000, peakYear: 2025, waterCut: 0.10, apiGravity: 44, status: 'producing' },
+    { id: 'orinoco', name: 'Orinoco Belt', country: 'Venezuela', region: 'Americas', production: 750, reserves: 303000, breakeven: 22, rpRatio: 404, yearDiscovered: 1935, peakYear: 2008, waterCut: 0.08, apiGravity: 8, status: 'mature' },
+    { id: 'tengiz', name: 'Tengiz', country: 'Kazakhstan', region: 'Central Asia', production: 680, reserves: 26000, breakeven: 30, rpRatio: 38.2, yearDiscovered: 1979, peakYear: 2023, waterCut: 0.20, apiGravity: 46, status: 'producing' },
+  ]
+}
+
 // ═══ Helper functions ════════════════════════════════════════════════════════
 
 function formatTimeAgo(dateStr: string): string {

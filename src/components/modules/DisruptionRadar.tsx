@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { geoEvents, type GeoEvent } from '@/lib/mock-data/events'
+import { useMarketData } from '@/lib/useMarketData'
+
+interface GeoEvent { id: string; title: string; location: string; severity: number; sentiment: number; source: string; time: string; category: string }
 
 const categoryColors: Record<string, string> = {
   Attack: '#EF4444', Military: '#F97316', Sanctions: '#A78BFA',
@@ -10,10 +12,10 @@ const categoryColors: Record<string, string> = {
 }
 
 // Group events by region/location to build the ranked bar chart
-function buildRegionData() {
+function buildRegionData(events: GeoEvent[]) {
   const regionMap = new Map<string, { count: number; avgSeverity: number; totalSeverity: number; events: GeoEvent[] }>()
 
-  for (const e of geoEvents) {
+  for (const e of events) {
     const region = e.category
     if (!regionMap.has(region)) regionMap.set(region, { count: 0, avgSeverity: 0, totalSeverity: 0, events: [] })
     const r = regionMap.get(region)!
@@ -27,42 +29,41 @@ function buildRegionData() {
     count: data.count,
     avgSeverity: +(data.totalSeverity / data.count).toFixed(2),
     events: data.events,
-    // Simulate spike detection: flag if count > 2x average
-    isSpike: data.count > (geoEvents.length / regionMap.size) * 1.5,
+    isSpike: data.count > (events.length / regionMap.size) * 1.5,
   }))
 
   return result.sort((a, b) => b.count - a.count)
 }
 
 function buildHourlyVolume() {
-  // Simulate 24h event volume by hour
   const hours = Array.from({ length: 24 }, (_, i) => {
-    const base = i >= 6 && i <= 18 ? 3 : 1 // more events during business hours
+    const base = i >= 6 && i <= 18 ? 3 : 1
     return {
       hour: `${String(i).padStart(2, '0')}:00`,
       volume: base + Math.floor(Math.random() * 3),
     }
   })
-  // Simulate a "spike" at a specific hour
   hours[14].volume = hours[14].volume * 3
   hours[15].volume = hours[15].volume * 2.5
   return hours
 }
 
 export function DisruptionRadar() {
+  const { data } = useMarketData<{ events: GeoEvent[] }>('/api/market/disruptions')
+  const geoEvents = data?.events || []
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const regionData = buildRegionData()
+  const regionData = buildRegionData(geoEvents)
   const hourlyVolume = buildHourlyVolume()
   const spikeThreshold = Math.max(...hourlyVolume.map(h => h.volume)) * 0.6
 
   const totalEvents = geoEvents.length
-  const highSeverity = geoEvents.filter(e => e.severity >= 0.7).length
-  const avgTone = +(geoEvents.reduce((s, e) => s + e.sentiment, 0) / totalEvents).toFixed(2)
+  const highSeverity = geoEvents.filter((e: GeoEvent) => e.severity >= 0.7).length
+  const avgTone = totalEvents > 0 ? +(geoEvents.reduce((s: number, e: GeoEvent) => s + e.sentiment, 0) / totalEvents).toFixed(2) : 0
 
   const filteredEvents = selectedCategory
-    ? geoEvents.filter(e => e.category === selectedCategory)
+    ? geoEvents.filter((e: GeoEvent) => e.category === selectedCategory)
     : geoEvents
-  const sorted = [...filteredEvents].sort((a, b) => b.severity - a.severity)
+  const sorted = [...filteredEvents].sort((a: GeoEvent, b: GeoEvent) => b.severity - a.severity)
 
   return (
     <div className="space-y-3">

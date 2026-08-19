@@ -12,6 +12,12 @@ import { PriceNewsChart } from '@/components/modules/PriceNews'
 import { DisruptionRadar } from '@/components/modules/DisruptionRadar'
 import { RigCountChart } from '@/components/modules/RigCount'
 import { ReservesClock } from '@/components/modules/ReservesClock'
+import { GlobalFlowMap as GlobalFlow } from '@/components/modules/GlobalFlow'
+import { ChokepointsMonitor as Chokepoints } from '@/components/modules/Chokepoints'
+import { SupplyDemandSim } from '@/components/modules/SupplyDemandSim'
+import { RefineryHeatmap } from '@/components/modules/RefineryHeatmap'
+import { StorageSatellite } from '@/components/modules/StorageSatellite'
+import { FieldScorecard } from '@/components/modules/FieldScorecard'
 
 type Tier = 'free' | 'pro'
 type Role = 'user' | 'admin'
@@ -56,7 +62,7 @@ export default function App() {
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-sm font-bold tracking-wide text-text-bright">CrudePulse</span>
-              <span className="text-[8px] font-mono text-amber/50 tracking-widest">V1 TERMINAL</span>
+              <span className="text-[8px] font-mono text-amber/50 tracking-widest">V2 TERMINAL</span>
             </div>
           </div>
 
@@ -124,19 +130,17 @@ export default function App() {
         )}
 
         {/* Dashboard */}
-        <main className="p-4 max-w-[1400px] mx-auto">
-          {/* Module A — Full width hero */}
+        <main className="p-4 max-w-[1600px] mx-auto">
+          {/* Row 1: Module A — Price + News (full width) */}
           <section className="mb-3">
             <div className="glass-card overflow-hidden">
               <div className="flex items-center gap-3 px-5 pt-4 pb-2">
-                <div className="w-7 h-7 rounded-lg bg-amber/10 flex items-center justify-center">
-                  <TrendingUp size={14} className="text-amber" />
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber to-amber/70 flex items-center justify-center">
+                  <TrendingUp size={14} className="text-bg" />
                 </div>
                 <h2 className="text-sm font-semibold text-text-bright">Price & News Timeline</h2>
                 <CadenceBadge cadence="live" />
-                <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">
-                  MOD.01 · WTI / Brent
-                </span>
+                <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.01 · WTI / Brent</span>
                 <div className="flex-1" />
                 {!isPro ? (
                   <span className="text-[9px] font-mono text-muted bg-white/[0.03] px-2 py-0.5 rounded border border-white/[0.04]">
@@ -148,102 +152,142 @@ export default function App() {
                   </span>
                 )}
               </div>
-              <div className="px-5 pb-4">
-                <PriceNewsChart />
-              </div>
+              <div className="px-5 pb-4"><PriceNewsChart /></div>
               <div className="border-t border-white/[0.04] mx-5 py-2">
-                <div className="flex items-center gap-3 text-[8px] font-mono text-muted/50">
-                  <span>Alpha Vantage · NewsAPI</span>
-                  <span>·</span>
-                  <span>Refresh: {isPro ? '4h' : '8h'}</span>
-                  <span>·</span>
-                  <span className={isPro ? 'text-amber' : 'text-muted'}>{isPro ? 'FRESH' : 'STALE'}</span>
-                </div>
+                <div className="text-[8px] font-mono text-muted/50">GDELT + Alpha Vantage + NewsAPI · Refresh: {isPro ? '4h' : '8h'}</div>
               </div>
             </div>
           </section>
 
-          {/* Modules B/C/D — Grid row */}
-          <div className="grid grid-cols-12 gap-3 mb-4">
-            {/* Module B */}
+          {/* Row 2: Disruption Radar + Rig Count + Reserves Clock */}
+          <div className="grid grid-cols-12 gap-3 mb-3">
             <div className="col-span-5">
               <div className="glass-card overflow-hidden h-full flex flex-col">
                 <div className="flex items-center gap-3 px-5 pt-4 pb-2">
-                  <div className="w-7 h-7 rounded-lg bg-red/10 flex items-center justify-center">
-                    <Radar size={14} className="text-red" />
-                  </div>
+                  <div className="w-7 h-7 rounded-lg bg-red/10 flex items-center justify-center"><Radar size={14} className="text-red" /></div>
                   <h2 className="text-sm font-semibold text-text-bright">Disruption Radar</h2>
                   <CadenceBadge cadence="live" />
-                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">
-                    MOD.02 · GDELT
-                  </span>
+                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.02 · GDELT</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto">
-                  <DisruptionRadar />
-                </div>
-                <div className="border-t border-white/[0.04] mx-5 py-2">
-                  <div className="text-[8px] font-mono text-muted/50">GDELT Project · No key required · 30-min refresh</div>
-                </div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><DisruptionRadar /></div>
+                <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">GDELT Project · No key required · 30-min refresh</div></div>
               </div>
             </div>
-
-            {/* Module C */}
             <div className="col-span-4">
               <div className="glass-card overflow-hidden h-full flex flex-col">
                 <div className="flex items-center gap-3 px-5 pt-4 pb-2">
-                  <div className="w-7 h-7 rounded-lg bg-teal/10 flex items-center justify-center">
-                    <Wrench size={14} className="text-teal" />
-                  </div>
+                  <div className="w-7 h-7 rounded-lg bg-teal/10 flex items-center justify-center"><Wrench size={14} className="text-teal" /></div>
                   <h2 className="text-sm font-semibold text-text-bright">Rig Count</h2>
                   <CadenceBadge cadence="weekly" />
-                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">
-                    MOD.03
-                  </span>
+                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.03</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto">
-                  <RigCountChart />
-                </div>
-                <div className="border-t border-white/[0.04] mx-5 py-2">
-                  <div className="text-[8px] font-mono text-muted/50">Baker Hughes · Public weekly XLSX</div>
-                </div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><RigCountChart /></div>
+                <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">Baker Hughes · Public weekly XLSX</div></div>
               </div>
             </div>
-
-            {/* Module D */}
             <div className="col-span-3">
               <div className="glass-card overflow-hidden h-full flex flex-col">
                 <div className="flex items-center gap-3 px-5 pt-4 pb-2">
-                  <div className="w-7 h-7 rounded-lg bg-blue-400/10 flex items-center justify-center">
-                    <Clock size={14} className="text-blue-400" />
-                  </div>
+                  <div className="w-7 h-7 rounded-lg bg-blue-400/10 flex items-center justify-center"><Clock size={14} className="text-blue-400" /></div>
                   <h2 className="text-sm font-semibold text-text-bright">Reserves</h2>
                   <CadenceBadge cadence="periodic" />
+                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.04</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto">
-                  <ReservesClock />
-                </div>
-                <div className="border-t border-white/[0.04] mx-5 py-2">
-                  <div className="text-[8px] font-mono text-muted/50">EIA · USGS · Annual</div>
-                </div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ReservesClock /></div>
+                <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">EIA · USGS · Annual</div></div>
               </div>
             </div>
           </div>
 
-          {/* V2 teaser */}
-          <div className="glass-card p-4 mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[8px] font-mono text-amber bg-amber/[0.06] px-2 py-0.5 rounded border border-amber/15 tracking-widest">V2 ROADMAP</span>
+          {/* Row 3: Supply-Demand Sim + Refinery Heatmap */}
+          <div className="grid grid-cols-12 gap-3 mb-3">
+            <div className="col-span-6">
+              <div className="glass-card overflow-hidden h-full flex flex-col">
+                <div className="flex items-center gap-3 px-5 pt-4 pb-2">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center"><BarChart3 size={14} className="text-purple-400" /></div>
+                  <h2 className="text-sm font-semibold text-text-bright">Supply-Demand Simulator</h2>
+                  <CadenceBadge cadence="daily" />
+                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.05 · EIA</span>
+                </div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><SupplyDemandSim /></div>
+                <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">EIA STEO + OPEC MOMR · Daily</div></div>
+              </div>
             </div>
-            <p className="text-[11px] text-muted leading-relaxed">
-              6 more modules coming with mapping, simulation, and satellite integration. Global Flow Map, Chokepoint Monitor, Supply-Demand Simulator, Refinery Heatmap, Field Scorecard, Storage + Satellite.
-            </p>
+            <div className="col-span-6">
+              <div className="glass-card overflow-hidden h-full flex flex-col">
+                <div className="flex items-center gap-3 px-5 pt-4 pb-2">
+                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center"><Activity size={14} className="text-orange-400" /></div>
+                  <h2 className="text-sm font-semibold text-text-bright">Refinery Utilization</h2>
+                  <CadenceBadge cadence="weekly" />
+                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.06 · EIA</span>
+                </div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><RefineryHeatmap /></div>
+                <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">EIA WPSR · PADD regions · Weekly</div></div>
+              </div>
+            </div>
           </div>
+
+          {/* Row 4: Global Flow + Chokepoints + Storage */}
+          <div className="grid grid-cols-12 gap-3 mb-3">
+            <div className="col-span-5">
+              <div className="glass-card overflow-hidden h-full flex flex-col">
+                <div className="flex items-center gap-3 px-5 pt-4 pb-2">
+                  <div className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center"><Zap size={14} className="text-cyan-400" /></div>
+                  <h2 className="text-sm font-semibold text-text-bright">Global Flow Map</h2>
+                  <CadenceBadge cadence="weekly" />
+                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.07 · UN Comtrade</span>
+                </div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><GlobalFlow /></div>
+                <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">UN Comtrade + OPEC ASB · Monthly</div></div>
+              </div>
+            </div>
+            <div className="col-span-4">
+              <div className="glass-card overflow-hidden h-full flex flex-col">
+                <div className="flex items-center gap-3 px-5 pt-4 pb-2">
+                  <div className="w-7 h-7 rounded-lg bg-yellow-500/10 flex items-center justify-center"><Eye size={14} className="text-yellow-400" /></div>
+                  <h2 className="text-sm font-semibold text-text-bright">Chokepoint Watch</h2>
+                  <CadenceBadge cadence="daily" />
+                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.08 · 8 straits</span>
+                </div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><Chokepoints /></div>
+                <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">GDELT disruption overlay + reference data</div></div>
+              </div>
+            </div>
+            <div className="col-span-3">
+              <div className="glass-card overflow-hidden h-full flex flex-col">
+                <div className="flex items-center gap-3 px-5 pt-4 pb-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center"><Database size={14} className="text-emerald-400" /></div>
+                  <h2 className="text-sm font-semibold text-text-bright">Storage + Satellite</h2>
+                  <CadenceBadge cadence="weekly" />
+                  <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.09</span>
+                </div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><StorageSatellite /></div>
+                <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">EIA + Sentinel-2 · Weekly</div></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 5: Field Scorecard (full width) */}
+          <section className="mb-3">
+            <div className="glass-card overflow-hidden">
+              <div className="flex items-center gap-3 px-5 pt-4 pb-2">
+                <div className="w-7 h-7 rounded-lg bg-rose-500/10 flex items-center justify-center"><Users size={14} className="text-rose-400" /></div>
+                <h2 className="text-sm font-semibold text-text-bright">Field Scorecard</h2>
+                <CadenceBadge cadence="periodic" />
+                <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.10 · OPEC ASB</span>
+              </div>
+              <div className="px-5 pb-4"><FieldScorecard /></div>
+              <div className="border-t border-white/[0.04] mx-5 py-2">
+                <div className="text-[8px] font-mono text-muted/50">OPEC ASB + IHS Markit · Annual/Quarterly</div>
+              </div>
+            </div>
+          </section>
 
           {/* Footer */}
           <div className="text-center py-4 border-t border-white/[0.04]">
             <div className="text-[9px] text-muted/40 font-mono space-y-0.5">
-              <p>CrudePulse V1 Terminal — Real-Time Crude Oil Intelligence</p>
-              <p>Alpha Vantage · NewsAPI · GDELT · Baker Hughes · EIA · USGS</p>
+              <p>CrudePulse V2 Terminal — Real-Time Crude Oil Intelligence</p>
+              <p>GDELT · Alpha Vantage · NewsAPI · EIA · Baker Hughes · UN Comtrade · OPEC ASB · USGS</p>
               <p>Not financial advice</p>
             </div>
           </div>

@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Newspaper, ExternalLink, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { wtiHistory, brentHistory } from '@/lib/mock-data/prices'
-import { mockNews, type NewsItem } from '@/lib/mock-data/news'
+import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
+
+interface PricePoint { date: string; close: number }
+interface PriceResponse { wti: { current: number; history: PricePoint[] }; brent: { current: number; history: PricePoint[] }; spread: number }
+interface NewsItem { id: string; title: string; source: string; time: string; sentiment: string; score: number; category: string }
+interface NewsResponse { items: NewsItem[] }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -22,19 +26,26 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function PriceNewsChart() {
+  const { data: priceData } = useMarketData<PriceResponse>('/api/market/prices')
+  const { data: newsData } = useMarketData<NewsResponse>('/api/market/news')
   const [hoveredPrice, setHoveredPrice] = useState<number | null>(null)
+
+  const wtiHistory = priceData?.wti?.history || []
+  const brentHistory = priceData?.brent?.history || []
+  const mockNews = newsData?.items || []
+
   const lastWti = wtiHistory[wtiHistory.length - 1]
   const prevWti = wtiHistory[wtiHistory.length - 2]
   const lastBrent = brentHistory[brentHistory.length - 1]
   const prevBrent = brentHistory[brentHistory.length - 2]
 
-  const data = wtiHistory.slice(-90).map((d, i) => ({
+  const chartData = wtiHistory.slice(-90).map((d: PricePoint, i: number) => ({
     ...d,
     brent: brentHistory[brentHistory.length - 90 + i]?.close,
   }))
 
   const relatedNews = hoveredPrice !== null
-    ? mockNews.filter(n => n.relatedPrice && Math.abs(n.relatedPrice - hoveredPrice) < 3).slice(0, 4)
+    ? mockNews.filter((n: NewsItem) => Math.abs(72 - hoveredPrice) < 3).slice(0, 4)
     : mockNews.slice(0, 4)
 
   return (
@@ -49,7 +60,7 @@ export function PriceNewsChart() {
       {/* Chart */}
       <div className="h-[180px] -ml-1">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} onMouseMove={(e) => {
+          <AreaChart data={chartData} onMouseMove={(e) => {
             if (e?.activePayload?.[0]) setHoveredPrice(e.activePayload[0].payload.close)
           }} onMouseLeave={() => setHoveredPrice(null)}>
             <defs>

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Anchor, Ship, Clock, TrendingUp, ArrowRight } from 'lucide-react'
-import { chokepoints, type Chokepoint } from '@/lib/mock-data/chokepoints'
+import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
+
+interface Chokepoint { id: string; name: string; throughput: number; share: number; riskLevel: number; incidents: number; restrictions: string; status: string; riskScore: number; trend: number[] }
 
 function riskColor(score: number): string {
   if (score >= 0.7) return '#EF4444'
@@ -16,8 +18,10 @@ function riskLabel(score: number): string {
 }
 
 export function ChokepointsMonitor() {
+  const { data } = useMarketData<{ straits: Chokepoint[] }>('/api/market/chokepoints')
+  const chokepoints = data?.straits || []
   const [selected, setSelected] = useState<Chokepoint | null>(null)
-  const sorted = [...chokepoints].sort((a, b) => b.riskScore - a.riskScore)
+  const sorted = [...chokepoints].sort((a: Chokepoint, b: Chokepoint) => b.riskScore - a.riskScore)
 
   return (
     <div className="space-y-3">

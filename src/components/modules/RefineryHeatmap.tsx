@@ -1,6 +1,9 @@
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
-import { refineryData, refineryHistory } from '@/lib/mock-data/refinery'
+import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
+
+interface RefineryData { padd: string; name: string; utilization: number; capacity: number; runs: number; crackSpread: number; trend: string }
+interface RefineryResponse { padd: RefineryData[]; history: Array<{ date: string; overall: number; gulfCoast: number; midwest: number }> }
 
 const paddColors: Record<string, string> = {
   'PADD 1': '#38BDF8', 'PADD 2': '#2DD4BF', 'PADD 3': '#F5A623', 'PADD 4': '#A78BFA', 'PADD 5': '#F472B6',
@@ -29,11 +32,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function RefineryHeatmap() {
+  const { data } = useMarketData<RefineryResponse>('/api/market/refinery')
+  const refineryData = data?.padd || []
+  const refineryHistory = data?.history || []
+
   return (
     <div className="space-y-3">
       {/* PADD Heatmap Tiles */}
       <div className="grid grid-cols-5 gap-1">
-        {refineryData.map(r => {
+        {refineryData.map((r: RefineryData) => {
           const intensity = (r.utilization - 70) / 30
           const bg = `rgba(245, 166, 35, ${(intensity * 0.25 + 0.03).toFixed(2)})`
           const t = trendArrow[r.trend]

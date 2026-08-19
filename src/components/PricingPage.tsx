@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
-interface Props { tier: 'free' | 'pro'; onUpgrade: () => void; onSignOut: () => void }
+interface Props { tier?: 'free' | 'pro'; onUpgrade?: () => void; onSignOut?: () => void; onBack?: () => void }
 
 const TIERS = [
   {
@@ -44,7 +44,7 @@ const TIERS = [
   },
 ]
 
-export function PricingPage({ tier, onUpgrade, onSignOut }: Props) {
+export function PricingPage({ tier, onUpgrade, onSignOut, onBack }: Props) {
   return (
     <div className="v2-page">
       <div className="min-h-screen flex items-center justify-center p-6">
@@ -68,7 +68,7 @@ export function PricingPage({ tier, onUpgrade, onSignOut }: Props) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {TIERS.map((t) => (
               <Card key={t.id} className={`v2-card relative overflow-hidden ${tier === t.id ? 'ring-1' : ''}`}
-                style={{ borderColor: tier === t.id ? t.color + '40' : undefined, ringColor: tier === t.id ? t.color + '30' : undefined }}>
+                style={{ borderColor: tier === t.id ? t.color + '40' : undefined }}>
                 {tier === t.id && (
                   <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: t.color }} />
                 )}
@@ -122,7 +122,7 @@ export function PricingPage({ tier, onUpgrade, onSignOut }: Props) {
           </div>
 
           <div className="text-center space-y-4">
-            <button onClick={onSignOut} className="v2-text-label cursor-pointer" style={{ color: 'var(--text-muted)' }}>
+            <button onClick={onBack || onSignOut} className="v2-text-label cursor-pointer" style={{ color: 'var(--text-muted)' }}>
               ← Back to Sign In
             </button>
             <p className="v2-text-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>

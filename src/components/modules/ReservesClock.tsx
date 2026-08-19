@@ -1,8 +1,12 @@
-import { reservesData } from '@/lib/mock-data/reserves'
+import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
 
+interface ReserveData { country: string; code: string; reserves: number; production: number; rpRatio: number; flag: string }
+
 export function ReservesClock() {
-  const maxRp = Math.max(...reservesData.map(r => r.rpRatio))
+  const { data, loading } = useMarketData<{ countries: ReserveData[] }>('/api/market/reserves')
+  const reservesData = data?.countries || []
+  const maxRp = Math.max(...reservesData.map(r => r.rpRatio), 1)
 
   return (
     <div className="space-y-2">

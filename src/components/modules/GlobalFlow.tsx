@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { tradeFlows, type TradeFlow } from '@/lib/mock-data/flows'
+import { useMarketData } from '@/lib/useMarketData'
+
+interface TradeFlow { id: string; from: string; fromLat: number; fromLng: number; to: string; toLat: number; toLng: number; volume: number; route: string }
 
 const regionColors: Record<string, string> = {
   'Middle East': '#F5A623', 'North America': '#2DD4BF', 'Russia & CIS': '#EF4444',
@@ -19,10 +21,12 @@ function getRegion(from: string): string {
 }
 
 export function GlobalFlowMap() {
+  const { data } = useMarketData<{ routes: TradeFlow[] }>('/api/market/flows')
+  const tradeFlows = data?.routes || []
   const [selected, setSelected] = useState<TradeFlow | null>(null)
-  const top15 = [...tradeFlows].sort((a, b) => b.volume - a.volume)
+  const top15 = [...tradeFlows].sort((a: TradeFlow, b: TradeFlow) => b.volume - a.volume)
   const maxVol = top15[0]?.volume || 1
-  const totalVol = top15.reduce((s, f) => s + f.volume, 0)
+  const totalVol = top15.reduce((s: number, f: TradeFlow) => s + f.volume, 0)
 
   return (
     <div className="space-y-2">

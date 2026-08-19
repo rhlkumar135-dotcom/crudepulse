@@ -1,6 +1,10 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, CartesianGrid } from 'recharts'
-import { currentRigs, rigHistory, totalRigs, totalOilRigs, totalGasRigs, totalChange } from '@/lib/mock-data/rigs'
+import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
+
+interface RigData { basin: string; oilRigs: number; gasRigs: number; totalChange: number }
+interface RigWeek { week: string; total: number; oil: number; gas: number; wtiPrice: number }
+interface RigResponse { total: number; oilTotal: number; gasTotal: number; change: number; basins: RigData[]; history?: RigWeek[] }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -18,11 +22,18 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function RigCountChart() {
+  const { data } = useMarketData<RigResponse>('/api/market/rigs')
+  const currentRigs = data?.basins || []
+  const totalRigs = data?.total || 0
+  const totalOilRigs = data?.oilTotal || 0
+  const totalGasRigs = data?.gasTotal || 0
+  const totalChange = data?.change || 0
+
   const basinData = currentRigs.map(r => ({
     name: r.basin, oil: r.oilRigs, gas: r.gasRigs, change: r.totalChange,
   }))
 
-  const timelineData = rigHistory.map(r => ({
+  const timelineData = (data?.history || []).map(r => ({
     date: r.week.slice(5), total: r.total, oil: r.oil, wti: r.wtiPrice,
   }))
 

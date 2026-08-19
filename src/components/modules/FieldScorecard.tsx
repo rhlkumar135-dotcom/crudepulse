@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from 'recharts'
-import { oilFields, type OilField } from '@/lib/mock-data/fields'
+import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
+
+interface OilField { id: string; name: string; country: string; region: string; production: number; reserves: number; breakeven: number; rpRatio: number; yearDiscovered: number; peakYear: number; waterCut: number; apiGravity: number; status: string }
 
 const metrics = ['production', 'reserves', 'breakeven', 'rpRatio', 'apiGravity'] as const
 const metricLabels: Record<string, string> = {
@@ -18,10 +20,12 @@ function normalizeField(f: OilField) {
 }
 
 export function FieldScorecard() {
-  const [selected, setSelected] = useState<OilField>(oilFields[0])
-  const radarData = normalizeField(selected)
+  const { data } = useMarketData<{ fields: OilField[] }>('/api/market/fields')
+  const oilFields = data?.fields || []
+  const [selected, setSelected] = useState<OilField | null>(oilFields[0] || null)
+  const radarData = selected ? normalizeField(selected) : []
   const [sortKey, setSortKey] = useState<'production' | 'reserves' | 'rpRatio'>('production')
-  const sortedFields = [...oilFields].sort((a, b) => b[sortKey] - a[sortKey])
+  const sortedFields = [...oilFields].sort((a: OilField, b: OilField) => b[sortKey] - a[sortKey])
 
   const statusConfig: Record<string, { color: string; bg: string }> = {
     producing: { color: '#22C55E', bg: '#22C55E10' },
