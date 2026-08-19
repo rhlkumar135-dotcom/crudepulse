@@ -772,4 +772,17 @@ function mockReservesData() {
 }
 
 export default app
-// redeploy Wed Aug 19 06:53:51 UTC 2026
+
+// Debug route — tells us which version is deployed
+app.get('/debug/routes', (c) => {
+  return c.json({
+    version: 'v2-routes',
+    timestamp: new Date().toISOString(),
+    routes: [
+      'auth/signup', 'auth/login', 'auth/me', 'auth/upgrade',
+      'admin/users', 'market/prices', 'market/news', 'market/disruptions',
+      'market/rigs', 'market/reserves', 'market/refinery', 'market/storage',
+      'market/flows', 'market/chokepoints', 'market/fields',
+    ]
+  })
+})
