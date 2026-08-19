@@ -1,0 +1,248 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
+
+@theme {
+  --color-bg: #080B10;
+  --color-bg-elevated: #0D1117;
+  --color-bg-card: #0F1318;
+  --color-bg-card-hover: #141A22;
+  --color-amber: #F5A623;
+  --color-amber-dim: #F5A62320;
+  --color-amber-glow: #F5A62310;
+  --color-teal: #2DD4BF;
+  --color-teal-dim: #2DD4BF20;
+  --color-red: #EF4444;
+  --color-red-dim: #EF444420;
+  --color-green: #22C55E;
+  --color-blue: #3B82F6;
+  --color-muted: #6B7A90;
+  --color-text: #CBD5E1;
+  --color-text-bright: #F1F5F9;
+  --color-text-dim: #475569;
+  --color-border: #1A2030;
+  --color-border-subtle: #141A22;
+  --color-glass: #0F131890;
+  --color-glass-border: #FFFFFF08;
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Fira Code', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { font-size: 14px; }
+
+body {
+  font-family: var(--font-display);
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* ═══ Noise Texture Overlay ═══ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background-size: 128px;
+}
+
+/* ═══ Scrollbar ═══ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+/* ═══ Glass Card — Premium ═══ */
+.glass-card {
+  background: linear-gradient(135deg, #0F1318E0, #0D1117C0);
+  backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid #FFFFFF06;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle inner glow at top edge */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #FFFFFF08, transparent);
+  z-index: 1;
+}
+
+/* Ambient corner glow on hover */
+.glass-card:hover {
+  border-color: #F5A62312;
+  box-shadow: 0 0 40px -10px #F5A62308, inset 0 1px 0 #FFFFFF06;
+}
+
+/* ═══ Section Divider ═══ */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #1A2030, transparent);
+  margin: 4px 0;
+}
+
+/* ═══ LIVE Pulse ═══ */
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.6); }
+}
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse-live 2s ease-in-out infinite;
+  box-shadow: 0 0 6px #22c55e60;
+}
+.live-dot-amber { background: var(--color-amber); box-shadow: 0 0 6px #F5A62360; }
+
+/* ═══ Micro Glow Animations ═══ */
+@keyframes glow-amber {
+  0%, 100% { box-shadow: 0 0 0 0 #F5A62300; }
+  50% { box-shadow: 0 0 12px 2px #F5A62315; }
+}
+@keyframes glow-red {
+  0%, 100% { box-shadow: 0 0 0 0 #EF444400; }
+  50% { box-shadow: 0 0 12px 2px #EF444415; }
+}
+
+/* ═══ Module Expanded ═══ */
+.module-expanded {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--color-bg);
+  overflow-y: auto; padding: 2rem;
+  animation: fadeIn 0.15s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ═══ Locked Module ═══ */
+.locked-blur {
+  filter: blur(8px) saturate(0.4);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.6;
+}
+
+/* ═══ Data Grid Lines ═══ */
+.data-grid-line {
+  border-bottom: 1px solid #141A22;
+}
+.data-grid-line:last-child {
+  border-bottom: none;
+}
+
+/* ═══ Mini Sparkline Container ═══ */
+.sparkline-container {
+  width: 60px; height: 20px;
+  opacity: 0.7;
+}
+
+/* ═══ Shimmer Loading ═══ */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent, #ffffff04, transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ═══ Ticker Flash ═══ */
+@keyframes flash-green {
+  0% { background-color: #22C55E15; }
+  100% { background-color: transparent; }
+}
+@keyframes flash-red {
+  0% { background-color: #EF444415; }
+  100% { background-color: transparent; }
+}
+.flash-up { animation: flash-green 0.8s ease-out; }
+.flash-down { animation: flash-red 0.8s ease-out; }
+
+/* ═══ Custom Range Slider ═══ */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 2px;
+  background: #1A2030;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--color-amber);
+  cursor: pointer;
+  border: 2px solid #0F1318;
+  box-shadow: 0 0 6px #F5A62330;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--color-amber);
+  cursor: pointer;
+  border: 2px solid #0F1318;
+  box-shadow: 0 0 6px #F5A62330;
+}
+
+/* ═══ Recharts Overrides ═══ */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #141A22;
+}
+.recharts-text {
+  fill: #6B7A90;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.recharts-tooltip-wrapper {
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+}
+
+/* ═══ Table Styles ═══ */
+table th {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+table td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══ Utility Classes ═══ */
+.text-gradient-amber {
+  background: linear-gradient(135deg, #F5A623, #F59E0B);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.border-glow-amber {
+  box-shadow: inset 0 0 0 1px #F5A62315, 0 0 20px -5px #F5A62310;
+}
+.bg-noise {
+  position: relative;
+}
+.bg-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+}
