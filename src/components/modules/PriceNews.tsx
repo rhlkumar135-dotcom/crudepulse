@@ -39,6 +39,8 @@ export function PriceNewsChart() {
   const lastBrent = brentHistory[brentHistory.length - 1]
   const prevBrent = brentHistory[brentHistory.length - 2]
 
+  const hasData = lastWti && prevWti && lastBrent && prevBrent
+
   const chartData = wtiHistory.slice(-90).map((d: PricePoint, i: number) => ({
     ...d,
     brent: brentHistory[brentHistory.length - 90 + i]?.close,
@@ -49,6 +51,14 @@ export function PriceNewsChart() {
     : mockNews.slice(0, 4)
 
   return (
+  if (!hasData) {
+    return (
+      <div className="flex items-center justify-center h-[200px] text-text-dim text-[11px] font-mono">
+        Loading market data...
+      </div>
+    )
+  }
+
     <div className="space-y-3">
       {/* Price stats row */}
       <div className="grid grid-cols-3 gap-3">
