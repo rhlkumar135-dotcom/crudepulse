@@ -11,29 +11,27 @@ function getPool() {
   return pool
 }
 
-async function ensureTable() {
-  const p = getPool()
-  if (!p) throw new Error('No DATABASE_URL configured')
-  await p.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-      email TEXT UNIQUE NOT NULL,
-      name TEXT,
-      tier TEXT DEFAULT 'free',
-      role TEXT DEFAULT 'user',
-      password TEXT,
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    )
-  `)
-}
+let tableReady = false
 
-let adminSeeded = false
 async function ensureAdmin() {
   if (adminSeeded) return
   try {
     const p = getPool()
     if (!p) return
-    await ensureTable()
+    if (!tableReady) {
+      await p.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          email TEXT UNIQUE NOT NULL,
+          name TEXT,
+          tier TEXT DEFAULT 'free',
+          role TEXT DEFAULT 'user',
+          password TEXT,
+          "createdAt" TIMESTAMP DEFAULT NOW()
+        )
+      `)
+      tableReady = true
+    }
     await p.query(
       `INSERT INTO users (email, name, role, tier) VALUES ('rhlkumar135@gmail.com', 'RHL Kumar', 'admin', 'pro')
        ON CONFLICT (email) DO UPDATE SET role = 'admin', tier = 'pro'`
@@ -42,7 +40,6 @@ async function ensureAdmin() {
   } catch (e) { console.error('Admin seed failed:', e); adminSeeded = true }
 }
 
-ensureTable().catch(e => console.error('Table init failed:', e.message))
 ensureAdmin().catch(() => {})
 
 // ═══ Auth Routes ═════════════════════════════════════════════════════════════
@@ -53,6 +50,21 @@ app.post('/auth/signup', async (c) => {
 
   const p = getPool()
   if (!p) return c.json({ error: 'Database not configured' }, 503)
+
+  if (!tableReady) {
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        email TEXT UNIQUE NOT NULL,
+        name TEXT,
+        tier TEXT DEFAULT 'free',
+        role TEXT DEFAULT 'user',
+        password TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    tableReady = true
+  }
 
   const existing = await p.query('SELECT id FROM users WHERE email = $1', [body.email])
   if (existing.rows.length) return c.json({ error: 'Account already exists' }, 409)
