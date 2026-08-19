@@ -12,6 +12,7 @@ function getPool() {
 }
 
 let tableReady = false
+let adminSeeded = false
 
 async function ensureAdmin() {
   if (adminSeeded) return
