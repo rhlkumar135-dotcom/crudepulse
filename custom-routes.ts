@@ -1,31 +1,49 @@
 import { Hono } from 'hono'
+import { Pool } from 'pg'
 
 const app = new Hono()
 
-let prisma: Awaited<ReturnType<typeof import('./src/lib/db')>['prisma']> | null = null
-
-async function getDb() {
-  if (!prisma) {
-    const mod = await import('./src/lib/db')
-    prisma = mod.prisma
+let pool: Pool | null = null
+function getPool() {
+  if (!pool && process.env.DATABASE_URL) {
+    pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
   }
-  return prisma
+  return pool
 }
 
-// Seed admin on first request
+async function ensureTable() {
+  const p = getPool()
+  if (!p) throw new Error('No DATABASE_URL configured')
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      email TEXT UNIQUE NOT NULL,
+      name TEXT,
+      tier TEXT DEFAULT 'free',
+      role TEXT DEFAULT 'user',
+      password TEXT,
+      "createdAt" TIMESTAMP DEFAULT NOW()
+    )
+  `)
+}
+
 let adminSeeded = false
 async function ensureAdmin() {
   if (adminSeeded) return
   try {
-    const db = await getDb()
-    await db.user.upsert({
-      where: { email: 'rhlkumar135@gmail.com' },
-      update: { role: 'admin', tier: 'pro' },
-      create: { email: 'rhlkumar135@gmail.com', name: 'RHL Kumar', role: 'admin', tier: 'pro' },
-    })
+    const p = getPool()
+    if (!p) return
+    await ensureTable()
+    await p.query(
+      `INSERT INTO users (email, name, role, tier) VALUES ('rhlkumar135@gmail.com', 'RHL Kumar', 'admin', 'pro')
+       ON CONFLICT (email) DO UPDATE SET role = 'admin', tier = 'pro'`
+    )
     adminSeeded = true
-  } catch { adminSeeded = true }
+  } catch (e) { console.error('Admin seed failed:', e); adminSeeded = true }
 }
+
+ensureTable().catch(e => console.error('Table init failed:', e.message))
+ensureAdmin().catch(() => {})
 
 // ═══ Auth Routes ═════════════════════════════════════════════════════════════
 
@@ -33,15 +51,18 @@ app.post('/auth/signup', async (c) => {
   const body = await c.req.json() as { email: string; password: string; name?: string }
   if (!body.email || !body.password) return c.json({ error: 'Email and password required' }, 400)
 
-  const db = await getDb()
-  const existing = await db.user.findUnique({ where: { email: body.email } })
-  if (existing) return c.json({ error: 'Account already exists' }, 409)
+  const p = getPool()
+  if (!p) return c.json({ error: 'Database not configured' }, 503)
 
-  // In V1, passwords are stored as plain hashes — production would use bcrypt
-  const user = await (await getDb()).user.create({
-    data: { email: body.email, name: body.name || body.email.split('@')[0], tier: 'free', role: 'user' },
-  })
-  return c.json({ user: { id: user.id, email: user.email, name: user.name, tier: user.tier, role: user.role } })
+  const existing = await p.query('SELECT id FROM users WHERE email = $1', [body.email])
+  if (existing.rows.length) return c.json({ error: 'Account already exists' }, 409)
+
+  const name = body.name || body.email.split('@')[0]
+  const result = await p.query(
+    'INSERT INTO users (email, name, tier, role) VALUES ($1, $2, $3, $4) RETURNING id, email, name, tier, role',
+    [body.email, name, 'free', 'user']
+  )
+  return c.json({ user: result.rows[0] })
 })
 
 app.post('/auth/login', async (c) => {
@@ -50,11 +71,12 @@ app.post('/auth/login', async (c) => {
 
   await ensureAdmin()
 
-  const user = await (await getDb()).user.findUnique({ where: { email: body.email } })
-  if (!user) return c.json({ error: 'Account not found' }, 404)
+  const p = getPool()
+  if (!p) return c.json({ error: 'Database not configured' }, 503)
 
-  // V1: simple password check (production: bcrypt)
-  return c.json({ user: { id: user.id, email: user.email, name: user.name, tier: user.tier, role: user.role } })
+  const result = await p.query('SELECT id, email, name, tier, role FROM users WHERE email = $1', [body.email])
+  if (!result.rows.length) return c.json({ error: 'Account not found' }, 404)
+  return c.json({ user: result.rows[0] })
 })
 
 app.get('/auth/me', async (c) => {
@@ -63,28 +85,38 @@ app.get('/auth/me', async (c) => {
 
   await ensureAdmin()
 
-  const user = await (await getDb()).user.findUnique({ where: { email } })
-  if (!user) return c.json({ error: 'User not found' }, 404)
-  return c.json({ user: { id: user.id, email: user.email, name: user.name, tier: user.tier, role: user.role } })
+  const p = getPool()
+  if (!p) return c.json({ error: 'Database not configured' }, 503)
+
+  const result = await p.query('SELECT id, email, name, tier, role FROM users WHERE email = $1', [email])
+  if (!result.rows.length) return c.json({ error: 'User not found' }, 404)
+  return c.json({ user: result.rows[0] })
 })
 
 app.post('/auth/upgrade', async (c) => {
   const body = await c.req.json() as { email: string }
   if (!body.email) return c.json({ error: 'Email required' }, 400)
 
-  const user = await (await getDb()).user.update({ where: { email: body.email }, data: { tier: 'pro' } })
-  return c.json({ user: { id: user.id, email: user.email, name: user.name, tier: user.tier, role: user.role } })
+  const p = getPool()
+  if (!p) return c.json({ error: 'Database not configured' }, 503)
+
+  const result = await p.query('UPDATE users SET tier = $1 WHERE email = $2 RETURNING id, email, name, tier, role', ['pro', body.email])
+  if (!result.rows.length) return c.json({ error: 'User not found' }, 404)
+  return c.json({ user: result.rows[0] })
 })
 
 app.get('/admin/users', async (c) => {
   const email = c.req.query('email')
   if (!email) return c.json({ error: 'Unauthorized' }, 401)
 
-  const admin = await (await getDb()).user.findUnique({ where: { email } })
-  if (!admin || admin.role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
+  const p = getPool()
+  if (!p) return c.json({ error: 'Database not configured' }, 503)
 
-  const users = await (await getDb()).user.findMany({ orderBy: { createdAt: 'desc' } })
-  return c.json({ users: users.map(u => ({ id: u.id, email: u.email, name: u.name, tier: u.tier, role: u.role, createdAt: u.createdAt })) })
+  const adminCheck = await p.query('SELECT role FROM users WHERE email = $1', [email])
+  if (!adminCheck.rows.length || adminCheck.rows[0].role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
+
+  const result = await p.query('SELECT id, email, name, tier, role, "createdAt" FROM users ORDER BY "createdAt" DESC')
+  return c.json({ users: result.rows })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════
