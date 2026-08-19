@@ -16,4 +16,4 @@ EXPOSE 3001
 
 # At runtime, DATABASE_URL is set by Railway's Postgres service
 # Run db push to create tables, then start the server
-CMD ["sh", "-c", "bun x prisma db push --accept-data-loss && bun run start"]
+CMD ["sh", "-c", "bun x prisma db push --accept-data-loss 2>/dev/null; bun run start"]
