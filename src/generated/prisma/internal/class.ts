@@ -19,8 +19,8 @@ const config: runtime.GetPrismaClientConfig = {
   "previewFeatures": [],
   "clientVersion": "7.5.0",
   "engineVersion": "280c870be64f457428992c43c1f6d557fab6e29e",
-  "activeProvider": "sqlite",
-  "inlineSchema": "// SHOGO:CUSTOM-START prisma-header\n// Managed by Shogo. Do not add a datasource `url` or change the generator `provider` — the database URL is configured in prisma.config.ts (Prisma 7+).\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"sqlite\"\n}\n\n// SHOGO:CUSTOM-END\n\nmodel User {\n  id               String   @id @default(cuid())\n  email            String   @unique\n  name             String?\n  tier             String   @default(\"free\")\n  role             String   @default(\"user\")\n  stripeCustomerId String?  @map(\"stripe_customer_id\")\n  stripeSubId      String?  @map(\"stripe_sub_id\")\n  createdAt        DateTime @default(now()) @map(\"created_at\")\n  updatedAt        DateTime @updatedAt @map(\"updated_at\")\n\n  @@map(\"users\")\n}\n\nmodel CachedData {\n  id        String   @id @default(cuid())\n  key       String   @unique\n  source    String\n  data      String\n  expiresAt DateTime @map(\"expires_at\")\n  createdAt DateTime @default(now()) @map(\"created_at\")\n\n  @@map(\"cached_data\")\n}\n",
+  "activeProvider": "postgresql",
+  "inlineSchema": "// SHOGO:CUSTOM-START prisma-header\n// Managed by Shogo. Do not add a datasource `url` or change the generator `provider` — the database URL is configured in prisma.config.ts (Prisma 7+).\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\n// SHOGO:CUSTOM-END\n\nmodel User {\n  id               String   @id @default(cuid())\n  email            String   @unique\n  name             String?\n  tier             String   @default(\"free\")\n  role             String   @default(\"user\")\n  stripeCustomerId String?  @map(\"stripe_customer_id\")\n  stripeSubId      String?  @map(\"stripe_sub_id\")\n  createdAt        DateTime @default(now()) @map(\"created_at\")\n  updatedAt        DateTime @updatedAt @map(\"updated_at\")\n\n  @@map(\"users\")\n}\n\nmodel CachedData {\n  id        String   @id @default(cuid())\n  key       String   @unique\n  source    String\n  data      String\n  expiresAt DateTime @map(\"expires_at\")\n  createdAt DateTime @default(now()) @map(\"created_at\")\n\n  @@map(\"cached_data\")\n}\n",
   "runtimeDataModel": {
     "models": {},
     "enums": {},
@@ -45,10 +45,10 @@ async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Modul
 }
 
 config.compilerWasm = {
-  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.sqlite.mjs"),
+  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs"),
 
   getQueryCompilerWasmModule: async () => {
-    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.sqlite.wasm-base64.mjs")
+    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs")
     return await decodeBase64AsWasm(wasm)
   },
 

@@ -8,7 +8,10 @@ RUN bun install --frozen-lockfile
 # Copy source
 COPY . .
 
-# Generate Prisma client
+# Set a dummy DATABASE_URL for Prisma generate (doesn't connect, just generates client)
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+
+# Generate Prisma client for PostgreSQL
 RUN bun x prisma generate
 
 # Build frontend
