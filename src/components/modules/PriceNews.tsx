@@ -50,7 +50,6 @@ export function PriceNewsChart() {
     ? mockNews.filter((n: NewsItem) => Math.abs(72 - hoveredPrice) < 3).slice(0, 4)
     : mockNews.slice(0, 4)
 
-  return (
   if (!hasData) {
     return (
       <div className="flex items-center justify-center h-[200px] text-text-dim text-[11px] font-mono">
@@ -59,6 +58,7 @@ export function PriceNewsChart() {
     )
   }
 
+  return (
     <div className="space-y-3">
       {/* Price stats row */}
       <div className="grid grid-cols-3 gap-3">
