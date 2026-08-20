@@ -34,29 +34,27 @@ export function PriceNewsChart() {
   const brentHistory = priceData?.brent?.history || []
   const mockNews = newsData?.items || []
 
-  const lastWti = wtiHistory[wtiHistory.length - 1]
-  const prevWti = wtiHistory[wtiHistory.length - 2]
-  const lastBrent = brentHistory[brentHistory.length - 1]
-  const prevBrent = brentHistory[brentHistory.length - 2]
+  const lastWti: PricePoint | undefined = wtiHistory[wtiHistory.length - 1]
+  const prevWti: PricePoint | undefined = wtiHistory[wtiHistory.length - 2]
+  const lastBrent: PricePoint | undefined = brentHistory[brentHistory.length - 1]
+  const prevBrent: PricePoint | undefined = brentHistory[brentHistory.length - 2]
 
-  const hasData = lastWti && prevWti && lastBrent && prevBrent
-
-  const chartData = wtiHistory.slice(-90).map((d: PricePoint, i: number) => ({
-    ...d,
-    brent: brentHistory[brentHistory.length - 90 + i]?.close,
-  }))
-
-  const relatedNews = hoveredPrice !== null
-    ? mockNews.filter((n: NewsItem) => Math.abs(72 - hoveredPrice) < 3).slice(0, 4)
-    : mockNews.slice(0, 4)
-
-  if (!hasData) {
+  if (!lastWti || !prevWti || !lastBrent || !prevBrent) {
     return (
       <div className="flex items-center justify-center h-[200px] text-text-dim text-[11px] font-mono">
         Loading market data...
       </div>
     )
   }
+
+  const chartData = wtiHistory.slice(-90).map((d: PricePoint, i: number) => ({
+    ...d,
+    brent: brentHistory[brentHistory.length - 90 + i]?.close ?? 0,
+  }))
+
+  const relatedNews = hoveredPrice !== null
+    ? mockNews.filter((n: NewsItem) => Math.abs(72 - hoveredPrice) < 3).slice(0, 4)
+    : mockNews.slice(0, 4)
 
   return (
     <div className="space-y-3">
