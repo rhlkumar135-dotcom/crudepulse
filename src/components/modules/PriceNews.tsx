@@ -30,22 +30,22 @@ export function PriceNewsChart() {
   const { data: newsData } = useMarketData<NewsResponse>('/api/market/news')
   const [hoveredPrice, setHoveredPrice] = useState<number | null>(null)
 
-  const wtiHistory = priceData?.wti?.history || []
-  const brentHistory = priceData?.brent?.history || []
+  const wtiHistory = (priceData?.wti?.history || []).filter((p: any) => p && typeof p.close === 'number')
+  const brentHistory = (priceData?.brent?.history || []).filter((p: any) => p && typeof p.close === 'number')
   const mockNews = newsData?.items || []
 
-  const lastWti: PricePoint | undefined = wtiHistory[wtiHistory.length - 1]
-  const prevWti: PricePoint | undefined = wtiHistory[wtiHistory.length - 2]
-  const lastBrent: PricePoint | undefined = brentHistory[brentHistory.length - 1]
-  const prevBrent: PricePoint | undefined = brentHistory[brentHistory.length - 2]
-
-  if (!lastWti || !prevWti || !lastBrent || !prevBrent) {
+  if (wtiHistory.length < 2 || brentHistory.length < 2) {
     return (
       <div className="flex items-center justify-center h-[200px] text-text-dim text-[11px] font-mono">
         Loading market data...
       </div>
     )
   }
+
+  const lastWti = wtiHistory[wtiHistory.length - 1]
+  const prevWti = wtiHistory[wtiHistory.length - 2]
+  const lastBrent = brentHistory[brentHistory.length - 1]
+  const prevBrent = brentHistory[brentHistory.length - 2]
 
   const chartData = wtiHistory.slice(-90).map((d: PricePoint, i: number) => ({
     ...d,
@@ -69,7 +69,7 @@ export function PriceNewsChart() {
       <div className="h-[180px] -ml-1">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} onMouseMove={(e) => {
-            if (e?.activePayload?.[0]) setHoveredPrice(e.activePayload[0].payload.close)
+            if (e?.activePayload?.[0]) setHoveredPrice(e.activePayload[0].payload?.close)
           }} onMouseLeave={() => setHoveredPrice(null)}>
             <defs>
               <linearGradient id="wtiGrad2" x1="0" y1="0" x2="0" y2="1">
