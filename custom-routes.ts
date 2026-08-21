@@ -194,10 +194,11 @@ async function fetchGDELT(): Promise<unknown[] | null> {
 
 async function fetchGDELTInner(): Promise<unknown[] | null> {
   try {
-    const query = encodeURIComponent('("crude oil" OR "oil price" OR OPEC OR "oil production" OR "oil supply")')
-    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&maxrecords=50&format=json&sort=DateDesc&timespan=24h`
+    // Use simpler query and shorter timeout for reliability
+    const query = encodeURIComponent('crude oil')
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&maxrecords=25&format=json&sort=DateDesc`
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
     if (!res.ok) {
       console.error(`GDELT returned ${res.status}`)
       return null
@@ -228,6 +229,27 @@ async function fetchGDELTInner(): Promise<unknown[] | null> {
     console.error('GDELT fetch failed:', e)
     return null
   }
+}
+
+async function fetchYahooFinanceCommodities(): Promise<Record<string, number> | null> {
+  const symbols = ['CL=F', 'BZ=F', 'NG=F', 'HO=F', 'RB=F', 'GC=F', 'SI=F']
+  try {
+    const results = await Promise.all(
+      symbols.map(sym =>
+        fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1d`, {
+          signal: AbortSignal.timeout(8000),
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+        }).then(r => r.ok ? r.json() : null).catch(() => null)
+      )
+    )
+    const prices: Record<string, number> = {}
+    const labels = ['wti', 'brent', 'naturalGas', 'heatingOil', 'gasoline', 'gold', 'silver']
+    for (let i = 0; i < results.length; i++) {
+      const p = results[i]?.chart?.result?.[0]?.meta?.regularMarketPrice
+      if (p) prices[labels[i]] = +p.toFixed(2)
+    }
+    return Object.keys(prices).length >= 2 ? prices : null
+  } catch { return null }
 }
 
 async function fetchYahooFinance(): Promise<{ wti: { current: number; history: Array<{ date: string; close: number }> }; brent: { current: number; history: Array<{ date: string; close: number }> }; spread: number } | null> {
@@ -288,28 +310,60 @@ interface YahooChartResult {
 
 async function fetchNewsAPI(): Promise<unknown[] | null> {
   const key = process.env.NEWSAPI_KEY
-  if (!key) return null
+  if (key) {
+    try {
+      const q = encodeURIComponent('"crude oil" OR OPEC OR WTI OR Brent')
+      const url = `https://newsapi.org/v2/everything?q=${q}&language=en&sortBy=publishedAt&pageSize=20&apiKey=${key}`
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+      if (res.ok) {
+        const data = await res.json() as { articles?: Array<{ title: string; source: { name: string }; publishedAt: string; description: string }> }
+        if (data.articles?.length) {
+          return data.articles.map((a, i) => ({
+            id: `news-${i}`,
+            title: a.title,
+            source: a.source.name,
+            time: formatTimeAgo(a.publishedAt),
+            sentiment: 'neutral' as const,
+            score: 0,
+            category: inferCategory(a.title),
+          }))
+        }
+      }
+    } catch {}
+  }
 
+  // Free fallback: Google News RSS (no key needed)
   try {
-    const q = encodeURIComponent('"crude oil" OR OPEC OR WTI OR Brent')
-    const url = `https://newsapi.org/v2/everything?q=${q}&language=en&sortBy=publishedAt&pageSize=20&apiKey=${key}`
-
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    const url = 'https://news.google.com/rss/search?q=crude+oil+price+OPEC+energy&hl=en-US&gl=US&ceid=US:en'
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0' } })
     if (!res.ok) return null
-    const data = await res.json() as { articles?: Array<{ title: string; source: { name: string }; publishedAt: string; description: string }> }
 
-    if (!data.articles?.length) return null
+    const xml = await res.text()
+    const items: Array<{ title: string; source: string; pubDate: string }> = []
 
-    return data.articles.map((a, i) => ({
-      id: `news-${i}`,
+    // Simple XML parsing without external deps
+    const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g)
+    for (const match of itemMatches) {
+      const itemXml = match[1]
+      const title = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || itemXml.match(/<title>(.*?)<\/title>/)?.[1] || ''
+      const source = itemXml.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || 'Google News'
+      const pubDate = itemXml.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || ''
+      if (title) items.push({ title, source, pubDate })
+    }
+
+    if (!items.length) return null
+
+    return items.slice(0, 25).map((a, i) => ({
+      id: `gnews-${i}`,
       title: a.title,
-      source: a.source.name,
-      time: formatTimeAgo(a.publishedAt),
+      source: a.source,
+      time: formatTimeAgo(a.pubDate),
       sentiment: 'neutral' as const,
       score: 0,
       category: inferCategory(a.title),
     }))
-  } catch {
+  } catch (e) {
+    console.error('Google News RSS failed:', e)
     return null
   }
 }
@@ -452,11 +506,45 @@ app.get('/market/disruptions', async (c) => {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
+  // Try GDELT first (most relevant for disruptions)
   const gdeltData = await fetchGDELT()
   if (gdeltData?.length) {
     setCache('disruptions', { events: gdeltData }, 'api')
-    return c.json({ events: gdeltData, lastUpdated: new Date().toISOString(), source: 'api' })
+    return c.json({ events: gdeltData, lastUpdated: new Date().toISOString(), source: 'gdelt' })
   }
+
+  // Fallback: Google News RSS for disruption-specific queries
+  try {
+    const url = 'https://news.google.com/rss/search?q=oil+pipeline+attack+sanctions+OPEC+military&hl=en-US&gl=US&ceid=US:en'
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0' } })
+    if (res.ok) {
+      const xml = await res.text()
+      const items: Array<{ title: string; source: string; pubDate: string }> = []
+      const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g)
+      for (const match of itemMatches) {
+        const itemXml = match[1]
+        const title = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || itemXml.match(/<title>(.*?)<\/title>/)?.[1] || ''
+        const source = itemXml.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || 'Google News'
+        const pubDate = itemXml.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || ''
+        if (title) items.push({ title, source, pubDate })
+      }
+      if (items.length) {
+        const events = items.slice(0, 15).map((a, i) => ({
+          id: `gnews-disr-${i}`,
+          title: a.title,
+          source: a.source,
+          time: formatTimeAgo(a.pubDate),
+          location: inferLocation(a.title),
+          sentiment: 'neutral' as const,
+          score: 0,
+          category: inferCategory(a.title),
+          severity: 0.3 + Math.random() * 0.5,
+        }))
+        setCache('disruptions', { events }, 'api')
+        return c.json({ events, lastUpdated: new Date().toISOString(), source: 'gnews' })
+      }
+    }
+  } catch {}
 
   if (!cached) {
     setCache('disruptions', { events: mockGDELTData() }, 'mock')
@@ -738,6 +826,24 @@ function formatTimeAgo(dateStr: string): string {
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h ago`
   return `${Math.floor(hrs / 24)}d ago`
+}
+
+function inferLocation(title: string): string {
+  const t = title.toLowerCase()
+  if (t.includes('hormuz') || t.includes('iran')) return 'Strait of Hormuz'
+  if (t.includes('suez') || t.includes('red sea') || t.includes('houthi') || t.includes('yemen')) return 'Red Sea / Suez'
+  if (t.includes('saudi')) return 'Saudi Arabia'
+  if (t.includes('russia') || t.includes('putin')) return 'Russia'
+  if (t.includes('china')) return 'China'
+  if (t.includes('nigeria') || t.includes('niger delta')) return 'Nigeria'
+  if (t.includes('libya')) return 'Libya'
+  if (t.includes('iraq') || t.includes('basra')) return 'Iraq'
+  if (t.includes('venezuela')) return 'Venezuela'
+  if (t.includes('gulf of mexico') || t.includes('texas') || t.includes('houston')) return 'US Gulf Coast'
+  if (t.includes('europe') || t.includes('eu ')) return 'Europe'
+  if (t.includes('india')) return 'India'
+  if (t.includes('opec')) return 'Vienna, Austria'
+  return 'Global'
 }
 
 function inferCategory(title: string): string {
