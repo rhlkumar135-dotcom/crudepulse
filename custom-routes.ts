@@ -230,28 +230,60 @@ async function fetchGDELTInner(): Promise<unknown[] | null> {
   }
 }
 
-async function fetchAlphaVantage(): Promise<{ wti: number; brent: number } | null> {
-  const key = process.env.ALPHA_VANTAGE_KEY
-  if (!key) return null
-
+async function fetchYahooFinance(): Promise<{ wti: { current: number; history: Array<{ date: string; close: number }> }; brent: { current: number; history: Array<{ date: string; close: number }> }; spread: number } | null> {
   try {
-    // Use WTI and Brent crude oil ETFs as price proxies
     const [wtiRes, brentRes] = await Promise.all([
-      fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=CL=F&apikey=${key}`, { signal: AbortSignal.timeout(8000) }),
-      fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=BZ=F&apikey=${key}`, { signal: AbortSignal.timeout(8000) }),
+      fetch('https://query1.finance.yahoo.com/v8/finance/chart/CL=F?interval=1d&range=90d', { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0' } }),
+      fetch('https://query1.finance.yahoo.com/v8/finance/chart/BZ=F?interval=1d&range=90d', { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0' } }),
     ])
 
-    const wtiData = await wtiRes.json() as { ['Global Quote']?: { ['05. price']?: string } }
-    const brentData = await brentRes.json() as { ['Global Quote']?: { ['05. price']?: string } }
+    if (!wtiRes.ok || !brentRes.ok) {
+      console.error(`Yahoo Finance returned WTI:${wtiRes.status} Brent:${brentRes.status}`)
+      return null
+    }
 
-    const wti = parseFloat(wtiData['Global Quote']?.['05. price'] ?? '')
-    const brent = parseFloat(brentData['Global Quote']?.['05. price'] ?? '')
+    const wtiData = await wtiRes.json() as YahooChartResponse
+    const brentData = await brentRes.json() as YahooChartResponse
 
-    if (isNaN(wti) || isNaN(brent)) return null
-    return { wti, brent }
-  } catch {
+    const wtiResult = wtiData.chart?.result?.[0]
+    const brentResult = brentData.chart?.result?.[0]
+    if (!wtiResult || !brentResult) return null
+
+    const wtiPrice = wtiResult.meta.regularMarketPrice
+    const brentPrice = brentResult.meta.regularMarketPrice
+    if (!wtiPrice || !brentPrice) return null
+
+    const parseHistory = (r: YahooChartResult): Array<{ date: string; close: number }> => {
+      const ts = r.timestamp || []
+      const closes = r.indicators?.quote?.[0]?.close || []
+      return ts.map((t, i) => ({
+        date: new Date(t * 1000).toISOString().split('T')[0],
+        close: +(closes[i] ?? 0).toFixed(2),
+      })).filter(h => h.close > 0)
+    }
+
+    const wtiHistory = parseHistory(wtiResult)
+    const brentHistory = parseHistory(brentResult)
+
+    return {
+      wti: { current: +wtiPrice.toFixed(2), history: wtiHistory },
+      brent: { current: +brentPrice.toFixed(2), history: brentHistory },
+      spread: +(brentPrice - wtiPrice).toFixed(2),
+    }
+  } catch (e) {
+    console.error('Yahoo Finance fetch failed:', e)
     return null
   }
+}
+
+interface YahooChartResponse {
+  chart?: { result?: YahooChartResult[] }
+}
+
+interface YahooChartResult {
+  meta: { symbol: string; regularMarketPrice: number; previousClose?: number }
+  timestamp?: number[]
+  indicators?: { quote?: Array<{ close?: (number | null)[] }> }
 }
 
 async function fetchNewsAPI(): Promise<unknown[] | null> {
@@ -364,17 +396,11 @@ app.get('/market/prices', async (c) => {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source, tier })
   }
 
-  // Try real API
-  const apiData = await fetchAlphaVantage()
+  // Try real API — Yahoo Finance (no key needed)
+  const apiData = await fetchYahooFinance()
   if (apiData) {
-    const history = mockPriceData().wti.history // Use mock history for chart (API only gives current)
-    const data = {
-      wti: { current: apiData.wti, history },
-      brent: { current: apiData.brent, history: history.map((h, i) => ({ ...h, close: +(h.close + 3 + Math.random()).toFixed(2) })) },
-      spread: +(apiData.brent - apiData.wti).toFixed(2),
-    }
-    setCache('prices', data, 'api')
-    return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'api', tier })
+    setCache('prices', apiData, 'api')
+    return c.json({ ...apiData, lastUpdated: new Date().toISOString(), source: 'yahoo', tier })
   }
 
   // Fallback to mock
@@ -394,12 +420,12 @@ app.get('/market/news', async (c) => {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source, tier })
   }
 
-  // Try NewsAPI first, then GDELT as supplement
-  let newsItems = await fetchNewsAPI()
+  // Try GDELT first (no key needed), then NewsAPI as supplement
   const gdeltItems = await fetchGDELT()
+  let newsItems = await fetchNewsAPI()
 
   if (gdeltItems?.length) {
-    // Merge: news articles + GDELT articles (dedupe by similar titles)
+    // GDELT is the primary source — merge with NewsAPI if available
     const allItems = newsItems?.length ? [...newsItems, ...gdeltItems] : gdeltItems
     setCache('news', { items: allItems }, 'api')
     return c.json({ items: allItems, lastUpdated: new Date().toISOString(), source: 'api', tier })
