@@ -2235,32 +2235,42 @@ async function fetchSpillNews(): Promise<Array<{
   }))
 }
 
-// V4: SST from NOAA Coral Reef Watch (already available, re-expose with latency)
+// V4: SST from Open-Meteo Marine API (free, real-time, no key)
+// Measures absolute SST at key locations; anomaly is computed vs climatological mean
 async function fetchV4SST(): Promise<{
-  global: { anomaly: number; unit: string }
-  persianGulf: { anomaly: number; unit: string }
+  global: { temperature: number; anomaly: number; unit: string }
+  persianGulf: { temperature: number; anomaly: number; unit: string }
   sources: Array<{ name: string; latency: string }>
 } | null> {
   try {
-    const res = await fetch('https://coralreefwatch.noaa.gov/product/vs/data/crw_global.csv', {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(10000),
-    })
-    if (!res.ok) return null
-    const csv = await res.text()
-    const lines = csv.trim().split('\n')
-    if (lines.length < 2) return null
-    const lastLine = lines[lines.length - 1]
-    const parts = lastLine.split(',')
-    const globalAnomaly = parseFloat(parts[1]) || 0
-    // Persian Gulf tends to run slightly warmer than global average
-    const pgAnomaly = +(globalAnomaly + 0.3 + Math.random() * 0.2).toFixed(2)
+    const [globalRes, pgRes] = await Promise.all([
+      fetch('https://marine-api.open-meteo.com/v1/marine?latitude=0&longitude=0&current=sea_surface_temperature&timezone=UTC', {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(8000),
+      }),
+      fetch('https://marine-api.open-meteo.com/v1/marine?latitude=26.5&longitude=56.3&current=sea_surface_temperature&timezone=UTC', {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(8000),
+      }),
+    ])
+
+    const globalData = await globalRes.json()
+    const pgData = await pgRes.json()
+    const globalTemp = globalData?.current?.sea_surface_temperature ?? 0
+    const pgTemp = pgData?.current?.sea_surface_temperature ?? 0
+
+    // Climatological August means (approximate, based on long-term averages)
+    const globalClimatology = 20.5 // Global mean SST August
+    const pgClimatology = 31.5     // Persian Gulf mean SST August
+
+    const globalAnomaly = +(globalTemp - globalClimatology).toFixed(2)
+    const pgAnomaly = +(pgTemp - pgClimatology).toFixed(2)
 
     return {
-      global: { anomaly: +globalAnomaly.toFixed(2), unit: '°C' },
-      persianGulf: { anomaly: pgAnomaly, unit: '°C' },
+      global: { temperature: globalTemp, anomaly: globalAnomaly, unit: '°C' },
+      persianGulf: { temperature: pgTemp, anomaly: pgAnomaly, unit: '°C' },
       sources: [
-        { name: 'NOAA Coral Reef Watch', latency: '~1d' },
+        { name: 'Open-Meteo Marine API', latency: '~real-time' },
       ],
     }
   } catch { return null }
@@ -2338,7 +2348,7 @@ app.get('/v4/satellite/intel', async (c) => {
     { name: 'OpenAQ Ground Stations', url: 'https://openaq.org', latency: '~1h (station-dependent)', rank: 4, coverage: 'Where stations exist', description: 'Ground-level NO₂/SO₂ readings — sparse in Gulf states' },
     { name: 'NOAA VIIRS Nightfire', url: 'https://eogdata.mines.edu', latency: 'nightly', rank: 6, coverage: 'Global', description: 'Gas flare detection at oil facilities' },
     { name: 'Copernicus Sentinel-1 (SAR)', url: 'https://dataspace.copernicus.eu', latency: '~6 days', rank: 8, coverage: 'Global', description: 'Oil spill dark-signature detection on ocean surface' },
-    { name: 'NOAA Coral Reef Watch', url: 'https://coralreefwatch.noaa.gov', latency: '~1d', rank: 7, coverage: 'Global ocean', description: 'Sea surface temperature anomaly for Persian Gulf' },
+    { name: 'Open-Meteo Marine API', url: 'https://open-meteo.com', latency: '~real-time', rank: 1, coverage: 'Global ocean', description: 'Sea surface temperature — absolute reading at key locations' },
     { name: 'Google News RSS', url: 'https://news.google.com', latency: '~1h', rank: 3, coverage: 'Global', description: 'Dark vessel events, emissions reports, spill incidents' },
     { name: 'GDELT Project', url: 'https://www.gdeltproject.org', latency: '~15min', rank: 3, coverage: 'Global', description: 'Geopolitical event scoring around oil facilities' },
   ]
@@ -2385,7 +2395,7 @@ app.get('/v4/satellite/intel', async (c) => {
         { name: 'Google News', latency: '~1h' },
       ],
     },
-    sst: sstData || { global: { anomaly: 0, unit: '°C' }, persianGulf: { anomaly: 0, unit: '°C' }, sources: [{ name: 'NOAA Coral Reef Watch', latency: '~1d' }] },
+    sst: sstData || { global: { temperature: 0, anomaly: 0, unit: '°C' }, persianGulf: { temperature: 0, anomaly: 0, unit: '°C' }, sources: [{ name: 'Open-Meteo Marine API', latency: '~real-time' }] },
     satelliteCoverage,
     dataSources: dataSources.sort((a, b) => a.rank - b.rank),
     meta: {

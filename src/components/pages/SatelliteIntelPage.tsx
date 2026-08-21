@@ -19,7 +19,7 @@ interface IntelResponse {
   darkVessels: { recentEvents: Array<{ title: string; source: string; time: string; location: string; type: string }>; eventCount: number; sources: Array<{ name: string; latency: string }> }
   emissions: { recentEvents: Array<{ title: string; source: string; time: string; metric: string }>; eventCount: number; metrics: { ch4: number; no2: number; so2: number; flares: number; spills: number }; sources: Array<{ name: string; latency: string }> }
   spills: { recentEvents: Array<{ title: string; source: string; time: string; location: string; severity: string }>; eventCount: number; sources: Array<{ name: string; latency: string }> }
-  sst: { global: { anomaly: number; unit: string }; persianGulf: { anomaly: number; unit: string }; sources: Array<{ name: string; latency: string }> }
+  sst: { global: { temperature: number; anomaly: number; unit: string }; persianGulf: { temperature: number; anomaly: number; unit: string }; sources: Array<{ name: string; latency: string }> }
   satelliteCoverage: Array<{ satellite: string; coverage: string; latency: string; facilities: number; gap: string }>
   dataSources: Array<{ name: string; url: string; latency: string; rank: number; coverage: string; description: string }>
   meta: { facilityCount: number; methodology: string }
@@ -426,7 +426,9 @@ function DataSourcesPanel({ sources }: { sources: IntelResponse['dataSources'] }
 // ═══ SST Panel ═══════════════════════════════════════════════════════════════
 
 function SSTPanel({ sst }: { sst: IntelResponse['sst'] }) {
+  const globalTemp = sst.global.temperature
   const globalAnomaly = sst.global.anomaly
+  const pgTemp = sst.persianGulf.temperature
   const pgAnomaly = sst.persianGulf.anomaly
 
   return (
@@ -436,20 +438,22 @@ function SSTPanel({ sst }: { sst: IntelResponse['sst'] }) {
           <Thermometer size={10} className="text-[#00d4ff]" />
           <span className="text-[10px] font-mono text-[#94A3B8]">GLOBAL SST</span>
         </div>
-        <div className={`text-[16px] font-mono font-bold ${globalAnomaly >= 0 ? 'text-[#EF4444]' : 'text-[#38BDF8]'}`}>
-          {globalAnomaly >= 0 ? '+' : ''}{globalAnomaly}{sst.global.unit}
+        <div className="text-[16px] font-mono font-bold text-white/90">{globalTemp}{sst.global.unit}</div>
+        <div className={`text-[11px] font-mono ${globalAnomaly >= 0 ? 'text-[#EF4444]' : 'text-[#38BDF8]'}`}>
+          {globalAnomaly >= 0 ? '↑' : '↓'} {globalAnomaly >= 0 ? '+' : ''}{globalAnomaly}° vs avg
         </div>
-        <LatencyBadge source="NOAA CRW" latency="~1d" compact />
+        <div className="mt-1"><LatencyBadge source="Open-Meteo Marine" latency="~real-time" compact /></div>
       </div>
       <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
         <div className="flex items-center gap-1.5 mb-1">
           <Thermometer size={10} className="text-[#F59E0B]" />
           <span className="text-[10px] font-mono text-[#94A3B8]">PERSIAN GULF</span>
         </div>
-        <div className={`text-[16px] font-mono font-bold ${pgAnomaly >= 0 ? 'text-[#EF4444]' : 'text-[#38BDF8]'}`}>
-          {pgAnomaly >= 0 ? '+' : ''}{pgAnomaly}{sst.persianGulf.unit}
+        <div className="text-[16px] font-mono font-bold text-white/90">{pgTemp}{sst.persianGulf.unit}</div>
+        <div className={`text-[11px] font-mono ${pgAnomaly >= 0 ? 'text-[#EF4444]' : 'text-[#38BDF8]'}`}>
+          {pgAnomaly >= 0 ? '↑' : '↓'} {pgAnomaly >= 0 ? '+' : ''}{pgAnomaly}° vs avg
         </div>
-        <LatencyBadge source="NOAA CRW" latency="~1d" compact />
+        <div className="mt-1"><LatencyBadge source="Open-Meteo Marine" latency="~real-time" compact /></div>
       </div>
     </div>
   )
@@ -581,8 +585,8 @@ export function SatelliteIntelPage() {
             <SpillPanel data={d.spills} />
           </ModuleCard>
 
-          <ModuleCard icon={Thermometer} color="#00d4ff" title="Sea Surface Temperature" cadence="DAILY"
-            tag="NOAA Coral Reef Watch · Persian Gulf anomaly">
+          <ModuleCard icon={Thermometer} color="#00d4ff" title="Sea Surface Temperature" cadence="LIVE"
+            tag="Open-Meteo Marine API · Real-time SST · Anomaly vs climatological mean">
             <SSTPanel sst={d.sst} />
           </ModuleCard>
         </div>
