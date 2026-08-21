@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile
 
+ARG CACHE_BUST=1
 COPY . .
 
 # Dummy URL for prisma generate only (does NOT connect)
