@@ -37,7 +37,7 @@ const REGION_PRESETS = [
 ]
 
 export function NewsAtlasPage() {
-  const { data, loading } = useMarketData<{ stories: Story[]; totalStories: number; categoryCounts: Record<string, number>; trending: TrendingTopic[] }>('/news/atlas')
+  const { data, loading } = useMarketData<{ stories: Story[]; totalStories: number; categoryCounts: Record<string, number>; trending: TrendingTopic[] }>('/api/news/atlas', 'free', 30_000)
   const stories = data?.stories || []
   const categoryCounts = data?.categoryCounts || {}
   const trending = data?.trending || []

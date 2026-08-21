@@ -5,6 +5,7 @@ import { AlertTriangle, Info, TrendingUp, TrendingDown, Minus, Globe, Shield, Ch
 interface CorrelationResult { r: number; n: number }
 interface Asset { symbol: string; label: string; type: string; latest: number | null; excluded?: boolean; exclusionReason?: string }
 interface MEEvent { date: string; score: number; title: string; source: string }
+interface ZoneEvent { date: string; score: number; title: string; source: string; timeAgo: string }
 interface Callout { text: string; strength: string; market: string; window: string }
 interface CorrelationResponse {
   assets: Asset[]
@@ -14,6 +15,9 @@ interface CorrelationResponse {
   correlations: Record<string, Record<string, CorrelationResult | null>>
   callouts: Callout[]
   meta: { windowDays: number[]; eventWindowSize: string; methodology: string }
+}
+interface MultiZoneResponse {
+  zones: Record<string, ZoneEvent[]>
 }
 
 function corrGradient(r: number): { bg: string; border: string; glow: string; text: string } {
@@ -127,8 +131,10 @@ function ColorScale() {
 
 export function MiddleEastCorrelation() {
   const { data } = useMarketData<CorrelationResponse>('/api/market/correlation', 'pro', 15_000)
+  const { data: zoneData } = useMarketData<MultiZoneResponse>('/api/market/multi-zone-events', 'free', 30_000)
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null)
   const [showMethodology, setShowMethodology] = useState(false)
+  const [expandedZone, setExpandedZone] = useState<string | null>(null)
 
   const strongCorrelations = useMemo(() => {
     if (!data) return []
@@ -282,10 +288,86 @@ export function MiddleEastCorrelation() {
         </div>
       )}
 
-      {/* ME Event Timeline */}
+      {/* Multi-Zone Event Timeline */}
       <div>
         <div className="flex items-center gap-1.5 mb-2">
-          <span className="text-[10px] text-white/30 font-mono tracking-wider">MIDDLE EAST EVENT TIMELINE</span>
+          <span className="text-[10px] text-white/30 font-mono tracking-wider">GLOBAL ZONE EVENTS</span>
+          <span className="text-[10px] text-white/20 font-mono">(latest 10 per zone)</span>
+        </div>
+
+        {/* Zone tabs */}
+        <div className="flex gap-1 mb-3 flex-wrap">
+          {zoneData?.zones && Object.keys(zoneData.zones).map(zone => {
+            const count = zoneData.zones[zone]?.length || 0
+            const isActive = expandedZone === zone
+            const zoneColors: Record<string, string> = {
+              'Middle East': '#F59E0B', 'Americas': '#2DD4BF', 'Africa': '#A78BFA',
+              'Asia Pacific': '#38BDF8', 'Europe': '#34D399'
+            }
+            const color = zoneColors[zone] || '#94A3B8'
+            return (
+              <button key={zone} onClick={() => setExpandedZone(isActive ? null : zone)}
+                className="px-2 py-1 text-[9px] font-mono font-semibold rounded border transition-all"
+                style={{
+                  color: isActive ? color : '#94A3B8',
+                  borderColor: isActive ? color + '40' : 'rgba(255,255,255,0.04)',
+                  backgroundColor: isActive ? color + '12' : 'transparent',
+                }}>
+                {zone} ({count})
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Show all zones or expanded zone */}
+        {zoneData?.zones && Object.entries(zoneData.zones)
+          .filter(([zone]) => !expandedZone || expandedZone === zone)
+          .map(([zone, events]) => {
+            const zoneColors: Record<string, string> = {
+              'Middle East': '#F59E0B', 'Americas': '#2DD4BF', 'Africa': '#A78BFA',
+              'Asia Pacific': '#38BDF8', 'Europe': '#34D399'
+            }
+            const color = zoneColors[zone] || '#94A3B8'
+
+            return (
+              <div key={zone} className="mb-4">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="text-[10px] font-mono font-semibold tracking-wider" style={{ color }}>
+                    {zone.toUpperCase()}
+                  </span>
+                  <span className="text-[10px] text-white/20 font-mono">{events.length} events</span>
+                </div>
+                <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                  {events.map((event, i) => {
+                    const scoreColor = event.score < -0.3 ? '#EF4444' : event.score > 0.3 ? '#2DD4BF' : '#64748B'
+                    return (
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.01] hover:bg-white/[0.02] transition-colors"
+                        style={{ borderLeft: `2px solid ${color}30` }}>
+                        <span className="text-[10px] font-mono font-bold tabular-nums w-10 text-right shrink-0" style={{ color: scoreColor }}>
+                          {event.score > 0 ? '+' : ''}{event.score.toFixed(2)}
+                        </span>
+                        <span className="text-[10px] text-white/70 leading-snug flex-1 line-clamp-1">{event.title}</span>
+                        <span className="text-[9px] text-white/25 font-mono shrink-0">{event.timeAgo}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })
+        }
+
+        {/* Fallback if no zone data yet */}
+        {!zoneData?.zones && (
+          <div className="text-center py-4 text-[10px] text-white/30 font-mono">Loading zone events...</div>
+        )}
+      </div>
+
+      {/* Original ME Events (keep for correlation context) */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-[10px] text-white/30 font-mono tracking-wider">ME EVENT TIMELINE (CORRELATION)</span>
           <span className="text-[10px] text-white/20 font-mono">({data.events.length} events)</span>
         </div>
         <div className="space-y-1 max-h-[300px] overflow-y-auto">

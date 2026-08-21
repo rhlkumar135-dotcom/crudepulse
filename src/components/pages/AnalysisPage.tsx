@@ -5,9 +5,9 @@ import { SupplyDemandSim } from '@/components/modules/SupplyDemandSim'
 
 export function AnalysisPage() {
   return (
-    <PageLayout title="Analysis" subtitle="Correlation engine · Supply-demand simulation">
+    <PageLayout title="Analysis" subtitle="Global zone events · Correlation engine · Supply-demand simulation">
       <div className="space-y-4">
-        <ModuleCard icon={Activity} color="#00d4ff" title="ME ↔ Global Markets Correlation" cadence="LIVE">
+        <ModuleCard icon={Activity} color="#00d4ff" title="Global Zone Events ↔ Markets Correlation" cadence="LIVE">
           <MiddleEastCorrelation />
         </ModuleCard>
 

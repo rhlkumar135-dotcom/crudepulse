@@ -1018,7 +1018,7 @@ async function fetchEIAArchiveDates(): Promise<string[]> {
   try {
     const res = await fetch('https://www.eia.gov/petroleum/supply/weekly/', {
       headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(8000),
     })
     if (!res.ok) return []
     const html = await res.text()
@@ -1029,7 +1029,7 @@ async function fetchEIAArchiveDates(): Promise<string[]> {
       const path = `/petroleum/supply/weekly/archive/${m[1]}/${m[2]}`
       if (!dates.includes(path)) dates.push(path)
     }
-    return dates.slice(0, 12)
+    return dates.slice(0, 6)
   } catch { return [] }
 }
 
@@ -1206,7 +1206,7 @@ app.get('/market/storage', async (c) => {
       // Try to get historical data from archive
       const archiveDates = await fetchEIAArchiveDates()
       const histResults = await Promise.allSettled(
-        archiveDates.slice(0, 12).map(async (path) => {
+        archiveDates.slice(0, 8).map(async (path) => {
           const csv = await fetchEIACsv(`https://www.eia.gov${path}/table1.csv`)
           if (!csv) return null
           const p = parseStorageTable1(csv)
@@ -1548,6 +1548,76 @@ async function fetchMEEvents(): Promise<Array<{ date: string; score: number; tit
   })
 }
 
+// Multi-zone events: use cached disruption data (GDELT/Gnews) + infer zones from titles
+async function fetchMultiZoneEvents(): Promise<Record<string, Array<{ date: string; score: number; title: string; source: string; timeAgo: string }>>> {
+  // Try to get disruption events from cache first
+  const cached = getCache<{ events: Array<{ id: string; title: string; source: string; time: string; rawDate: string; sentiment: string; score: number; category: string; severity: number }> }>('disruptions')
+  const events = cached?.data?.events || []
+  if (events.length > 0) {
+    return classifyEventsByZone(events)
+  }
+  // No cached data — return empty (will populate on next disruptions fetch)
+  return {}
+}
+
+function classifyEventsByZone(events: Array<{ title: string; source: string; rawDate: string; score: number; severity: number }>): Record<string, Array<{ date: string; score: number; title: string; source: string; timeAgo: string }>> {
+  const zoneKeywords: Record<string, string[]> = {
+    'Middle East': ['iran', 'iraq', 'saudi', 'opec', 'hormuz', 'yemen', 'houthi', 'gulf', 'dubai', 'qatar', 'kuwait', 'bahrain', 'oman', 'uae', 'persian'],
+    'Americas': ['us', 'united states', 'america', 'permian', 'gulf of mexico', 'texas', 'pipeline', 'venezuela', 'brazil', 'canada', 'mexico', 'shale', 'bakken', 'eagle ford'],
+    'Africa': ['nigeria', 'libya', 'africa', 'angola', 'algeria', 'egypt', 'sahara'],
+    'Asia Pacific': ['china', 'india', 'japan', 'korea', 'malacca', 'asia', 'australia', 'vietnam', 'indonesia'],
+    'Europe': ['europe', 'russia', 'north sea', 'norway', 'uk', 'britain', 'eu', 'germany', 'france', 'sanction'],
+  }
+
+  const results: Record<string, Array<{ date: string; score: number; title: string; source: string; timeAgo: string }>> = {
+    'Middle East': [], 'Americas': [], 'Africa': [], 'Asia Pacific': [], 'Europe': []
+  }
+
+  for (const event of events) {
+    const t = event.title.toLowerCase()
+    let classified = false
+    for (const [zone, keywords] of Object.entries(zoneKeywords)) {
+      if (keywords.some(kw => t.includes(kw))) {
+        const ageMs = event.rawDate ? Date.now() - new Date(event.rawDate).getTime() : 0
+        const timeAgo = ageMs < 3600_000 ? `${Math.round(ageMs / 60000)}m ago` :
+          ageMs < 86400_000 ? `${Math.round(ageMs / 3600_000)}h ago` :
+          `${Math.round(ageMs / 86400_000)}d ago`
+        results[zone].push({
+          date: event.rawDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+          score: event.score,
+          title: event.title,
+          source: event.source,
+          timeAgo,
+        })
+        classified = true
+        break
+      }
+    }
+    if (!classified) {
+      // Default to Middle East for oil news
+      const ageMs = event.rawDate ? Date.now() - new Date(event.rawDate).getTime() : 0
+      const timeAgo = ageMs < 3600_000 ? `${Math.round(ageMs / 60000)}m ago` :
+        ageMs < 86400_000 ? `${Math.round(ageMs / 3600_000)}h ago` :
+        `${Math.round(ageMs / 86400_000)}d ago`
+      results['Middle East'].push({
+        date: event.rawDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+        score: event.score,
+        title: event.title,
+        source: event.source,
+        timeAgo,
+      })
+    }
+  }
+
+  // Sort and limit to 10 per zone
+  for (const zone of Object.keys(results)) {
+    results[zone].sort((a, b) => b.date.localeCompare(a.date))
+    results[zone] = results[zone].slice(0, 10)
+  }
+
+  return results
+}
+
 // Pearson correlation coefficient
 function pearson(x: number[], y: number[]): { r: number; n: number } | null {
   const n = x.length
@@ -1748,6 +1818,57 @@ app.get('/market/correlation', async (c) => {
   setCache('correlation', correlationData, 'api')
   return c.json({ ...correlationData, lastUpdated: new Date().toISOString(), source: 'yahoo+gnews' })
 })
+
+// ═══ Multi-Zone Events Endpoint ═══════════════════════════════════════════
+app.get('/market/multi-zone-events', async (c) => {
+  const cached = getCache('multi-zone-events')
+  if (cached && isCacheFresh('multi-zone-events', 30 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Ensure disruptions are cached first
+  const disruptionsCached = getCache('disruptions')
+  if (!disruptionsCached || !isCacheFresh('disruptions', 30 * SECOND)) {
+    // Trigger disruptions fetch
+    try {
+      await fetchDisruptions()
+    } catch {}
+  }
+
+  const zoneEvents = await fetchMultiZoneEvents()
+  setCache('multi-zone-events', { zones: zoneEvents }, 'api')
+  return c.json({ zones: zoneEvents, lastUpdated: new Date().toISOString(), source: 'disruptions-zone-classify' })
+})
+
+// Inline disruptions fetch helper
+async function fetchDisruptions() {
+  const [gdeltResults, gnewsResults] = await Promise.allSettled([
+    fetchGDELTMultiQuery(),
+    fetchDisruptionNews(),
+  ])
+  const gdeltEvents = gdeltResults.status === 'fulfilled' ? gdeltResults.value : []
+  const gnewsRaw = gnewsResults.status === 'fulfilled' ? gnewsResults.value : []
+  const gnewsEvents = gnewsRaw.map((a: any, i: number) => ({
+    id: `gnews-disr-${i}`, title: a.title, source: a.source,
+    time: formatTimeAgo(a.pubDate || new Date().toISOString()),
+    rawDate: a.pubDate || new Date().toISOString(),
+    location: inferLocation(a.title), sentiment: 'neutral' as const,
+    score: 0, category: inferCategory(a.title),
+    severity: 0.3 + Math.abs(Math.sin(a.title.length)) * 0.5,
+  }))
+  const seenTitles = new Set<string>()
+  const events: any[] = []
+  for (const e of [...gdeltEvents, ...gnewsEvents]) {
+    const key = (e as any).title.toLowerCase().slice(0, 60)
+    if (seenTitles.has(key)) continue
+    seenTitles.add(key)
+    events.push(e)
+  }
+  events.sort((a, b) => (b.rawDate || '').localeCompare(a.rawDate || ''))
+  if (events.length) {
+    setCache('disruptions', { events }, 'api')
+  }
+}
 
 // ═══ Module I: Multi-Asset Comparison Chart ═════════════════════════════════
 // BTC, Gold, Silver, Crude + Top 5 stock market indices — all on one normalized chart
@@ -2551,7 +2672,7 @@ async function fetchTrendingTopics(): Promise<Array<{ topic: string; velocity: n
 app.get('/news/atlas', async (c) => {
   const cacheKey = 'news-atlas'
   const cached = getCache(cacheKey)
-  if (cached && isCacheFresh(cacheKey, 5 * MINUTE)) {
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 

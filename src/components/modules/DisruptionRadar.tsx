@@ -83,9 +83,9 @@ export function DisruptionRadar() {
           <span className="text-[11px] font-mono text-muted tracking-wider">24H EVENT VOLUME</span>
           <span className="text-[10px] font-mono text-teal bg-teal/10 px-1 py-0.5 rounded border border-teal/15">⚡ LIVE FROM EVENTS</span>
         </div>
-        <div className="h-[80px]">
+        <div className="h-[140px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={hourlyVolume} margin={{ left: -10, right: 0 }}>
+            <BarChart data={hourlyVolume} margin={{ left: -10, right: 10, top: 5, bottom: 0 }}>
               <XAxis dataKey="hour" tick={{ fontSize: 9, fontFamily: 'IBM Plex Mono' }} tickLine={false} axisLine={false} interval={3} />
               <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={20} />
               <Tooltip
@@ -159,7 +159,7 @@ export function DisruptionRadar() {
             </button>
           )}
         </div>
-        <div className="space-y-0.5 max-h-[180px] overflow-y-auto pr-1">
+        <div className="space-y-0.5 max-h-[260px] overflow-y-auto pr-1">
           {sorted.map(event => {
             const color = categoryColors[event.category] || '#94A3B8'
             const sentimentVal = sentimentToNum(event.sentiment)

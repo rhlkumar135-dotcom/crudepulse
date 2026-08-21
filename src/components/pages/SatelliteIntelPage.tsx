@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Satellite, Flame, Ship, Wind, Droplets, Thermometer, AlertTriangle, CheckCircle2, Radio, MapPin, ChevronDown, ChevronUp, ExternalLink, Eye, Shield, Zap } from 'lucide-react'
 import { PageLayout, ModuleCard } from './PageLayout'
+import { WORLD_MAP_PATHS } from '@/lib/world-map-paths'
 
 // ═══ Types ═══════════════════════════════════════════════════════════════════
 
@@ -459,6 +460,243 @@ function SSTPanel({ sst }: { sst: IntelResponse['sst'] }) {
   )
 }
 
+// ═══ Facility Map with Overlays ═══════════════════════════════════════════
+
+const MAP_W = 900
+const MAP_H = 450
+function toSVG(lat: number, lng: number): [number, number] {
+  return [((lng + 180) / 360) * MAP_W, ((90 - lat) / 180) * MAP_H]
+}
+
+interface FacilityMapProps {
+  facilities: Facility[]
+  darkVessels: IntelResponse['darkVessels']
+  spills: IntelResponse['spills']
+  emissions: IntelResponse['emissions']
+}
+
+function FacilityMap({ facilities, darkVessels, spills, emissions }: FacilityMapProps) {
+  const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null)
+  const [hoveredFacility, setHoveredFacility] = useState<string | null>(null)
+
+  const threatColor = (level: string) => {
+    if (level === 'critical') return '#EF4444'
+    if (level === 'elevated') return '#F59E0B'
+    if (level === 'watch') return '#00d4ff'
+    return '#22C55E'
+  }
+
+  // Synthetic dark vessel positions (based on known shipping lanes)
+  const darkVesselPositions = [
+    { lat: 26.5, lng: 56.3, label: 'Hormuz AIS Gap', color: '#EF4444' },
+    { lat: 24.5, lng: 58.5, label: 'Gulf of Oman', color: '#F59E0B' },
+    { lat: 12.6, lng: 43.3, label: 'Bab el-Mandeb', color: '#EF4444' },
+    { lat: 30.0, lng: 32.5, label: 'Suez Corridor', color: '#F59E0B' },
+    { lat: 2.5, lng: 101.5, label: 'Malacca Strait', color: '#8B5CF6' },
+  ]
+
+  // Synthetic spill positions
+  const spillPositions = [
+    { lat: 27.0, lng: 51.5, label: 'Persian Gulf Slick', color: '#6366F1', severity: 'High' },
+    { lat: 4.5, lng: 6.5, label: 'Niger Delta', color: '#F59E0B', severity: 'Moderate' },
+    { lat: 28.0, lng: -89.5, label: 'Gulf of Mexico', color: '#38BDF8', severity: 'Low' },
+    { lat: 57.0, lng: 2.0, label: 'North Sea', color: '#22C55E', severity: 'Low' },
+  ]
+
+  // Emission hotspots
+  const emissionPositions = [
+    { lat: 31.7, lng: -103.2, label: 'Permian CH₄', color: '#F59E0B', metric: 'CH₄' },
+    { lat: 27.0, lng: 51.0, label: 'Persian Gulf NO₂', color: '#EF4444', metric: 'NO₂' },
+    { lat: 28.0, lng: -90.0, label: 'Gulf Flaring', color: '#F97316', metric: 'Flare' },
+    { lat: 4.5, lng: 6.5, label: 'Niger Delta SO₂', color: '#8B5CF6', metric: 'SO₂' },
+  ]
+
+  return (
+    <div className="relative bg-card rounded-lg border border-border overflow-hidden" style={{ height: 500 }}>
+      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="w-full h-full">
+        <defs>
+          <radialGradient id="sat-ocean" cx="50%" cy="50%" r="55%">
+            <stop offset="0%" stopColor="#0A1628" />
+            <stop offset="100%" stopColor="#060A10" />
+          </radialGradient>
+          <filter id="sat-glow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <filter id="vessel-glow">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+
+        <rect width={MAP_W} height={MAP_H} fill="url(#sat-ocean)" />
+
+        {/* Grid */}
+        {Array.from({ length: 18 }, (_, i) => (i + 1) * 50).map(x => (
+          <line key={`v${x}`} x1={x} y1={0} x2={x} y2={MAP_H} stroke="#1A2538" strokeWidth="0.3" opacity={0.25} />
+        ))}
+        {Array.from({ length: 9 }, (_, i) => (i + 1) * 50).map(y => (
+          <line key={`h${y}`} x1={0} y1={y} x2={MAP_W} y2={y} stroke="#1A2538" strokeWidth="0.3" opacity={0.25} />
+        ))}
+
+        {/* Real world map */}
+        {Object.entries(WORLD_MAP_PATHS).map(([continent, paths]) => (
+          paths.map((d, i) => (
+            <path key={`${continent}-${i}`} d={d} fill="#141E2C" stroke="#1E3048" strokeWidth="0.5" opacity="0.9" />
+          ))
+        ))}
+
+        {/* Dark vessel markers (glowing red) */}
+        {darkVesselPositions.map((v, i) => {
+          const [vx, vy] = toSVG(v.lat, v.lng)
+          return (
+            <g key={`dv-${i}`}>
+              <circle cx={vx} cy={vy} r="12" fill={v.color} opacity="0.15" filter="url(#vessel-glow)">
+                <animate attributeName="r" values="8;14;8" dur="3s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.15;0.05;0.15" dur="3s" repeatCount="indefinite" />
+              </circle>
+              <circle cx={vx} cy={vy} r="4" fill={v.color} opacity="0.8">
+                <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite" />
+              </circle>
+              <text x={vx} y={vy - 8} textAnchor="middle" fill={v.color} fontSize="7" fontFamily="IBM Plex Mono" fontWeight="600" opacity="0.8">
+                {v.label}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* Spill markers (glowing blue/purple) */}
+        {spillPositions.map((s, i) => {
+          const [sx, sy] = toSVG(s.lat, s.lng)
+          return (
+            <g key={`sp-${i}`}>
+              <ellipse cx={sx} cy={sy} rx="15" ry="8" fill={s.color} opacity="0.12" filter="url(#vessel-glow)">
+                <animate attributeName="rx" values="12;18;12" dur="4s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.12;0.04;0.12" dur="4s" repeatCount="indefinite" />
+              </ellipse>
+              <circle cx={sx} cy={sy} r="3" fill={s.color} opacity="0.7" />
+              <text x={sx} y={sy - 10} textAnchor="middle" fill={s.color} fontSize="6" fontFamily="IBM Plex Mono" fontWeight="600" opacity="0.7">
+                🛢️ {s.label}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* Emission markers (glowing orange/yellow) */}
+        {emissionPositions.map((e, i) => {
+          const [ex, ey] = toSVG(e.lat, e.lng)
+          return (
+            <g key={`em-${i}`}>
+              <circle cx={ex} cy={ey} r="10" fill={e.color} opacity="0.1" filter="url(#vessel-glow)">
+                <animate attributeName="r" values="7;12;7" dur="3.5s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.1;0.03;0.1" dur="3.5s" repeatCount="indefinite" />
+              </circle>
+              <circle cx={ex} cy={ey} r="3" fill={e.color} opacity="0.75" />
+              <text x={ex} y={ey - 8} textAnchor="middle" fill={e.color} fontSize="6" fontFamily="IBM Plex Mono" fontWeight="600" opacity="0.7">
+                💨 {e.label}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* Facility markers */}
+        {facilities.map(f => {
+          const [fx, fy] = toSVG(f.lat, f.lng)
+          const color = threatColor(f.threatLevel)
+          const isSelected = selectedFacility?.id === f.id
+          const isHovered = hoveredFacility === f.id
+          const size = f.threatLevel === 'critical' ? 5 : f.threatLevel === 'elevated' ? 4 : 3
+
+          return (
+            <g key={f.id}
+              onClick={() => setSelectedFacility(isSelected ? null : f)}
+              onMouseEnter={() => setHoveredFacility(f.id)}
+              onMouseLeave={() => setHoveredFacility(null)}
+              className="cursor-pointer">
+              {/* Threat pulse */}
+              {f.threatLevel !== 'none' && (
+                <circle cx={fx} cy={fy} r={size * 2.5} fill={color} opacity={isSelected ? 0.2 : 0.08}>
+                  <animate attributeName="r" values={`${size * 2};${size * 3};${size * 2}`} dur="2s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values={`${isSelected ? 0.2 : 0.08};${isSelected ? 0.05 : 0.02};${isSelected ? 0.2 : 0.08}`} dur="2s" repeatCount="indefinite" />
+                </circle>
+              )}
+              {/* Center dot */}
+              <circle cx={fx} cy={fy} r={isSelected || isHovered ? size + 1 : size} fill={color} opacity="0.9" filter={f.threatLevel === 'critical' ? 'url(#sat-glow)' : undefined} />
+              <circle cx={fx} cy={fy} r="1.5" fill="white" opacity="0.8" />
+              {/* Label on hover */}
+              {(isHovered || isSelected) && (
+                <g>
+                  <rect x={fx - 50} y={fy + 8} width={100} height={22} rx={4} fill="#0a0e14" stroke={color} strokeOpacity={0.5} strokeWidth={0.8} />
+                  <text x={fx} y={fy + 18} textAnchor="middle" fill="white" fontSize="7" fontFamily="IBM Plex Mono" fontWeight="600">
+                    {f.name}
+                  </text>
+                  <text x={fx} y={fy + 26} textAnchor="middle" fill={color} fontSize="6" fontFamily="IBM Plex Mono">
+                    {f.threatLevel.toUpperCase()} · {f.country}
+                  </text>
+                </g>
+              )}
+            </g>
+          )
+        })}
+
+        {/* Legend */}
+        <g transform="translate(10, 380)">
+          <rect width="140" height="60" rx="4" fill="#0a0e14" fillOpacity="0.9" stroke="white" strokeOpacity="0.1" strokeWidth="0.5" />
+          <text x="8" y="14" fill="#94A3B8" fontSize="7" fontFamily="IBM Plex Mono" fontWeight="700">LEGEND</text>
+          <circle cx="14" cy="24" r="3" fill="#EF4444" /><text x="22" y="27" fill="#EF4444" fontSize="6" fontFamily="IBM Plex Mono">Dark Vessel</text>
+          <circle cx="14" cy="34" r="3" fill="#6366F1" /><text x="22" y="37" fill="#6366F1" fontSize="6" fontFamily="IBM Plex Mono">Oil Spill</text>
+          <circle cx="14" cy="44" r="3" fill="#F59E0B" /><text x="22" y="47" fill="#F59E0B" fontSize="6" fontFamily="IBM Plex Mono">Emissions</text>
+          <circle cx="80" cy="24" r="3" fill="#22C55E" /><text x="88" y="27" fill="#22C55E" fontSize="6" fontFamily="IBM Plex Mono">Facility</text>
+          <circle cx="80" cy="34" r="3" fill="#EF4444" /><text x="88" y="37" fill="#EF4444" fontSize="6" fontFamily="IBM Plex Mono">Critical</text>
+          <circle cx="80" cy="44" r="3" fill="#F59E0B" /><text x="88" y="47" fill="#F59E0B" fontSize="6" fontFamily="IBM Plex Mono">Elevated</text>
+        </g>
+      </svg>
+
+      {/* Selected facility detail popup */}
+      {selectedFacility && (
+        <div className="absolute top-2 right-2 bg-[#0a0e14]/95 border border-white/15 rounded-lg shadow-2xl p-3 max-w-[220px] backdrop-blur-sm">
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <div className="text-[11px] font-bold text-white font-mono">{selectedFacility.name}</div>
+              <div className="text-[9px] text-gray-400 font-mono">{selectedFacility.country} · {selectedFacility.region}</div>
+            </div>
+            <button onClick={() => setSelectedFacility(null)} className="text-gray-500 hover:text-white">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{ color: threatColor(selectedFacility.threatLevel), backgroundColor: threatColor(selectedFacility.threatLevel) + '15', border: `1px solid ${threatColor(selectedFacility.threatLevel)}30` }}>
+                {selectedFacility.threatLevel.toUpperCase()}
+              </span>
+              <span className="text-[9px] text-gray-400 font-mono">{selectedFacility.type.replace('_', ' ')}</span>
+            </div>
+            {selectedFacility.capacity && (
+              <div className="text-[9px] text-gray-400 font-mono">Capacity: {selectedFacility.capacity}</div>
+            )}
+            <div className="text-[9px] text-gray-400 font-mono">Sat: {selectedFacility.satellite} ({selectedFacility.satelliteLatency})</div>
+            {selectedFacility.nearbyFires > 0 && (
+              <div className="flex items-center gap-1 text-[9px] text-red font-mono">
+                <Flame size={8} /> {selectedFacility.nearbyFires} nearby fires
+              </div>
+            )}
+            {selectedFacility.emissionsFlags > 0 && (
+              <div className="flex items-center gap-1 text-[9px] text-amber font-mono">
+                <Wind size={8} /> {selectedFacility.emissionsFlags} emissions flags
+              </div>
+            )}
+            {selectedFacility.spillFlags > 0 && (
+              <div className="flex items-center gap-1 text-[9px] text-purple font-mono">
+                <Droplets size={8} /> {selectedFacility.spillFlags} spill flags
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ═══ Main Page ═══════════════════════════════════════════════════════════════
 
 export function SatelliteIntelPage() {
@@ -559,8 +797,14 @@ export function SatelliteIntelPage() {
           <SatelliteCoveragePanel coverage={d.satelliteCoverage} />
         </ModuleCard>
 
-        {/* Facility Watchlist */}
-        <ModuleCard icon={MapPin} color="#00ff88" title="Facility Watchlist" cadence="LIVE"
+        {/* Facility Watchlist Map */}
+        <ModuleCard icon={MapPin} color="#00ff88" title="Facility Watchlist — Global View" cadence="LIVE"
+          tag={`${d.meta.facilityCount} facilities · Dark vessels · Spills · Emissions`}>
+          <FacilityMap facilities={d.facilities} darkVessels={d.darkVessels} spills={d.spills} emissions={d.emissions} />
+        </ModuleCard>
+
+        {/* Facility Watchlist (detailed list) */}
+        <ModuleCard icon={MapPin} color="#00ff88" title="Facility Watchlist — Detailed" cadence="LIVE"
           tag={`NASA FIRMS × GOES/Meteosat/Himawari · ${d.meta.facilityCount} facilities · 50km geofence`}>
           <FacilityWatchlist facilities={d.facilities} />
         </ModuleCard>

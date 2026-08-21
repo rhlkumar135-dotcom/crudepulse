@@ -18,7 +18,7 @@ export function GlobalPage() {
 
         <ModuleCard icon={GlobeIcon} color="#a855f7" title="Copernicus / Satellite Feed" cadence="LIVE"
           tag="NASA EONET · NOAA Coral Reef Watch">
-          <div style={{ height: 500 }}><CopernicusMap /></div>
+          <div style={{ height: 600 }}><CopernicusMap /></div>
         </ModuleCard>
 
         <div className="text-center py-3">
