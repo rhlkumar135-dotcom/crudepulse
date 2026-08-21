@@ -15,5 +15,5 @@ RUN bun run build
 
 EXPOSE 3001
 
-# Run db push to create tables, then start the server
-CMD ["sh", "-c", "bun x prisma db push 2>/dev/null; bun run start"]
+# Run db push with SQLite URL explicitly, then start the server
+CMD ["sh", "-c", "DATABASE_URL='file:./prisma/prod.db' bun x prisma db push 2>&1; bun run start"]
