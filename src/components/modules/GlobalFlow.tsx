@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMarketData } from '@/lib/useMarketData'
+import { WORLD_MAP_PATHS } from '@/lib/world-map-paths'
 
 interface TradeFlow { id: string; from: string; fromLat: number; fromLng: number; to: string; toLat: number; toLng: number; volume: number; route: string }
 
@@ -93,38 +94,14 @@ export function GlobalFlowMap() {
             <line key={`h${y}`} x1={0} y1={y} x2={W} y2={y} stroke="#1A2538" strokeWidth="0.3" opacity={0.3} />
           ))}
 
-          {/* ═══ WORLD MAP OUTLINE ═══ Simplified continent shapes ═══ */}
-          <g fill="#141E2C" stroke="#1E3048" strokeWidth="0.6" opacity="0.8">
-            {/* North America */}
-            <path d="M 115 60 L 135 55 155 52 170 58 180 50 195 55 200 65 210 70 215 80 220 95 225 110 230 120 240 130 235 140 225 155 218 160 208 165 200 170 190 175 178 180 165 178 155 170 148 162 140 155 135 148 128 142 125 138 130 130 138 125 148 120 155 115 160 110 165 105 160 100 155 92 148 88 142 82 135 78 128 75 120 70 115 65 115 60 Z" />
-            {/* Greenland */}
-            <path d="M 235 30 L 250 28 260 32 265 40 258 48 248 50 240 45 236 38 235 30 Z" />
-            {/* South America */}
-            <path d="M 205 210 L 215 205 225 208 232 218 238 230 242 245 245 260 248 275 246 290 242 305 236 318 228 330 220 340 212 348 205 355 200 360 195 350 192 338 188 325 186 310 185 295 186 280 188 265 192 250 196 235 200 222 205 210 Z" />
-            {/* Europe */}
-            <path d="M 420 55 L 430 52 440 50 452 52 460 55 468 60 472 68 468 75 472 82 478 88 475 95 468 100 460 105 452 108 445 105 438 100 432 95 428 88 425 80 422 72 420 62 420 55 Z" />
-            {/* Africa */}
-            <path d="M 430 130 L 445 125 460 128 472 135 480 145 486 158 490 172 492 188 490 205 486 222 482 240 476 258 468 275 460 290 452 302 445 310 438 315 430 312 422 305 418 292 415 278 412 262 410 245 412 228 414 212 416 195 418 178 420 162 422 148 425 138 430 130 Z" />
-            {/* Asia — Russia */}
-            <path d="M 480 35 L 510 30 545 28 580 30 615 32 650 35 680 40 710 45 740 50 760 55 770 62 765 70 750 72 735 68 720 65 700 62 680 60 660 58 640 55 620 52 600 50 580 48 560 45 540 42 520 40 500 38 480 36 480 35 Z" />
-            {/* Middle East */}
-            <path d="M 500 105 L 515 100 528 105 535 115 530 125 520 130 510 128 502 120 498 112 500 105 Z" />
-            {/* India */}
-            <path d="M 570 130 L 582 125 590 132 595 145 592 160 585 175 578 188 570 195 565 185 560 172 558 158 560 145 565 135 570 130 Z" />
-            {/* Southeast Asia */}
-            <path d="M 630 165 L 645 158 658 162 665 172 660 182 650 188 640 185 632 178 630 170 630 165 Z" />
-            {/* China / East Asia */}
-            <path d="M 640 80 L 660 75 680 78 700 82 715 90 720 100 718 112 710 122 700 130 688 135 675 132 662 128 652 120 645 110 640 100 638 90 640 80 Z" />
-            {/* Japan */}
-            <path d="M 735 82 L 742 78 748 82 750 90 748 98 744 105 740 100 738 92 735 85 735 82 Z" />
-            {/* Australia */}
-            <path d="M 680 265 L 700 258 720 255 740 258 755 265 762 278 760 292 752 305 740 315 725 320 710 318 698 312 688 300 682 288 680 275 680 265 Z" />
-            {/* Indonesia archipelago */}
-            <path d="M 640 220 L 655 215 668 218 680 222 690 228 685 235 672 238 660 235 648 230 640 225 640 220 Z" />
-            {/* UK / Ireland */}
-            <path d="M 415 52 L 420 48 425 50 426 56 422 60 418 58 415 55 415 52 Z" />
-            {/* Iceland */}
-            <path d="M 340 28 L 348 26 355 28 356 32 352 35 345 34 340 30 340 28 Z" />
+          {/* ═══ WORLD MAP OUTLINE (Natural Earth 110m) ═══ */}
+          <g>
+            {Object.entries(WORLD_MAP_PATHS).map(([cont, paths]) => {
+              const fill = cont === 'Middle East' ? '#1A2520' : '#141E2C'
+              return paths.map((d, i) => (
+                <path key={`${cont}-${i}`} d={d} fill={fill} stroke="#1E3048" strokeWidth="0.5" opacity="0.85" />
+              ))
+            })}
           </g>
 
           {/* ═══ TRADE FLOW ROUTES ═══ */}
@@ -207,17 +184,17 @@ export function GlobalFlowMap() {
           </g>
 
           {/* ═══ REGION LABELS ═══ */}
-          <g fontFamily="IBM Plex Mono" fontSize="9" fill="#3A5068" fontWeight="600" letterSpacing="0.5">
-            <text x={160} y={130} textAnchor="middle">N. AMERICA</text>
-            <text x={210} y={280} textAnchor="middle">S. AMERICA</text>
-            <text x={450} y={230} textAnchor="middle">AFRICA</text>
-            <text x={445} y={75} textAnchor="middle">EUROPE</text>
-            <text x={515} y={118} textAnchor="middle" fill="#4A6080">MIDDLE EAST</text>
-            <text x={600} y={80} textAnchor="middle">RUSSIA</text>
-            <text x={680} y={105} textAnchor="middle">CHINA</text>
-            <text x={745} y={92} textAnchor="middle" fontSize="8">JAPAN</text>
-            <text x={580} y={165} textAnchor="middle">INDIA</text>
-            <text x={725} y={290} textAnchor="middle">AUSTRALIA</text>
+          <g fontFamily="IBM Plex Mono" fontSize="9" fill="#3A5068" fontWeight="600" letterSpacing="0.5" opacity="0.7">
+            <text x={165} y={140} textAnchor="middle">N. AMERICA</text>
+            <text x={215} y={300} textAnchor="middle">S. AMERICA</text>
+            <text x={455} y={245} textAnchor="middle">AFRICA</text>
+            <text x={460} y={78} textAnchor="middle">EUROPE</text>
+            <text x={520} y={118} textAnchor="middle" fill="#4A6080">MIDDLE EAST</text>
+            <text x={630} y={55} textAnchor="middle">RUSSIA</text>
+            <text x={700} y={110} textAnchor="middle">CHINA</text>
+            <text x={770} y={90} textAnchor="middle" fontSize="8">JAPAN</text>
+            <text x={590} y={170} textAnchor="middle">INDIA</text>
+            <text x={755} y={300} textAnchor="middle">AUSTRALIA</text>
           </g>
 
           {/* ═══ KEY CHOKEPOINTS ═══ */}
