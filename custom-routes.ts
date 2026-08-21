@@ -773,11 +773,17 @@ function mockReservesData() {
 
 export default app
 
-// Debug route — tells us which version is deployed
+// Debug route — tells us which env vars are set (keys are masked)
 app.get('/debug/routes', (c) => {
   return c.json({
     version: 'v2-routes',
     timestamp: new Date().toISOString(),
+    env: {
+      ALPHA_VANTAGE_KEY: process.env.ALPHA_VANTAGE_KEY ? `set (${process.env.ALPHA_VANTAGE_KEY.length} chars)` : 'NOT SET',
+      NEWSAPI_KEY: process.env.NEWSAPI_KEY ? `set (${process.env.NEWSAPI_KEY.length} chars)` : 'NOT SET',
+      EIA_API_KEY: process.env.EIA_API_KEY ? `set (${process.env.EIA_API_KEY.length} chars)` : 'NOT SET',
+      DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'NOT SET',
+    },
     routes: [
       'auth/signup', 'auth/login', 'auth/me', 'auth/upgrade',
       'admin/users', 'market/prices', 'market/news', 'market/disruptions',
