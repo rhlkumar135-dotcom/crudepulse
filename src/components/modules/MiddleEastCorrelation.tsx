@@ -126,7 +126,7 @@ function ColorScale() {
 }
 
 export function MiddleEastCorrelation() {
-  const { data } = useMarketData<CorrelationResponse>('/api/market/correlation', 'pro', 60000)
+  const { data } = useMarketData<CorrelationResponse>('/api/market/correlation', 'pro', 30000)
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null)
   const [showMethodology, setShowMethodology] = useState(false)
 

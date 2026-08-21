@@ -733,7 +733,7 @@ async function fetchDisruptionNews(): Promise<unknown[]> {
 
 app.get('/market/disruptions', async (c) => {
   const cached = getCache<{ events: unknown[] }>('disruptions')
-  if (cached && isCacheFresh('disruptions', 30 * SECOND)) {
+  if (cached && isCacheFresh('disruptions', 60 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -1500,11 +1500,14 @@ async function fetchYahooTimeSeries(symbol: string, range = '90d'): Promise<Asse
 // Fetch ME-filtered events from Google News RSS
 async function fetchMEEvents(): Promise<Array<{ date: string; score: number; title: string; source: string }>> {
   const queries = [
-    'middle+east+oil+disruption+conflict+sanctions',
-    'saudi+iran+iraq+opec+oil+production',
-    'yemen+houthi+oil+tanker+attack',
-    'iran+sanctions+oil+export',
-    'israel+iran+conflict+oil+energy',
+    'middle east oil disruption conflict sanctions',
+    'saudi iran iraq opec oil production',
+    'yemen houthi oil tanker attack',
+    'iran sanctions oil export',
+    'israel iran conflict oil energy',
+    'gulf of omen oil shipping',
+    'persian gulf oil terminal',
+    'opec meeting oil price decision',
   ]
 
   const allArticles: Array<{ title: string; source: string; pubDate: string }> = []
@@ -1659,7 +1662,7 @@ function marketLabel(symbol: string): string {
 
 app.get('/market/correlation', async (c) => {
   const cached = getCache('correlation')
-  if (cached && isCacheFresh('correlation', 60 * SECOND)) {
+  if (cached && isCacheFresh('correlation', 30 * SECOND)) {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 
