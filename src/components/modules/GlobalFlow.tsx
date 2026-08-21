@@ -4,6 +4,19 @@ import { WORLD_MAP_PATHS } from '@/lib/world-map-paths'
 
 interface TradeFlow { id: string; from: string; fromLat: number; fromLng: number; to: string; toLat: number; toLng: number; volume: number; route: string }
 
+interface ChokepointInfo {
+  name: string; lat: number; lng: number; color: string; bpd: string
+  description: string; risks: string[]
+}
+
+const CHOKEPOINTS: ChokepointInfo[] = [
+  { name: 'Hormuz', lat: 26.5, lng: 56.3, color: '#F5A623', bpd: '21M bbl/d', description: 'Narrowest point — 21M bbl/d transits. Any closure = global crisis.', risks: ['Iran confrontation', 'Mine warfare', 'Naval blockade'] },
+  { name: 'Suez', lat: 30.0, lng: 32.5, color: '#F5A623', bpd: '5.5M bbl/d', description: 'Egypt\'s canal connects ME to Europe. 12% of global trade.', risks: ['Blockage risk', 'Political instability', 'Capacity limits'] },
+  { name: 'Bab el-Mandeb', lat: 12.6, lng: 43.3, color: '#EF4444', bpd: '6.2M bbl/d', description: 'Gateway to Red Sea. Houthi attacks forcing 30% rerouting.', risks: ['Houthi drones', 'Piracy', 'Shipping reroutes'] },
+  { name: 'Malacca', lat: 2.5, lng: 101.5, color: '#38BDF8', bpd: '16M bbl/d', description: 'World\'s busiest shipping lane. 25% of global oil passes through.', risks: ['Congestion', 'Piracy', 'Geopolitical tension'] },
+  { name: 'Panama', lat: 9.4, lng: -79.9, color: '#2DD4BF', bpd: '1M bbl/d', description: 'Americas key link. Drought has reduced transit capacity.', risks: ['Drought restrictions', 'Lock maintenance', 'Capacity constraints'] },
+]
+
 const regionColors: Record<string, string> = {
   'Middle East': '#F5A623', 'North America': '#2DD4BF', 'Russia & CIS': '#EF4444',
   'West Africa': '#A78BFA', 'South America': '#F472B6', 'Asia Pacific': '#38BDF8',
@@ -32,6 +45,7 @@ export function GlobalFlowMap() {
   const { data } = useMarketData<{ routes: TradeFlow[] }>('/api/market/flows')
   const tradeFlows = data?.routes || []
   const [selected, setSelected] = useState<TradeFlow | null>(null)
+  const [selectedCP, setSelectedCP] = useState<ChokepointInfo | null>(null)
   const top15 = [...tradeFlows].sort((a: TradeFlow, b: TradeFlow) => b.volume - a.volume)
   const maxVol = top15[0]?.volume || 1
   const totalVol = top15.reduce((s: number, f: TradeFlow) => s + f.volume, 0)
@@ -199,30 +213,56 @@ export function GlobalFlowMap() {
 
           {/* ═══ KEY CHOKEPOINTS ═══ */}
           <g>
-            {[
-              { name: 'Hormuz', lat: 26.5, lng: 56.3, color: '#F5A623' },
-              { name: 'Suez', lat: 30.0, lng: 32.5, color: '#F5A623' },
-              { name: 'Bab el-Mandeb', lat: 12.6, lng: 43.3, color: '#EF4444' },
-              { name: 'Malacca', lat: 2.5, lng: 101.5, color: '#38BDF8' },
-              { name: 'Panama', lat: 9.4, lng: -79.9, color: '#2DD4BF' },
-            ].map(cp => {
+            {CHOKEPOINTS.map(cp => {
               const [cx, cy] = toSVG(cp.lat, cp.lng)
+              const isActive = selectedCP?.name === cp.name
               return (
-                <g key={cp.name}>
-                  <circle cx={cx} cy={cy} r={5} fill="none" stroke={cp.color} strokeWidth={1} opacity={0.5}>
+                <g key={cp.name} onClick={(e) => { e.stopPropagation(); setSelectedCP(isActive ? null : cp); setSelected(null) }} className="cursor-pointer">
+                  <circle cx={cx} cy={cy} r={isActive ? 9 : 5} fill="none" stroke={cp.color} strokeWidth={isActive ? 1.5 : 1} opacity={isActive ? 0.8 : 0.5}>
                     <animate attributeName="r" values="4;7;4" dur="3s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.5;0.2;0.5" dur="3s" repeatCount="indefinite" />
                   </circle>
-                  <circle cx={cx} cy={cy} r={2} fill={cp.color} opacity={0.8} />
-                  <text x={cx} y={cy - 8} textAnchor="middle" fill={cp.color}
-                    fontSize="7" fontFamily="IBM Plex Mono" fontWeight="700" opacity={0.7}>
+                  <circle cx={cx} cy={cy} r={isActive ? 3 : 2} fill={cp.color} opacity={0.85} />
+                  <text x={cx} y={cy - (isActive ? 12 : 8)} textAnchor="middle" fill={cp.color}
+                    fontSize={isActive ? '8' : '7'} fontFamily="IBM Plex Mono" fontWeight="700" opacity={isActive ? 1 : 0.7}>
                     {cp.name}
                   </text>
+                  {/* Popup when selected */}
+                  {isActive && (
+                    <foreignObject x={Math.min(cx + 10, W - 205)} y={Math.max(cy - 70, 5)} width={200} height={135}>
+                      <div className="bg-[#0a0e14]/95 border border-white/15 rounded-lg shadow-2xl shadow-black/50 p-2.5 backdrop-blur-sm"
+                        xmlns="http://www.w3.org/1999/xhtml">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full" style={{ background: cp.color }} />
+                            <span className="text-[10px] font-bold text-white font-mono">{cp.name}</span>
+                          </div>
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{ background: cp.color + '20', color: cp.color }}>
+                            {cp.bpd}
+                          </span>
+                        </div>
+                        <p className="text-[8.5px] text-gray-400 leading-relaxed mb-1.5">{cp.description}</p>
+                        <div className="space-y-0.5">
+                          <div className="text-[7.5px] font-mono text-gray-500 uppercase tracking-wider">Risks</div>
+                          {cp.risks.map((r, i) => (
+                            <div key={i} className="flex items-center gap-1">
+                              <div className="w-0.5 h-0.5 rounded-full" style={{ background: cp.color }} />
+                              <span className="text-[8px] text-gray-300 font-mono">{r}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </foreignObject>
+                  )}
                 </g>
               )
             })}
           </g>
         </svg>
+        {/* Click hint */}
+        <div className="absolute bottom-2 right-2 bg-[#0a0e14]/70 border border-white/10 rounded px-2 py-1 flex items-center gap-1.5">
+          <span className="text-[9px] text-gray-500 font-mono">Click routes & chokepoints for intel</span>
+        </div>
       </div>
 
       {/* Flow list */}
