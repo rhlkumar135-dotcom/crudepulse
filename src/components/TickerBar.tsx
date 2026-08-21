@@ -49,23 +49,23 @@ export function TickerBar() {
   const spread = wti && brent ? +(brent - wti).toFixed(2) : null
 
   return (
-    <div className="h-8 bg-[#0a0a0f]/90 backdrop-blur-sm border-b border-[#2a2a3a] flex items-center px-4 gap-4 overflow-hidden"
+    <div className="h-9 bg-[#0a0a0f]/90 backdrop-blur-sm border-b border-[#2a2a3a] flex items-center px-5 gap-5 overflow-hidden"
       style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <Wifi size={9} className="text-[#00ff88]" />
-        <span className="text-[10px] text-[#00ff88] tracking-[0.15em] font-bold">LIVE</span>
+      <div className="flex items-center gap-2 shrink-0">
+        <Wifi size={10} className="text-[#00ff88]" />
+        <span className="text-[11px] text-[#00ff88] tracking-[0.12em] font-bold">LIVE</span>
       </div>
 
       <div className="w-px h-4 bg-[#2a2a3a] shrink-0" />
 
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-[#94A3B8] tracking-[0.15em]">WTI</span>
-        <span className="text-[#00ff88] font-bold text-[11px]">
+        <span className="text-[11px] text-[#94A3B8] tracking-[0.12em]">WTI</span>
+        <span className="text-[#00ff88] font-bold text-xs">
           {wti != null ? <CountUp value={wti} decimals={2} prefix="$" /> : <span className="text-[#94A3B8]">--</span>}
         </span>
         {wChg !== 0 && (
-          <span className={`flex items-center gap-0.5 text-[10px] font-bold ${wChg > 0.005 ? 'text-[#00ff88]' : wChg < -0.005 ? 'text-[#ff3366]' : 'text-[#94A3B8]'}`}>
-            {wChg > 0.005 ? <TrendingUp size={8} /> : wChg < -0.005 ? <TrendingDown size={8} /> : <Minus size={8} />}
+          <span className={`flex items-center gap-0.5 text-[11px] font-bold ${wChg > 0.005 ? 'text-[#00ff88]' : wChg < -0.005 ? 'text-[#ff3366]' : 'text-[#94A3B8]'}`}>
+            {wChg > 0.005 ? <TrendingUp size={9} /> : wChg < -0.005 ? <TrendingDown size={9} /> : <Minus size={9} />}
             {wChg > 0 ? '+' : ''}{wChg.toFixed(2)}
           </span>
         )}
@@ -74,13 +74,13 @@ export function TickerBar() {
       <div className="w-px h-4 bg-[#2a2a3a] shrink-0" />
 
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-[#94A3B8] tracking-[0.15em]">BRENT</span>
-        <span className="text-[#00d4ff] font-bold text-[11px]">
+        <span className="text-[11px] text-[#94A3B8] tracking-[0.12em]">BRENT</span>
+        <span className="text-[#00d4ff] font-bold text-xs">
           {brent != null ? <CountUp value={brent} decimals={2} prefix="$" /> : <span className="text-[#94A3B8]">--</span>}
         </span>
         {bChg !== 0 && (
-          <span className={`flex items-center gap-0.5 text-[10px] font-bold ${bChg > 0.005 ? 'text-[#00ff88]' : bChg < -0.005 ? 'text-[#ff3366]' : 'text-[#94A3B8]'}`}>
-            {bChg > 0.005 ? <TrendingUp size={8} /> : bChg < -0.005 ? <TrendingDown size={8} /> : <Minus size={8} />}
+          <span className={`flex items-center gap-0.5 text-[11px] font-bold ${bChg > 0.005 ? 'text-[#00ff88]' : bChg < -0.005 ? 'text-[#ff3366]' : 'text-[#94A3B8]'}`}>
+            {bChg > 0.005 ? <TrendingUp size={9} /> : bChg < -0.005 ? <TrendingDown size={9} /> : <Minus size={9} />}
             {bChg > 0 ? '+' : ''}{bChg.toFixed(2)}
           </span>
         )}
@@ -88,17 +88,17 @@ export function TickerBar() {
 
       <div className="w-px h-4 bg-[#2a2a3a] shrink-0" />
 
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-[#94A3B8] tracking-[0.15em]">SPREAD</span>
-        <span className="text-[10px] font-bold text-[#e0e0e0]">{spread != null ? `$${spread}` : '--'}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-[#94A3B8] tracking-[0.12em]">SPREAD</span>
+        <span className="text-[11px] font-bold text-[#e0e0e0]">{spread != null ? `$${spread}` : '--'}</span>
       </div>
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-2 text-[10px] text-[#94A3B8] shrink-0">
+      <div className="flex items-center gap-2 text-[11px] text-[#94A3B8] shrink-0">
         <span className="live-dot" style={{ width: 5, height: 5 }} />
         <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
-        {source && <span className="text-[10px] text-[#94A3B8]/40 uppercase">{source}</span>}
+        {source && <span className="text-[11px] text-[#94A3B8]/40 uppercase">{source}</span>}
       </div>
     </div>
   )

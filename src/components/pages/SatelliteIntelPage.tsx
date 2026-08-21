@@ -485,7 +485,7 @@ export function SatelliteIntelPage() {
 
   if (loading && !data) {
     return (
-      <PageLayout title="V4 — SATELLITE INTEL" subtitle="Thermal detection · Dark vessels · Emissions · Spill monitoring">
+      <PageLayout title="Satellite Intelligence" subtitle="Thermal detection · Dark vessels · Emissions · Spill monitoring">
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <Satellite size={32} className="text-[#00d4ff] mx-auto mb-3 animate-pulse" />
@@ -499,7 +499,7 @@ export function SatelliteIntelPage() {
 
   if (error && !data) {
     return (
-      <PageLayout title="V4 — SATELLITE INTEL" subtitle="Thermal detection · Dark vessels · Emissions · Spill monitoring">
+      <PageLayout title="Satellite Intelligence" subtitle="Thermal detection · Dark vessels · Emissions · Spill monitoring">
         <div className="p-4 rounded-lg bg-[#EF4444]/[0.06] border border-[#EF4444]/10 text-center py-10">
           <AlertTriangle size={24} className="text-[#EF4444] mx-auto mb-2" />
           <div className="text-[11px] font-mono text-[#EF4444]">SATELLITE INTEL UNAVAILABLE</div>
@@ -513,7 +513,7 @@ export function SatelliteIntelPage() {
   const timeSinceUpdate = d.lastUpdated ? Math.round((Date.now() - new Date(d.lastUpdated).getTime()) / 1000) : 0
 
   return (
-    <PageLayout title="V4 — SATELLITE INTEL" subtitle="Thermal detection · Dark vessels · Emissions · Spill monitoring">
+    <PageLayout title="Satellite Intelligence" subtitle="Thermal detection · Dark vessels · Emissions · Spill monitoring">
       <div className="space-y-3">
 
         {/* Global Threat Summary */}

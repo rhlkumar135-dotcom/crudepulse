@@ -44,12 +44,12 @@ class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { h
 // ═══ Cyberpunk Nav Shell ═══════════════════════════════════════════════════
 
 const NAV_ITEMS = [
-  { to: '/markets', label: 'MARKETS', icon: TrendingUp, color: '#00ff88' },
-  { to: '/disruptions', label: 'DISRUPT', icon: Radar, color: '#ff3366' },
-  { to: '/operations', label: 'OPS', icon: Wrench, color: '#ff00ff' },
-  { to: '/analysis', label: 'ANALYSIS', icon: Activity, color: '#00d4ff' },
-  { to: '/global', label: 'GLOBAL', icon: Globe, color: '#F5A623' },
-  { to: '/satellite-intel', label: 'V4', icon: Satellite, color: '#00d4ff' },
+  { to: '/markets', label: 'Markets', icon: TrendingUp, color: '#00ff88' },
+  { to: '/disruptions', label: 'Disruptions', icon: Radar, color: '#ff3366' },
+  { to: '/operations', label: 'Operations', icon: Wrench, color: '#ff00ff' },
+  { to: '/analysis', label: 'Analysis', icon: Activity, color: '#00d4ff' },
+  { to: '/global', label: 'Global', icon: Globe, color: '#F5A623' },
+  { to: '/satellite-intel', label: 'Satellite', icon: Satellite, color: '#00d4ff' },
 ]
 
 function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => void }) {
@@ -59,48 +59,52 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
   return (
     <>
       <TickerBar />
-      <header className="h-11 border-b border-[#2a2a3a] flex items-center px-4 gap-3 bg-[#0a0a0f]/80 backdrop-blur-md">
+      <header className="h-14 border-b border-[#2a2a3a] flex items-center px-5 gap-4 bg-[#0a0a0f]/90 backdrop-blur-md">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-7 h-7 flex items-center justify-center border border-[#00ff88]/40 bg-[#00ff88]/10"
-            style={{ clipPath: 'polygon(0 3px, 3px 0, calc(100% - 3px) 0, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 0 calc(100% - 3px))' }}>
-            <BarChart3 size={14} className="text-[#00ff88]" />
+        <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0">
+          <div className="w-8 h-8 flex items-center justify-center border border-[#00ff88]/40 bg-[#00ff88]/10"
+            style={{ clipPath: 'polygon(0 4px, 4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px))' }}>
+            <BarChart3 size={16} className="text-[#00ff88]" />
           </div>
-          <span className="text-[11px] font-black tracking-[0.12em] text-white"
+          <span className="text-sm font-black tracking-[0.1em] text-white"
             style={{ fontFamily: 'Orbitron, monospace' }}>
             CRUDE<span className="text-[#00ff88]">PULSE</span>
           </span>
         </Link>
 
-        <div className="w-px h-5 bg-[#2a2a3a] mx-1" />
+        <div className="w-px h-6 bg-[#2a2a3a]" />
 
         {/* Nav links */}
-        <nav className="flex items-center gap-0.5">
+        <nav className="flex items-center gap-1">
           {NAV_ITEMS.map(item => {
             const Icon = item.icon
             const active = path === item.to || (item.to !== '/' && path.startsWith(item.to))
             return (
               <Link key={item.to} to={item.to}
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 text-[8px] font-bold tracking-[0.12em] transition-all border',
+                  'flex items-center gap-2 px-4 py-2 text-xs font-semibold tracking-wide transition-all border rounded-sm',
                   active
-                    ? 'border-[#00ff88]/30 bg-[#00ff88]/[0.08] text-[#00ff88]'
-                    : 'border-transparent text-[#94A3B8] hover:text-[#e0e0e0] hover:bg-white/[0.03]'
+                    ? 'border-[color:var(--active)]/30 bg-[color:var(--active)]/[0.08] text-white shadow-[0_0_12px_-4px_var(--active)]'
+                    : 'border-transparent text-[#94A3B8] hover:text-[#e0e0e0] hover:bg-white/[0.04]'
                 )}
-                style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                <Icon size={11} style={{ color: active ? item.color : undefined }} />
-                {item.label}
+                style={{
+                  fontFamily: 'Orbitron, monospace',
+                  fontSize: '11px',
+                  '--active': item.color,
+                } as React.CSSProperties}>
+                <Icon size={13} style={{ color: active ? item.color : undefined }} />
+                <span>{item.label}</span>
               </Link>
             )
           })}
         </nav>
 
-        <div className="w-px h-5 bg-[#2a2a3a] mx-1" />
+        <div className="w-px h-6 bg-[#2a2a3a]" />
 
         {/* Live indicator */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <span className="live-dot" />
-          <span className="text-[8px] font-bold text-[#00ff88] tracking-[0.15em]"
+          <span className="text-[10px] font-bold text-[#00ff88] tracking-[0.12em]"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>LIVE</span>
         </div>
 
@@ -110,32 +114,32 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
         {auth && (
           <>
             {auth.role === 'admin' && (
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[8px] font-bold tracking-wider"
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[10px] font-bold tracking-wider rounded-sm"
                 style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                <Shield size={9} /> ADMIN
+                <Shield size={10} /> ADMIN
               </div>
             )}
-            <div className="w-px h-5 bg-[#2a2a3a]" />
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 flex items-center justify-center border"
+            <div className="w-px h-6 bg-[#2a2a3a]" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 flex items-center justify-center border rounded-sm"
                 style={{
                   borderColor: auth.role === 'admin' ? '#F5A62340' : '#2a2a3a',
                   backgroundColor: auth.role === 'admin' ? '#F5A62315' : '#ffffff08'
                 }}>
-                {auth.role === 'admin' ? <Shield size={11} className="text-[#F5A623]" /> : <User size={11} className="text-[#94A3B8]" />}
+                {auth.role === 'admin' ? <Shield size={12} className="text-[#F5A623]" /> : <User size={12} className="text-[#94A3B8]" />}
               </div>
-              <span className="text-[10px] font-medium text-[#e0e0e0]">{auth.name}</span>
+              <span className="text-xs font-medium text-[#e0e0e0]">{auth.name}</span>
             </div>
             <button onClick={onLogout}
-              className="p-1.5 hover:bg-[#ff3366]/10 text-[#94A3B8] hover:text-[#ff3366] transition-colors"
+              className="p-2 hover:bg-[#ff3366]/10 text-[#94A3B8] hover:text-[#ff3366] transition-colors rounded-sm"
               title="Sign out">
-              <LogOut size={13} />
+              <LogOut size={15} />
             </button>
           </>
         )}
         {!auth && (
-          <Link to="/" className="px-2.5 py-1 border border-[#00ff88]/30 text-[#00ff88] text-[8px] font-bold tracking-wider hover:bg-[#00ff88]/10 transition-all"
-            style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+          <Link to="/" className="px-4 py-1.5 border border-[#00ff88]/30 text-[#00ff88] text-[10px] font-bold tracking-wider hover:bg-[#00ff88]/10 transition-all rounded-sm"
+            style={{ fontFamily: 'Orbitron, monospace' }}>
             SIGN IN
           </Link>
         )}

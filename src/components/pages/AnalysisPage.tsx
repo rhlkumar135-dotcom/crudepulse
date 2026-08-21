@@ -5,8 +5,8 @@ import { SupplyDemandSim } from '@/components/modules/SupplyDemandSim'
 
 export function AnalysisPage() {
   return (
-    <PageLayout title="ANALYSIS" subtitle="Correlation engine · Supply-demand simulation">
-      <div className="space-y-3">
+    <PageLayout title="Analysis" subtitle="Correlation engine · Supply-demand simulation">
+      <div className="space-y-4">
         <ModuleCard icon={Activity} color="#00d4ff" title="ME ↔ Global Markets Correlation" cadence="LIVE">
           <MiddleEastCorrelation />
         </ModuleCard>
@@ -15,8 +15,8 @@ export function AnalysisPage() {
           <SupplyDemandSim />
         </ModuleCard>
 
-        <div className="text-center py-2">
-          <div className="text-[10px] text-[#94A3B8] tracking-[0.15em] uppercase"
+        <div className="text-center py-3">
+          <div className="text-xs text-[#94A3B8] tracking-[0.12em] uppercase"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             Yahoo Finance · Google News RSS · Pearson correlation · Real-time simulation
           </div>

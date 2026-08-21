@@ -6,9 +6,9 @@ import { StorageSatellite } from '@/components/modules/StorageSatellite'
 
 export function OperationsPage() {
   return (
-    <PageLayout title="OPERATIONS" subtitle="Rig activity · Refinery utilization · Storage levels">
-      <div className="space-y-3">
-        <div className="grid grid-cols-12 gap-3">
+    <PageLayout title="Operations" subtitle="Rig activity · Refinery utilization · Storage levels">
+      <div className="space-y-4">
+        <div className="grid grid-cols-12 gap-4">
           <div className="col-span-5">
             <ModuleCard icon={Wrench} color="#ff00ff" title="Rig Count" cadence="LIVE" className="h-full">
               <RigCountChart />
@@ -25,8 +25,8 @@ export function OperationsPage() {
           <StorageSatellite />
         </ModuleCard>
 
-        <div className="text-center py-2">
-          <div className="text-[10px] text-[#94A3B8] tracking-[0.15em] uppercase"
+        <div className="text-center py-3">
+          <div className="text-xs text-[#94A3B8] tracking-[0.12em] uppercase"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             Baker Hughes · EIA WPST Table 1+2+4 · Google News · 60s refresh
           </div>
