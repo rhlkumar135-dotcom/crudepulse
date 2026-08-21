@@ -47,12 +47,12 @@ function HeatmapCell({ result, assetLabel, window }: { result: CorrelationResult
         onMouseLeave={() => setHovered(false)}
       >
         <div className="mx-0.5 my-0.5 rounded-md px-1 py-2.5 bg-white/[0.02] border border-white/[0.04] flex items-center justify-center min-h-[48px]">
-          <span className="text-[9px] font-mono text-white/20">n/a</span>
+          <span className="text-[11px] font-mono text-white/20">n/a</span>
         </div>
         {hovered && (
           <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#121826] border border-white/10 rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
             <div className="text-[10px] font-mono text-white/50">{assetLabel} ↔ ME Events</div>
-            <div className="text-[9px] font-mono text-white/30 mt-0.5">{window} window — insufficient data</div>
+            <div className="text-[11px] font-mono text-white/30 mt-0.5">{window} window — insufficient data</div>
           </div>
         )}
       </td>
@@ -80,24 +80,24 @@ function HeatmapCell({ result, assetLabel, window }: { result: CorrelationResult
         <span className="text-[12px] font-mono font-bold tabular-nums leading-none" style={{ color: g.text }}>
           {result.r > 0 ? '+' : ''}{result.r.toFixed(2)}
         </span>
-        <span className="text-[7px] font-mono mt-1 opacity-50" style={{ color: g.text }}>
+        <span className="text-[10px] font-mono mt-1 opacity-50" style={{ color: g.text }}>
           n={result.n}
         </span>
       </div>
       {hovered && (
         <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#121826] border border-white/10 rounded-lg px-3 py-2.5 shadow-xl min-w-[180px]">
           <div className="text-[10px] font-mono text-white/70 font-medium">{assetLabel}</div>
-          <div className="text-[9px] font-mono text-white/40 mt-0.5">Window: {window}</div>
+          <div className="text-[11px] font-mono text-white/40 mt-0.5">Window: {window}</div>
           <div className="mt-1.5 flex items-center gap-2">
             <span className="text-[11px] font-mono font-bold" style={{ color: g.text }}>
               r = {result.r > 0 ? '+' : ''}{result.r.toFixed(3)}
             </span>
-            <span className="text-[7px] font-mono px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: g.bg, color: g.text, border: `1px solid ${g.border}` }}>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: g.bg, color: g.text, border: `1px solid ${g.border}` }}>
               {strength}
             </span>
           </div>
-          <div className="text-[8px] font-mono text-white/30 mt-1">n = {result.n} data points</div>
-          {insufficient && <div className="text-[8px] text-amber/60 mt-1">⚠ Limited sample size</div>}
+          <div className="text-[10px] font-mono text-white/30 mt-1">n = {result.n} data points</div>
+          {insufficient && <div className="text-[10px] text-amber/60 mt-1">⚠ Limited sample size</div>}
         </div>
       )}
     </td>
@@ -107,7 +107,7 @@ function HeatmapCell({ result, assetLabel, window }: { result: CorrelationResult
 function ColorScale() {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[7px] font-mono text-white/30">-1.0</span>
+      <span className="text-[10px] font-mono text-white/30">-1.0</span>
       <div className="flex h-2 rounded overflow-hidden">
         <div className="w-3 bg-red/70" />
         <div className="w-3 bg-red/45" />
@@ -120,7 +120,7 @@ function ColorScale() {
         <div className="w-3 bg-teal/55" />
         <div className="w-3 bg-teal/80" />
       </div>
-      <span className="text-[7px] font-mono text-white/30">+1.0</span>
+      <span className="text-[10px] font-mono text-white/30">+1.0</span>
     </div>
   )
 }
@@ -140,7 +140,7 @@ export function MiddleEastCorrelation() {
       <div className="flex items-center justify-center h-[400px] text-white/40 text-[11px] font-mono">
         <div className="text-center space-y-2">
           <div className="animate-pulse">Loading correlation engine...</div>
-          <div className="text-[9px] opacity-50">Fetching 9 market series + ME events</div>
+          <div className="text-[11px] opacity-50">Fetching 9 market series + ME events</div>
         </div>
       </div>
     )
@@ -166,7 +166,7 @@ export function MiddleEastCorrelation() {
           <span className="text-[11px] font-mono tracking-wider text-white font-semibold">MIDDLE EAST ↔ GLOBAL MARKETS</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[8px] text-white/40 font-mono">{data.eventCount} ME events</span>
+          <span className="text-[10px] text-white/40 font-mono">{data.eventCount} ME events</span>
           <button onClick={() => setShowMethodology(!showMethodology)} className="text-white/30 hover:text-amber transition-colors">
             <Info size={12} />
           </button>
@@ -175,7 +175,7 @@ export function MiddleEastCorrelation() {
 
       {/* Methodology */}
       {showMethodology && (
-        <div className="bg-amber/[0.04] border border-amber/10 rounded-lg p-3 text-[9px] text-white/50 leading-relaxed">
+        <div className="bg-amber/[0.04] border border-amber/10 rounded-lg p-3 text-[11px] text-white/50 leading-relaxed">
           <strong className="text-amber">Methodology:</strong> {data.meta.methodology}
           <div className="mt-1 text-white/30">Windows: {data.meta.windowDays.join('d, ')}d rolling Pearson correlations | Events: {data.meta.eventWindowSize}</div>
         </div>
@@ -197,8 +197,8 @@ export function MiddleEastCorrelation() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="text-[9px] font-mono text-white/50 tracking-wider">CORRELATION MATRIX</span>
-            <span className="text-[7px] font-mono text-white/25 bg-white/[0.04] px-1.5 py-0.5 rounded">PEARSON r</span>
+            <span className="text-[11px] font-mono text-white/50 tracking-wider">CORRELATION MATRIX</span>
+            <span className="text-[10px] font-mono text-white/25 bg-white/[0.04] px-1.5 py-0.5 rounded">PEARSON r</span>
           </div>
           <ColorScale />
         </div>
@@ -210,13 +210,13 @@ export function MiddleEastCorrelation() {
                 <th className="px-3 py-2.5 text-left text-white/40 font-normal w-[130px] border-b border-white/[0.06] bg-white/[0.02]">MARKET</th>
                 <th className="px-2 py-2.5 text-center text-white/40 font-normal border-b border-white/[0.06] bg-white/[0.02]">LATEST</th>
                 <th className="px-3 py-2.5 text-center border-b border-white/[0.06] bg-teal/[0.06]">
-                  <span className="text-[8px] font-mono text-teal/70 tracking-wider">7 DAY</span>
+                  <span className="text-[10px] font-mono text-teal/70 tracking-wider">7 DAY</span>
                 </th>
                 <th className="px-3 py-2.5 text-center border-b border-white/[0.06] bg-teal/[0.04]">
-                  <span className="text-[8px] font-mono text-teal/50 tracking-wider">30 DAY</span>
+                  <span className="text-[10px] font-mono text-teal/50 tracking-wider">30 DAY</span>
                 </th>
                 <th className="px-3 py-2.5 text-center border-b border-white/[0.06] bg-teal/[0.03]">
-                  <span className="text-[8px] font-mono text-teal/40 tracking-wider">90 DAY</span>
+                  <span className="text-[10px] font-mono text-teal/40 tracking-wider">90 DAY</span>
                 </th>
               </tr>
             </thead>
@@ -231,7 +231,7 @@ export function MiddleEastCorrelation() {
                         <span className="text-[10px]">{emoji}</span>
                         <div>
                           <div className="text-white/80 font-medium text-[10px]">{marketLabels[asset.label] || asset.label}</div>
-                          <div className="text-[7px] text-white/25 font-mono mt-0.5">{asset.symbol}</div>
+                          <div className="text-[10px] text-white/25 font-mono mt-0.5">{asset.symbol}</div>
                         </div>
                       </div>
                     </td>
@@ -256,11 +256,11 @@ export function MiddleEastCorrelation() {
         <div className="bg-white/[0.015] border border-white/[0.04] rounded-lg px-3 py-2.5">
           <div className="flex items-center gap-1.5 mb-1.5">
             <Shield size={10} className="text-white/30" />
-            <span className="text-[8px] text-white/30 font-mono tracking-wider">EXCLUDED BY DESIGN</span>
+            <span className="text-[10px] text-white/30 font-mono tracking-wider">EXCLUDED BY DESIGN</span>
           </div>
           <div className="space-y-1">
             {data.excludedAssets.map(a => (
-              <div key={a.symbol} className="flex items-start gap-2 text-[9px] text-white/30">
+              <div key={a.symbol} className="flex items-start gap-2 text-[11px] text-white/30">
                 <span className="font-medium text-white/40 shrink-0">{a.label}</span>
                 <span>— {a.exclusionReason}</span>
               </div>
@@ -272,11 +272,11 @@ export function MiddleEastCorrelation() {
       {/* All callouts */}
       {data.callouts.length > strongCorrelations.length && (
         <div className="space-y-1.5">
-          <div className="text-[8px] text-white/30 font-mono tracking-wider mb-1">ALL NOTABLE CORRELATIONS</div>
+          <div className="text-[10px] text-white/30 font-mono tracking-wider mb-1">ALL NOTABLE CORRELATIONS</div>
           {data.callouts.filter(c => c.strength !== 'strong').map((c, i) => (
             <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded bg-white/[0.01]">
               {c.strength === 'moderate' ? <TrendingUp size={9} className="text-teal/40 mt-0.5 shrink-0" /> : <Minus size={9} className="text-white/20 mt-0.5 shrink-0" />}
-              <span className="text-[9px] text-white/40 leading-relaxed">{c.text}</span>
+              <span className="text-[11px] text-white/40 leading-relaxed">{c.text}</span>
             </div>
           ))}
         </div>
@@ -285,8 +285,8 @@ export function MiddleEastCorrelation() {
       {/* ME Event Timeline */}
       <div>
         <div className="flex items-center gap-1.5 mb-2">
-          <span className="text-[8px] text-white/30 font-mono tracking-wider">MIDDLE EAST EVENT TIMELINE</span>
-          <span className="text-[7px] text-white/20 font-mono">({data.events.length} events)</span>
+          <span className="text-[10px] text-white/30 font-mono tracking-wider">MIDDLE EAST EVENT TIMELINE</span>
+          <span className="text-[10px] text-white/20 font-mono">({data.events.length} events)</span>
         </div>
         <div className="space-y-1 max-h-[300px] overflow-y-auto">
           {data.events.map((event, i) => {
@@ -302,17 +302,17 @@ export function MiddleEastCorrelation() {
                     {event.score > 0 ? '+' : ''}{event.score.toFixed(2)}
                   </span>
                   <span className="text-[10px] text-white/70 leading-snug flex-1 line-clamp-1">{event.title}</span>
-                  <span className="text-[7px] text-white/25 font-mono shrink-0">{event.date}</span>
+                  <span className="text-[10px] text-white/25 font-mono shrink-0">{event.date}</span>
                   {isExpanded ? <ChevronUp size={10} className="text-white/20" /> : <ChevronDown size={10} className="text-white/20" />}
                 </div>
                 {isExpanded && (
                   <div className="px-3 pb-2.5 pt-0.5 border-t border-white/[0.04]">
-                    <div className="text-[9px] text-white/50 leading-relaxed">{event.title}</div>
+                    <div className="text-[11px] text-white/50 leading-relaxed">{event.title}</div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[8px] text-white/25 font-mono">Source: {event.source}</span>
-                      <span className="text-[8px] text-white/25 font-mono">Date: {event.date}</span>
+                      <span className="text-[10px] text-white/25 font-mono">Source: {event.source}</span>
+                      <span className="text-[10px] text-white/25 font-mono">Date: {event.date}</span>
                       <div className="flex-1" />
-                      <span className="text-[9px] font-mono font-bold" style={{ color: scoreColor }}>
+                      <span className="text-[11px] font-mono font-bold" style={{ color: scoreColor }}>
                         Tone: {event.score > 0 ? '+' : ''}{event.score.toFixed(2)}
                       </span>
                     </div>

@@ -38,9 +38,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-bg-elevated border border-border rounded-lg px-2.5 py-1.5 shadow-xl shadow-black/30">
-      <div className="text-[8px] text-text-dim font-mono mb-1">{label}</div>
+      <div className="text-[10px] text-text-dim font-mono mb-1">{label}</div>
       {payload.map((p: any, i: number) => (
-        <div key={i} className="flex items-center gap-1.5 text-[9px] font-mono">
+        <div key={i} className="flex items-center gap-1.5 text-[11px] font-mono">
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.stroke }} />
           <span className="text-text-dim">{p.name}</span>
           <span className="font-medium text-text-bright">{p.value}M</span>
@@ -69,13 +69,13 @@ export function SupplyDemandSim() {
       {/* KPI row */}
       <div className="flex items-center gap-3">
         <div className={`p-2 rounded-lg flex-1 ${avgBalance >= 0 ? 'bg-teal/[0.04] border border-teal/10' : 'bg-red/[0.04] border border-red/10'}`}>
-          <div className="text-[7px] text-text-dim/50 font-mono tracking-wider">AVG BALANCE</div>
+          <div className="text-[10px] text-text-dim/50 font-mono tracking-wider">AVG BALANCE</div>
           <div className={`text-base font-bold font-mono tabular-nums ${avgBalance >= 0 ? 'text-teal' : 'text-red'}`}>
             <CountUp value={avgBalance} decimals={2} prefix={avgBalance >= 0 ? '+' : ''} suffix="M" />
           </div>
         </div>
         <div className={`p-2 rounded-lg flex-1 ${yearEnd >= 0 ? 'bg-teal/[0.04] border border-teal/10' : 'bg-red/[0.04] border border-red/10'}`}>
-          <div className="text-[7px] text-text-dim/50 font-mono tracking-wider">YEAR-END</div>
+          <div className="text-[10px] text-text-dim/50 font-mono tracking-wider">YEAR-END</div>
           <div className={`text-base font-bold font-mono tabular-nums ${yearEnd >= 0 ? 'text-teal' : 'text-red'}`}>
             <CountUp value={yearEnd} decimals={2} prefix={yearEnd >= 0 ? '+' : ''} suffix="M" />
           </div>
@@ -91,14 +91,14 @@ export function SupplyDemandSim() {
       <div className="space-y-1.5">
         {sliders.map(s => (
           <div key={s.key} className="flex items-center gap-2">
-            <span className="text-[8px] text-text-dim/60 font-mono w-[60px] shrink-0">{s.label}</span>
+            <span className="text-[10px] text-text-dim/60 font-mono w-[60px] shrink-0">{s.label}</span>
             <input
               type="range" min={s.min} max={s.max} step={s.step} value={scenario[s.key]}
               onChange={e => update(s.key, +e.target.value)}
               className="flex-1"
               style={{ accentColor: s.color }}
             />
-            <span className="text-[9px] font-mono w-[48px] text-right tabular-nums" style={{ color: scenario[s.key] !== 0 ? s.color : '#475569' }}>
+            <span className="text-[11px] font-mono w-[48px] text-right tabular-nums" style={{ color: scenario[s.key] !== 0 ? s.color : '#475569' }}>
               {scenario[s.key] >= 0 ? '+' : ''}{scenario[s.key]}
             </span>
           </div>
@@ -119,8 +119,8 @@ export function SupplyDemandSim() {
                 <stop offset="100%" stopColor="#EF4444" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <XAxis dataKey="month" tick={{ fontSize: 8, fontFamily: 'IBM Plex Mono' }} tickLine={false} axisLine={false} stroke="#141A22" />
-            <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} domain={['auto', 'auto']} width={30} stroke="#141A22" />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} tickLine={false} axisLine={false} stroke="#141A22" />
+            <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} domain={['auto', 'auto']} width={30} stroke="#141A22" />
             <Tooltip content={<CustomTooltip />} />
             <ReferenceLine y={baseline.worldSupply} stroke="#2DD4BF30" strokeDasharray="2 2" />
             <ReferenceLine y={baseline.worldDemand} stroke="#EF444430" strokeDasharray="2 2" />

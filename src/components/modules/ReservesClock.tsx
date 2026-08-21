@@ -19,7 +19,7 @@ export function ReservesClock() {
         ].map(l => (
           <div key={l.label} className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: l.color }} />
-            <span className="text-[8px] text-text-dim font-mono">{l.label}</span>
+            <span className="text-[10px] text-text-dim font-mono">{l.label}</span>
           </div>
         ))}
       </div>
@@ -55,16 +55,16 @@ export function ReservesClock() {
                   <span className="text-base font-bold font-mono tabular-nums" style={{ color }}>
                     <CountUp value={country.rpRatio} decimals={0} />
                   </span>
-                  <span className="text-[7px] text-text-dim/60 font-mono">yrs</span>
+                  <span className="text-[10px] text-text-dim/60 font-mono">yrs</span>
                 </div>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[11px] font-semibold text-text truncate">{country.flag} {country.country}</div>
                 <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-1">
-                  <div className="text-[8px] text-text-dim/50 font-mono">Reserves</div>
-                  <div className="text-[9px] text-amber font-mono font-medium text-right">{(country.reserves / 1000).toFixed(0)}B bbl</div>
-                  <div className="text-[8px] text-text-dim/50 font-mono">Output</div>
-                  <div className="text-[9px] text-text font-mono text-right">{(country.production).toLocaleString()} kbd</div>
+                  <div className="text-[10px] text-text-dim/50 font-mono">Reserves</div>
+                  <div className="text-[11px] text-amber font-mono font-medium text-right">{(country.reserves / 1000).toFixed(0)}B bbl</div>
+                  <div className="text-[10px] text-text-dim/50 font-mono">Output</div>
+                  <div className="text-[11px] text-text font-mono text-right">{(country.production).toLocaleString()} kbd</div>
                 </div>
               </div>
             </div>

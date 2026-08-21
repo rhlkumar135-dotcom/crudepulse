@@ -11,7 +11,7 @@ export function ReservesPage() {
         </ModuleCard>
 
         <div className="text-center py-2">
-          <div className="text-[8px] text-[#6b7280] tracking-[0.15em] uppercase"
+          <div className="text-[10px] text-[#6b7280] tracking-[0.15em] uppercase"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             USGS · OPEC · FRED · Annual reference data
           </div>

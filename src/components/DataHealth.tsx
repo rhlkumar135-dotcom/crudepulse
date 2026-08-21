@@ -33,7 +33,7 @@ export function DataHealth() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-2.5 py-1 rounded-md hover:bg-white/[0.03] transition-colors text-[9px] font-mono"
+        className="flex items-center gap-2 px-2.5 py-1 rounded-md hover:bg-white/[0.03] transition-colors text-[11px] font-mono"
       >
         <div className="flex items-center gap-1">
           <span className={`w-[5px] h-[5px] rounded-full ${okCount === sources.length ? 'bg-green-500' : 'bg-amber'}`} />
@@ -50,8 +50,8 @@ export function DataHealth() {
           <div className="absolute right-0 top-full mt-2 z-50 glass-card min-w-[280px] shadow-2xl shadow-black/50">
             <div className="p-3">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[9px] font-mono text-text-dim tracking-wider">API STATUS</span>
-                <span className="text-[8px] font-mono text-text-dim">{liveCount} live · {sources.length - liveCount} cached</span>
+                <span className="text-[11px] font-mono text-text-dim tracking-wider">API STATUS</span>
+                <span className="text-[10px] font-mono text-text-dim">{liveCount} live · {sources.length - liveCount} cached</span>
               </div>
               <div className="space-y-0">
                 {sources.map((s, i) => {
@@ -64,9 +64,9 @@ export function DataHealth() {
                           <span className="text-[11px] font-mono text-text">{s.name}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-[9px] text-text-dim font-mono tabular-nums">{s.lastUpdate}</span>
-                          <span className="text-[8px] font-mono text-text-dim/60 w-12 text-right">cron {s.refreshRate}</span>
-                          <span className={`text-[8px] font-mono font-medium ${cfg.text}`}>{cfg.label}</span>
+                          <span className="text-[11px] text-text-dim font-mono tabular-nums">{s.lastUpdate}</span>
+                          <span className="text-[10px] font-mono text-text-dim/60 w-12 text-right">cron {s.refreshRate}</span>
+                          <span className={`text-[10px] font-mono font-medium ${cfg.text}`}>{cfg.label}</span>
                         </div>
                       </div>
                     </div>

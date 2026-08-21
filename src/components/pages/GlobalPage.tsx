@@ -22,7 +22,7 @@ export function GlobalPage() {
         </ModuleCard>
 
         <div className="text-center py-2">
-          <div className="text-[8px] text-[#6b7280] tracking-[0.15em] uppercase"
+          <div className="text-[10px] text-[#6b7280] tracking-[0.15em] uppercase"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             IEA · OPEC · NASA EONET · NOAA · Google News · 60s refresh
           </div>

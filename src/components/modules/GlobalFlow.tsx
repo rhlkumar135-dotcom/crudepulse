@@ -35,11 +35,11 @@ export function GlobalFlowMap() {
         {Object.entries(regionColors).filter(([k]) => k !== 'Other').map(([region, color]) => (
           <div key={region} className="flex items-center gap-1">
             <span className="w-[5px] h-[5px] rounded-full" style={{ backgroundColor: color }} />
-            <span className="text-[8px] text-text-dim font-mono">{region}</span>
+            <span className="text-[10px] text-text-dim font-mono">{region}</span>
           </div>
         ))}
         <div className="flex-1" />
-        <span className="text-[8px] text-text-dim font-mono">{(totalVol / 1000000).toFixed(0)}M total bbl/d</span>
+        <span className="text-[10px] text-text-dim font-mono">{(totalVol / 1000000).toFixed(0)}M total bbl/d</span>
       </div>
 
       {/* SVG Map */}
@@ -115,10 +115,10 @@ export function GlobalFlowMap() {
                 selected?.id === flow.id ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'
               }`}
             >
-              <span className="text-[8px] text-text-dim/40 font-mono w-3 text-right">{i + 1}</span>
+              <span className="text-[10px] text-text-dim/40 font-mono w-3 text-right">{i + 1}</span>
               <span className="w-[5px] h-[5px] rounded-full shrink-0" style={{ backgroundColor: color }} />
               <span className="text-[10px] text-text font-mono truncate min-w-0">{flow.from}</span>
-              <span className="text-text-dim/30 text-[9px]">→</span>
+              <span className="text-text-dim/30 text-[11px]">→</span>
               <span className="text-[10px] text-text font-mono truncate min-w-0">{flow.to}</span>
               <div className="flex-1" />
               <div className="w-16 h-[3px] rounded-full bg-white/[0.04] overflow-hidden shrink-0">

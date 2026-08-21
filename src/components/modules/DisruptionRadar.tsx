@@ -72,22 +72,22 @@ export function DisruptionRadar() {
       {newestTime && (
         <div className="flex items-center gap-1.5 px-2 py-1 bg-teal/[0.06] border border-teal/10 rounded-lg">
           <Clock size={10} className="text-teal/60" />
-          <span className="text-[8px] font-mono text-teal/60 tracking-wider">LATEST EVENT</span>
-          <span className="text-[9px] font-mono text-teal font-medium">{newestTime}</span>
+          <span className="text-[10px] font-mono text-teal/60 tracking-wider">LATEST EVENT</span>
+          <span className="text-[11px] font-mono text-teal font-medium">{newestTime}</span>
         </div>
       )}
 
       {/* Real-time hourly volume bar chart */}
       <div>
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-[9px] font-mono text-muted tracking-wider">24H EVENT VOLUME</span>
-          <span className="text-[8px] font-mono text-teal bg-teal/10 px-1 py-0.5 rounded border border-teal/15">⚡ LIVE FROM EVENTS</span>
+          <span className="text-[11px] font-mono text-muted tracking-wider">24H EVENT VOLUME</span>
+          <span className="text-[10px] font-mono text-teal bg-teal/10 px-1 py-0.5 rounded border border-teal/15">⚡ LIVE FROM EVENTS</span>
         </div>
         <div className="h-[80px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={hourlyVolume} margin={{ left: -10, right: 0 }}>
-              <XAxis dataKey="hour" tick={{ fontSize: 7, fontFamily: 'IBM Plex Mono' }} tickLine={false} axisLine={false} interval={3} />
-              <YAxis tick={{ fontSize: 7 }} tickLine={false} axisLine={false} width={20} />
+              <XAxis dataKey="hour" tick={{ fontSize: 9, fontFamily: 'IBM Plex Mono' }} tickLine={false} axisLine={false} interval={3} />
+              <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={20} />
               <Tooltip
                 contentStyle={{ background: '#121826', border: '1px solid #1E293B', borderRadius: 8, fontSize: 10, fontFamily: 'IBM Plex Mono' }}
                 labelStyle={{ color: '#94A3B8' }}
@@ -108,7 +108,7 @@ export function DisruptionRadar() {
 
       {/* Region ranking by event volume */}
       <div>
-        <span className="text-[9px] font-mono text-muted tracking-wider">REGIONS RANKED BY 24H VOLUME</span>
+        <span className="text-[11px] font-mono text-muted tracking-wider">REGIONS RANKED BY 24H VOLUME</span>
         <div className="mt-1.5 space-y-1">
           {regionData.map(region => {
             const color = categoryColors[region.region] || '#94A3B8'
@@ -131,11 +131,11 @@ export function DisruptionRadar() {
                 </div>
                 <span className="text-[10px] font-mono font-semibold w-6 text-right" style={{ color }}>{region.count}</span>
                 {region.isSpike && (
-                  <span className="text-[8px] font-mono font-bold text-red bg-red/10 px-1 py-0.5 rounded border border-red/20 flex items-center gap-0.5">
+                  <span className="text-[10px] font-mono font-bold text-red bg-red/10 px-1 py-0.5 rounded border border-red/20 flex items-center gap-0.5">
                     <AlertTriangle size={8} /> SPIKE
                   </span>
                 )}
-                <span className="text-[8px] font-mono text-muted w-[32px] text-right">
+                <span className="text-[10px] font-mono text-muted w-[32px] text-right">
                   {region.avgSeverity >= 0.7 ? '▲' : region.avgSeverity >= 0.4 ? '—' : '▼'}
                   {(region.avgSeverity * 10).toFixed(1)}
                 </span>
@@ -148,12 +148,12 @@ export function DisruptionRadar() {
       {/* Event list — sorted by recency (newest first) */}
       <div>
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-[9px] font-mono text-muted tracking-wider">EVENT FEED</span>
-          <span className="text-[8px] font-mono text-muted">({sorted.length} events)</span>
+          <span className="text-[11px] font-mono text-muted tracking-wider">EVENT FEED</span>
+          <span className="text-[10px] font-mono text-muted">({sorted.length} events)</span>
           {selectedCategory && (
             <button
               onClick={() => setSelectedCategory(null)}
-              className="text-[8px] font-mono text-amber hover:underline ml-1"
+              className="text-[10px] font-mono text-amber hover:underline ml-1"
             >
               clear filter ×
             </button>
@@ -176,15 +176,15 @@ export function DisruptionRadar() {
                 <div className="min-w-0 flex-1">
                   <div className="text-[11px] leading-snug line-clamp-1">{event.title}</div>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[8px] text-muted font-mono">{event.location}</span>
-                    <span className="text-[7px] text-border">·</span>
-                    <span className="text-[8px] text-teal/70 font-mono font-medium">{event.time}</span>
-                    <span className="text-[8px] font-mono px-1 py-0.5 rounded" style={{ color, backgroundColor: color + '15' }}>
+                    <span className="text-[10px] text-muted font-mono">{event.location}</span>
+                    <span className="text-[10px] text-border">·</span>
+                    <span className="text-[10px] text-teal/70 font-mono font-medium">{event.time}</span>
+                    <span className="text-[10px] font-mono px-1 py-0.5 rounded" style={{ color, backgroundColor: color + '15' }}>
                       {event.category}
                     </span>
                     <div className="flex-1" />
                     {sentimentIcon}
-                    <span className={`text-[8px] font-mono ${sentimentVal >= 0 ? 'text-teal' : 'text-red'}`}>
+                    <span className={`text-[10px] font-mono ${sentimentVal >= 0 ? 'text-teal' : 'text-red'}`}>
                       {sentimentVal > 0 ? '+' : ''}{sentimentVal.toFixed(1)}
                     </span>
                   </div>
@@ -224,9 +224,9 @@ function buildRegionData(events: GeoEvent[]) {
 function StatCard({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
   return (
     <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.03]">
-      <div className="text-[8px] text-muted font-mono tracking-wider">{label}</div>
+      <div className="text-[10px] text-muted font-mono tracking-wider">{label}</div>
       <div className={`text-base font-bold font-mono ${color}`}>{value}</div>
-      <div className="text-[8px] text-muted font-mono">{sub}</div>
+      <div className="text-[10px] text-muted font-mono">{sub}</div>
     </div>
   )
 }

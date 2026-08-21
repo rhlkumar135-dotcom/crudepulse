@@ -13,7 +13,7 @@ export function CadenceBadge({ cadence, className }: { cadence: Cadence; classNa
   const c = config[cadence]
   return (
     <span className={cn(
-      'inline-flex items-center gap-1 px-1.5 py-[1px] text-[8px] font-bold tracking-[0.15em] uppercase border',
+      'inline-flex items-center gap-1 px-1.5 py-[1px] text-[10px] font-bold tracking-[0.15em] uppercase border',
       className
     )}
       style={{
@@ -30,7 +30,7 @@ export function CadenceBadge({ cadence, className }: { cadence: Cadence; classNa
 
 export function SourceLabel({ source, lastUpdated }: { source: string; lastUpdated?: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-[8px] text-[#4a4a5a]"
+    <div className="flex items-center gap-1.5 text-[10px] text-[#4a4a5a]"
       style={{ fontFamily: 'Share Tech Mono, monospace' }}>
       <svg width="8" height="8" viewBox="0 0 8 8" className="opacity-40 shrink-0">
         <circle cx="4" cy="4" r="3" fill="none" stroke="currentColor" strokeWidth="0.8" />

@@ -88,12 +88,12 @@ export default function MultiAssetChart() {
           <span className="text-[10px] font-mono uppercase tracking-widest text-cyan">Multi-Asset Comparison</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[8px] font-mono text-muted">Source: CoinGecko + Yahoo Finance</span>
+          <span className="text-[10px] font-mono text-muted">Source: CoinGecko + Yahoo Finance</span>
         </div>
       </div>
 
       {error && (
-        <div className="text-[9px] text-amber font-mono bg-amber/10 rounded px-2 py-1 mb-2">
+        <div className="text-[11px] text-amber font-mono bg-amber/10 rounded px-2 py-1 mb-2">
           ⚠ {error}
         </div>
       )}
@@ -103,7 +103,7 @@ export default function MultiAssetChart() {
           <button
             key={tb.key}
             onClick={() => toggleType(tb.key)}
-            className={`text-[8px] font-mono px-2 py-0.5 rounded border transition-colors ${
+            className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-colors ${
               selectedTypes.has(tb.key)
                 ? 'border-current text-white'
                 : 'border-border text-muted hover:text-white'
@@ -116,7 +116,7 @@ export default function MultiAssetChart() {
         ))}
         <button
           onClick={() => setNormalize(!normalize)}
-          className="text-[8px] font-mono px-2 py-0.5 rounded border border-border text-muted hover:text-white ml-auto"
+          className="text-[10px] font-mono px-2 py-0.5 rounded border border-border text-muted hover:text-white ml-auto"
         >
           {normalize ? '% Change' : 'Absolute'}
         </button>
@@ -131,9 +131,9 @@ export default function MultiAssetChart() {
           return (
             <div key={s.symbol} className="flex items-center gap-1.5">
               <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-              <span className="text-[9px] font-mono text-white">{s.label}</span>
-              <span className="text-[9px] font-mono text-muted">${current >= 1000 ? current.toLocaleString(undefined, { maximumFractionDigits: 0 }) : current.toFixed(2)}</span>
-              <span className={`text-[8px] font-mono ${pct >= 0 ? 'text-teal' : 'text-red'}`}>
+              <span className="text-[11px] font-mono text-white">{s.label}</span>
+              <span className="text-[11px] font-mono text-muted">${current >= 1000 ? current.toLocaleString(undefined, { maximumFractionDigits: 0 }) : current.toFixed(2)}</span>
+              <span className={`text-[10px] font-mono ${pct >= 0 ? 'text-teal' : 'text-red'}`}>
                 {pct >= 0 ? <TrendingUp size={8} className="inline" /> : <TrendingDown size={8} className="inline" />}
                 {' '}{Math.abs(pct).toFixed(1)}%
               </span>
@@ -149,14 +149,14 @@ export default function MultiAssetChart() {
               <CartesianGrid strokeDasharray="3 3" stroke="#141A22" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 7, fontFamily: 'IBM Plex Mono' }}
+                tick={{ fontSize: 9, fontFamily: 'IBM Plex Mono' }}
                 tickLine={false}
                 axisLine={false}
                 interval={Math.floor(chartData.length / 6)}
                 stroke="#141A22"
               />
               <YAxis
-                tick={{ fontSize: 7, fontFamily: 'IBM Plex Mono' }}
+                tick={{ fontSize: 9, fontFamily: 'IBM Plex Mono' }}
                 tickLine={false}
                 axisLine={false}
                 width={45}

@@ -25,7 +25,7 @@ export function ModuleCard({ title, icon, cadence, source, lastUpdated, moduleId
           <div className="flex items-center justify-between p-5 pb-3">
             <div className="flex items-center gap-3">
               {moduleId && (
-                <span className="text-[9px] font-mono text-amber/60 bg-amber/5 px-1.5 py-0.5 rounded tracking-wider">{moduleId}</span>
+                <span className="text-[11px] font-mono text-amber/60 bg-amber/5 px-1.5 py-0.5 rounded tracking-wider">{moduleId}</span>
               )}
               <div className="text-amber">{icon}</div>
               <h2 className="text-base font-semibold text-text-bright tracking-wide">{title}</h2>
@@ -63,7 +63,7 @@ export function ModuleCard({ title, icon, cadence, source, lastUpdated, moduleId
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             {moduleId && (
-              <span className="text-[8px] font-mono text-amber/50 bg-amber/[0.04] px-1 py-0.5 rounded tracking-widest border border-amber/[0.06]">{moduleId}</span>
+              <span className="text-[10px] font-mono text-amber/50 bg-amber/[0.04] px-1 py-0.5 rounded tracking-widest border border-amber/[0.06]">{moduleId}</span>
             )}
             <div className="text-amber/80 group-hover:text-amber transition-colors">{icon}</div>
             <h3 className="text-[13px] font-semibold tracking-wide text-text-bright">{title}</h3>

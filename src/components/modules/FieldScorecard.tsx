@@ -43,7 +43,7 @@ export function FieldScorecard() {
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData}>
               <PolarGrid stroke="#141A22" />
-              <PolarAngleAxis dataKey="metric" tick={{ fontSize: 8, fill: '#6B7A90' }} />
+              <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: '#6B7A90' }} />
               <Radar name={selected.name} dataKey="value" stroke="#F5A623" fill="#F5A623" fillOpacity={0.12} strokeWidth={1.5} />
             </RadarChart>
           </ResponsiveContainer>
@@ -51,7 +51,7 @@ export function FieldScorecard() {
 
         {/* Field selector + key stats */}
         <div>
-          <div className="text-[8px] font-mono text-text-dim tracking-wider mb-1.5">SELECT FIELD</div>
+          <div className="text-[10px] font-mono text-text-dim tracking-wider mb-1.5">SELECT FIELD</div>
           <div className="space-y-0.5 max-h-[100px] overflow-y-auto mb-2">
             {oilFields.map(f => {
               const cfg = statusConfig[f.status]
@@ -66,7 +66,7 @@ export function FieldScorecard() {
                   }`}
                 >
                   <span>{f.name}</span>
-                  <span className="text-[7px] px-1 py-0.5 rounded" style={{ color: cfg.color, backgroundColor: cfg.bg }}>{f.status}</span>
+                  <span className="text-[10px] px-1 py-0.5 rounded" style={{ color: cfg.color, backgroundColor: cfg.bg }}>{f.status}</span>
                 </button>
               )
             })}
@@ -83,9 +83,9 @@ export function FieldScorecard() {
 
       {/* Table */}
       <div>
-        <div className="text-[8px] font-mono text-text-dim tracking-wider mb-1">COMPARISON</div>
+        <div className="text-[10px] font-mono text-text-dim tracking-wider mb-1">COMPARISON</div>
         <div className="overflow-x-auto">
-          <table className="w-full text-[9px] font-mono">
+          <table className="w-full text-[11px] font-mono">
             <thead>
               <tr className="text-text-dim/60 border-b border-white/[0.06]">
                 <th className="text-left py-1 px-1 font-medium">Field</th>
@@ -115,7 +115,7 @@ export function FieldScorecard() {
                   >
                     <td className="py-1 px-1 text-text">{f.name}</td>
                     <td className="py-1 px-1">
-                      <span className="text-[7px] px-1 py-0.5 rounded" style={{ color: cfg.color, backgroundColor: cfg.bg }}>{f.status}</span>
+                      <span className="text-[10px] px-1 py-0.5 rounded" style={{ color: cfg.color, backgroundColor: cfg.bg }}>{f.status}</span>
                     </td>
                     <td className="text-right py-1 px-1 text-amber tabular-nums">{f.production.toLocaleString()}</td>
                     <td className="text-right py-1 px-1 text-teal tabular-nums">{(f.reserves / 1000).toFixed(1)}B</td>
@@ -135,9 +135,9 @@ export function FieldScorecard() {
 function MiniStat({ label, value, unit, color }: { label: string; value: string; unit: string; color: string }) {
   return (
     <div className="p-1.5 rounded bg-white/[0.02] border border-white/[0.03]">
-      <div className="text-[7px] text-text-dim/50 font-mono tracking-wider">{label}</div>
+      <div className="text-[10px] text-text-dim/50 font-mono tracking-wider">{label}</div>
       <div className={`text-[11px] font-bold font-mono ${color}`}>{value}</div>
-      <div className="text-[7px] text-text-dim/40 font-mono">{unit}</div>
+      <div className="text-[10px] text-text-dim/40 font-mono">{unit}</div>
     </div>
   )
 }

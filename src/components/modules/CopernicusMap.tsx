@@ -63,12 +63,12 @@ export default function CopernicusMap() {
           <span className="text-[10px] font-mono uppercase tracking-widest text-purple">Copernicus / Satellite Feed</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[8px] font-mono text-muted">NASA EONET + NOAA</span>
+          <span className="text-[10px] font-mono text-muted">NASA EONET + NOAA</span>
         </div>
       </div>
 
       {error && (
-        <div className="text-[9px] text-amber font-mono bg-amber/10 rounded px-2 py-1 mb-2">
+        <div className="text-[11px] text-amber font-mono bg-amber/10 rounded px-2 py-1 mb-2">
           ⚠ {error}
         </div>
       )}
@@ -77,32 +77,32 @@ export default function CopernicusMap() {
         <div className="bg-card rounded-lg p-2 border border-border">
           <div className="flex items-center gap-1 mb-1">
             <Flame size={10} className="text-orange" />
-            <span className="text-[8px] font-mono text-muted uppercase">Active Fires</span>
+            <span className="text-[10px] font-mono text-muted uppercase">Active Fires</span>
           </div>
           <div className="text-[14px] font-mono text-orange font-bold">{fires?.total ?? 0}</div>
-          <div className="text-[8px] font-mono text-muted">
+          <div className="text-[10px] font-mono text-muted">
             {fires?.wildfire ?? 0} wildfire / {fires?.industrial ?? 0} industrial
           </div>
         </div>
         <div className="bg-card rounded-lg p-2 border border-border">
           <div className="flex items-center gap-1 mb-1">
             <Thermometer size={10} className="text-cyan" />
-            <span className="text-[8px] font-mono text-muted uppercase">SST Anomaly</span>
+            <span className="text-[10px] font-mono text-muted uppercase">SST Anomaly</span>
           </div>
           <div className={`text-[14px] font-mono font-bold ${(sst?.anomaly ?? 0) >= 0 ? 'text-red' : 'text-cyan'}`}>
             {sst?.anomaly ? `${sst.anomaly > 0 ? '+' : ''}${sst.anomaly}${sst.unit}` : 'N/A'}
           </div>
-          <div className="text-[8px] font-mono text-muted">{sst?.region ?? 'Global'}</div>
+          <div className="text-[10px] font-mono text-muted">{sst?.region ?? 'Global'}</div>
         </div>
         <div className="bg-card rounded-lg p-2 border border-border">
           <div className="flex items-center gap-1 mb-1">
             <AlertTriangle size={10} className="text-amber" />
-            <span className="text-[8px] font-mono text-muted uppercase">Risk Level</span>
+            <span className="text-[10px] font-mono text-muted uppercase">Risk Level</span>
           </div>
           <div className="text-[14px] font-mono text-amber font-bold">
             {(fires?.total ?? 0) > 50 ? 'ELEVATED' : (fires?.total ?? 0) > 10 ? 'MODERATE' : 'LOW'}
           </div>
-          <div className="text-[8px] font-mono text-muted">Based on fire density</div>
+          <div className="text-[10px] font-mono text-muted">Based on fire density</div>
         </div>
       </div>
 
@@ -147,7 +147,7 @@ export default function CopernicusMap() {
       </div>
 
       {data?.sources && (
-        <div className="flex gap-3 text-[8px] font-mono text-muted">
+        <div className="flex gap-3 text-[10px] font-mono text-muted">
           {data.sources.map(s => (
             <span key={s.name}>📡 {s.name} ({s.latency})</span>
           ))}

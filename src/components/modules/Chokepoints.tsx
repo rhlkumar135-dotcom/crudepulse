@@ -51,11 +51,11 @@ export function ChokepointsMonitor() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[9px] font-bold font-mono" style={{ color }}>{riskLabel(cp.riskScore)}</span>
+                  <span className="text-[11px] font-bold font-mono" style={{ color }}>{riskLabel(cp.riskScore)}</span>
                 </div>
               </div>
               <div className="text-[10px] font-semibold text-text">{cp.shortName}</div>
-              <div className="text-[8px] text-text-dim font-mono mt-0.5">
+              <div className="text-[10px] text-text-dim font-mono mt-0.5">
                 <CountUp value={(cp.dailyVolume / 1000000)} decimals={1} />M
               </div>
             </div>
@@ -80,10 +80,10 @@ export function ChokepointsMonitor() {
                     strokeDasharray={`${cp.riskScore * 125.6} 125.6`} />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[7px] font-bold font-mono" style={{ color }}>{(cp.riskScore * 10).toFixed(1)}</span>
+                  <span className="text-[10px] font-bold font-mono" style={{ color }}>{(cp.riskScore * 10).toFixed(1)}</span>
                 </div>
               </div>
-              <div className="text-[8px] font-medium text-text truncate">{cp.shortName}</div>
+              <div className="text-[10px] font-medium text-text truncate">{cp.shortName}</div>
             </div>
           )
         })}
@@ -95,7 +95,7 @@ export function ChokepointsMonitor() {
           <div className="flex items-center gap-2 mb-2.5">
             <Anchor size={13} className="text-amber" />
             <span className="text-[13px] font-semibold text-text-bright">{selected.name}</span>
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold border"
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border"
               style={{
                 backgroundColor: riskColor(selected.riskScore) + '10',
                 color: riskColor(selected.riskScore),
@@ -117,9 +117,9 @@ export function ChokepointsMonitor() {
             />
           </div>
           <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/[0.04]">
-            <span className="text-[8px] text-text-dim/50 font-mono">ROUTE</span>
+            <span className="text-[10px] text-text-dim/50 font-mono">ROUTE</span>
             <ArrowRight size={8} className="text-text-dim/30" />
-            <span className="text-[9px] text-text-dim font-mono">{selected.keyRoute}</span>
+            <span className="text-[11px] text-text-dim font-mono">{selected.keyRoute}</span>
           </div>
         </div>
       )}
@@ -132,10 +132,10 @@ function StatBlock({ icon, label, value, unit, color }: { icon: React.ReactNode;
     <div>
       <div className="flex items-center gap-1 mb-0.5">
         <span className="text-text-dim/40">{icon}</span>
-        <span className="text-[7px] text-text-dim/50 font-mono tracking-wider">{label}</span>
+        <span className="text-[10px] text-text-dim/50 font-mono tracking-wider">{label}</span>
       </div>
       <div className={`text-[11px] font-bold font-mono ${color}`}>{value}</div>
-      {unit && <div className="text-[7px] text-text-dim/40 font-mono">{unit}</div>}
+      {unit && <div className="text-[10px] text-text-dim/40 font-mono">{unit}</div>}
     </div>
   )
 }
