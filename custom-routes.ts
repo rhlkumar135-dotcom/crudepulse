@@ -639,59 +639,131 @@ app.get('/market/news', async (c) => {
 })
 
 // Module B: Disruption Radar
-// GDELT: 30min TTL, no key needed — this is the most genuinely real-time module
+// Multi-source: GDELT (multiple oil-specific queries) + Google News RSS (parallel feeds) — 30s TTL
+async function fetchGDELTMultiQuery(): Promise<unknown[]> {
+  const queries = [
+    'crude oil price',
+    'OPEC production cut',
+    'oil pipeline disruption',
+    'middle east oil conflict',
+    'oil tanker attack sanctions',
+  ]
+
+  const allArticles: Array<{ id: string; title: string; source: string; time: string; rawDate: string; location: string; sentiment: string; score: number; category: string; severity: number }> = []
+  const seen = new Set<string>()
+
+  const results = await Promise.allSettled(
+    queries.map(async (q) => {
+      try {
+        const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=15&format=json&sort=DateDesc`
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) })
+        if (!res.ok) return []
+        const text = await res.text()
+        if (!text.startsWith('{')) return []
+        const data = JSON.parse(text) as { articles?: Array<{ url: string; title: string; seendate: string; sourcecountry: string; domain: string; tone?: number }> }
+        return data.articles || []
+      } catch { return [] }
+    })
+  )
+
+  for (const r of results) {
+    if (r.status !== 'fulfilled') continue
+    for (const a of r.value) {
+      const key = a.title.toLowerCase().slice(0, 60)
+      if (seen.has(key)) continue
+      seen.add(key)
+      const tone = a.tone ?? 0
+      allArticles.push({
+        id: `gdelt-${allArticles.length}`,
+        title: a.title,
+        source: a.domain || 'GDELT',
+        time: formatTimeAgo(a.seendate),
+        rawDate: a.seendate || '',
+        location: a.sourcecountry || 'Global',
+        sentiment: tone > 0.5 ? 'positive' : tone < -0.5 ? 'negative' : 'neutral',
+        score: +tone.toFixed(1),
+        category: inferCategory(a.title),
+        severity: Math.min(1, Math.abs(tone) / 10),
+      })
+    }
+  }
+
+  return allArticles
+}
+
+async function fetchDisruptionNews(): Promise<unknown[]> {
+  const queries = [
+    'oil pipeline attack disruption',
+    'OPEC crude production cut sanctions',
+    'middle east oil conflict military',
+    'oil tanker shipping disruption',
+    'crude oil supply shortage',
+  ]
+
+  const allArticles: Array<{ title: string; source: string; pubDate: string }> = []
+  const results = await Promise.allSettled(queries.map(q => fetchGoogleNewsRSS(q, 10)))
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value) allArticles.push(...r.value)
+  }
+
+  const seen = new Set<string>()
+  return allArticles.filter(a => {
+    const key = a.title.toLowerCase().slice(0, 50)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 app.get('/market/disruptions', async (c) => {
   const cached = getCache<{ events: unknown[] }>('disruptions')
-  if (cached && isCacheFresh('disruptions', 60 * SECOND)) {
+  if (cached && isCacheFresh('disruptions', 30 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
-  // Try GDELT first (most relevant for disruptions)
-  const gdeltData = await fetchGDELT()
-  if (gdeltData?.length) {
-    setCache('disruptions', { events: gdeltData }, 'api')
-    return c.json({ events: gdeltData, lastUpdated: new Date().toISOString(), source: 'gdelt' })
+  // Fetch GDELT multi-query and Google News in parallel
+  const [gdeltResults, gnewsResults] = await Promise.allSettled([
+    fetchGDELTMultiQuery(),
+    fetchDisruptionNews(),
+  ])
+
+  const gdeltEvents = gdeltResults.status === 'fulfilled' ? gdeltResults.value : []
+  const gnewsRaw = gnewsResults.status === 'fulfilled' ? gnewsResults.value : []
+
+  // Build Google News events
+  const gnewsEvents = gnewsRaw.map((a: any, i: number) => ({
+    id: `gnews-disr-${i}`,
+    title: a.title,
+    source: a.source,
+    time: formatTimeAgo(a.pubDate),
+    rawDate: a.pubDate || '',
+    location: inferLocation(a.title),
+    sentiment: 'neutral' as const,
+    score: 0,
+    category: inferCategory(a.title),
+    severity: 0.3 + Math.abs(Math.sin(a.title.length)) * 0.5,
+  }))
+
+  // Merge: GDELT first (has tone scores), then Google News
+  const seenTitles = new Set<string>()
+  const events: unknown[] = []
+  for (const e of [...gdeltEvents, ...gnewsEvents]) {
+    const key = (e as any).title.toLowerCase().slice(0, 60)
+    if (seenTitles.has(key)) continue
+    seenTitles.add(key)
+    events.push(e)
   }
 
-  // Fallback: Google News RSS for disruption-specific queries
-  try {
-    const url = 'https://news.google.com/rss/search?q=oil+pipeline+attack+sanctions+OPEC+military&hl=en-US&gl=US&ceid=US:en'
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0' } })
-    if (res.ok) {
-      const xml = await res.text()
-      const items: Array<{ title: string; source: string; pubDate: string }> = []
-      const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g)
-      for (const match of itemMatches) {
-        const itemXml = match[1]
-        const title = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || itemXml.match(/<title>(.*?)<\/title>/)?.[1] || ''
-        const source = itemXml.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || 'Google News'
-        const pubDate = itemXml.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || ''
-        if (title) items.push({ title, source, pubDate })
-      }
-      if (items.length) {
-        const events = items.slice(0, 15).map((a, i) => ({
-          id: `gnews-disr-${i}`,
-          title: a.title,
-          source: a.source,
-          time: formatTimeAgo(a.pubDate),
-          location: inferLocation(a.title),
-          sentiment: 'neutral' as const,
-          score: 0,
-          category: inferCategory(a.title),
-          severity: 0.3 + Math.random() * 0.5,
-        }))
-        setCache('disruptions', { events }, 'api')
-        return c.json({ events, lastUpdated: new Date().toISOString(), source: 'gnews' })
-      }
-    }
-  } catch {}
+  if (events.length) {
+    setCache('disruptions', { events }, 'api')
+    return c.json({ events, lastUpdated: new Date().toISOString(), source: 'gdelt+gnews' })
+  }
 
-  // Serve stale cache if available
   if (cached) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source, stale: true })
   }
 
-  return c.json({ error: 'All disruption data sources unavailable. GDELT and Google News RSS both failed.', events: [], sources_tried: ['gdelt', 'gnews'] }, 503)
+  return c.json({ error: 'All disruption data sources unavailable.', events: [], sources_tried: ['gdelt', 'gnews'] }, 503)
 })
 
 // Module C: Rig Count
