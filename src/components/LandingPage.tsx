@@ -38,11 +38,11 @@ export function LandingPage() {
               <span className="text-[#00ff88]">PULSE</span>
             </h1>
 
-            <p className="text-xs text-[#6b7280] tracking-[0.3em] uppercase mb-6" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+            <p className="text-xs text-[#94A3B8] tracking-[0.3em] uppercase mb-6" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
               <span className="text-[#00ff88]/60">&gt;</span> REAL-TIME CRUDE OIL INTELLIGENCE SYSTEM <span className="cursor-blink" />
             </p>
 
-            <div className="flex items-center justify-center gap-6 text-[11px] text-[#6b7280] tracking-[0.15em] uppercase" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+            <div className="flex items-center justify-center gap-6 text-[11px] text-[#94A3B8] tracking-[0.15em] uppercase" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
               <span className="flex items-center gap-1.5"><span className="live-dot" /> LIVE DATA</span>
               <span className="text-[#2a2a3a]">│</span>
               <span>12 MODULES</span>
@@ -70,7 +70,7 @@ export function LandingPage() {
                         style={{ fontFamily: 'Orbitron, monospace' }}>
                         {item.label}
                       </div>
-                      <div className="text-[10px] text-[#6b7280] tracking-widest uppercase"
+                      <div className="text-[10px] text-[#94A3B8] tracking-widest uppercase"
                         style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                         {item.desc}
                       </div>
@@ -96,7 +96,7 @@ export function LandingPage() {
                 <div>
                   <div className="text-sm font-bold text-white tracking-wider"
                     style={{ fontFamily: 'Orbitron, monospace' }}>RESERVES</div>
-                  <div className="text-[10px] text-[#6b7280] tracking-widest uppercase"
+                  <div className="text-[10px] text-[#94A3B8] tracking-widest uppercase"
                     style={{ fontFamily: 'Share Tech Mono, monospace' }}>National Stockpile Data</div>
                 </div>
               </div>
@@ -113,7 +113,7 @@ export function LandingPage() {
             <div className="inline-flex items-center gap-3 px-6 py-3 bg-[#12121a] border border-[#2a2a3a]"
               style={{ clipPath: 'polygon(0 4px, 4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px))' }}>
               <Lock size={10} className="text-[#00ff88]" />
-              <span className="text-[10px] text-[#6b7280] tracking-[0.2em] uppercase" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+              <span className="text-[10px] text-[#94A3B8] tracking-[0.2em] uppercase" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                 GDELT · YAHOO FINANCE · EIA · BAKER HUGHES · OPEC · USGS · GOOGLE NEWS · NASA EONET
               </span>
             </div>

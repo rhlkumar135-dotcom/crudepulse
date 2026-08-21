@@ -16,7 +16,7 @@ export function AnalysisPage() {
         </ModuleCard>
 
         <div className="text-center py-2">
-          <div className="text-[10px] text-[#6b7280] tracking-[0.15em] uppercase"
+          <div className="text-[10px] text-[#94A3B8] tracking-[0.15em] uppercase"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             Yahoo Finance · Google News RSS · Pearson correlation · Real-time simulation
           </div>

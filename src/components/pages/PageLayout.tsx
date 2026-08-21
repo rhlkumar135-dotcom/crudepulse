@@ -15,7 +15,7 @@ export function PageLayout({ title, subtitle, children }: {
             style={{ fontFamily: 'Orbitron, monospace', textShadow: '0 0 12px #00ff8830' }}>
             {title}
           </h1>
-          <p className="text-[11px] text-[#6b7280] tracking-[0.2em] uppercase mt-1"
+          <p className="text-[11px] text-[#94A3B8] tracking-[0.2em] uppercase mt-1"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             <span className="text-[#00ff88]/60">&gt;</span> {subtitle}
           </p>
@@ -53,7 +53,7 @@ export function ModuleCard({ icon: Icon, color, title, cadence, tag, children, c
           </span>
         )}
         {tag && (
-          <span className="text-[10px] font-mono text-[#6b7280] bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">
+          <span className="text-[10px] font-mono text-[#94A3B8] bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">
             {tag}
           </span>
         )}

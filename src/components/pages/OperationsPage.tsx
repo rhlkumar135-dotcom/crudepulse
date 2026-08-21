@@ -26,7 +26,7 @@ export function OperationsPage() {
         </ModuleCard>
 
         <div className="text-center py-2">
-          <div className="text-[10px] text-[#6b7280] tracking-[0.15em] uppercase"
+          <div className="text-[10px] text-[#94A3B8] tracking-[0.15em] uppercase"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             Baker Hughes · EIA WPST Table 1+2+4 · Google News · 60s refresh
           </div>

@@ -1,41 +1,45 @@
 import { useState, useEffect } from 'react'
-import { Satellite, Flame, Thermometer, AlertTriangle } from 'lucide-react'
+import { Satellite, Flame, Thermometer, AlertTriangle, Ship, Waves, Anchor, MapPin } from 'lucide-react'
 
-interface FireHotspot {
-  id: string
-  lat: number
-  lng: number
-  brightness: number
-  confidence: string
-  date: string
-  satellite: string
-  frp: number
-  dayNight: string
+interface Hotspot {
+  id: string; lat: number; lng: number; brightness: number
+  confidence: string; date: string; satellite: string; frp: number; dayNight: string
+  type?: string; title?: string
 }
 
 interface SatelliteResponse {
-  fires: {
-    total: number
-    industrial: number
-    wildfire: number
-    unknown: number
-    hotspots: FireHotspot[]
-    region: string
-  }
+  fires: { total: number; industrial: number; wildfire: number; unknown: number; hotspots: Hotspot[]; region: string }
   sst: { region: string; anomaly: number; unit: string }
+  oilActivity: {
+    activeIncidents: number
+    shippingDensity: string
+    portClosures: number
+    pipelineAlerts: number
+    recentEvents: Array<{ title: string; source: string; time: string; type: string }>
+  }
   sources: Array<{ name: string; url: string; description: string; latency: string }>
   lastUpdated: string
 }
 
 function latLngToXY(lat: number, lng: number, w: number, h: number): { x: number; y: number } {
-  const x = ((lng + 180) / 360) * w
-  const y = ((90 - lat) / 180) * h
-  return { x, y }
+  return { x: ((lng + 180) / 360) * w, y: ((90 - lat) / 180) * h }
 }
+
+const OIL_REGIONS = [
+  { name: 'Persian Gulf', lat: 27, lng: 51, radius: 4, color: '#FF6B35', risk: 'HIGH' },
+  { name: 'Hormuz', lat: 26.5, lng: 56.3, radius: 2.5, color: '#EF4444', risk: 'CRITICAL' },
+  { name: 'Red Sea', lat: 18, lng: 39, radius: 3, color: '#F59E0B', risk: 'HIGH' },
+  { name: 'Suez Canal', lat: 30.6, lng: 32.3, radius: 2, color: '#F59E0B', risk: 'ELEVATED' },
+  { name: 'Gulf of Oman', lat: 24.5, lng: 58.5, radius: 2, color: '#FF6B35', risk: 'HIGH' },
+  { name: 'Niger Delta', lat: 4.5, lng: 6.5, radius: 3, color: '#2DD4BF', risk: 'MODERATE' },
+  { name: 'North Sea', lat: 60, lng: 2, radius: 4, color: '#94A3B8', risk: 'LOW' },
+  { name: 'Permian Basin', lat: 32, lng: -102, radius: 3, color: '#94A3B8', risk: 'LOW' },
+]
 
 export default function CopernicusMap() {
   const [data, setData] = useState<SatelliteResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -54,17 +58,17 @@ export default function CopernicusMap() {
 
   const fires = data?.fires
   const sst = data?.sst
+  const oilActivity = data?.oilActivity
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Satellite size={12} className="text-purple" />
-          <span className="text-[10px] font-mono uppercase tracking-widest text-purple">Copernicus / Satellite Feed</span>
+          <span className="text-[10px] font-mono uppercase tracking-widest text-purple">Oil Region Satellite Monitor</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-muted">NASA EONET + NOAA</span>
-        </div>
+        <span className="text-[10px] font-mono text-muted">LIVE</span>
       </div>
 
       {error && (
@@ -73,81 +77,150 @@ export default function CopernicusMap() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="bg-card rounded-lg p-2 border border-border">
-          <div className="flex items-center gap-1 mb-1">
-            <Flame size={10} className="text-orange" />
-            <span className="text-[10px] font-mono text-muted uppercase">Active Fires</span>
+      {/* Oil Activity Stats */}
+      <div className="grid grid-cols-4 gap-1.5 mb-2">
+        <div className="bg-card rounded-lg p-1.5 border border-border">
+          <div className="flex items-center gap-1 mb-0.5">
+            <Flame size={10} className="text-red" />
+            <span className="text-[10px] font-mono text-muted">Incidents</span>
           </div>
-          <div className="text-[14px] font-mono text-orange font-bold">{fires?.total ?? 0}</div>
-          <div className="text-[10px] font-mono text-muted">
-            {fires?.wildfire ?? 0} wildfire / {fires?.industrial ?? 0} industrial
-          </div>
+          <div className="text-[14px] font-mono text-red font-bold">{oilActivity?.activeIncidents ?? fires?.total ?? 0}</div>
         </div>
-        <div className="bg-card rounded-lg p-2 border border-border">
-          <div className="flex items-center gap-1 mb-1">
-            <Thermometer size={10} className="text-cyan" />
-            <span className="text-[10px] font-mono text-muted uppercase">SST Anomaly</span>
+        <div className="bg-card rounded-lg p-1.5 border border-border">
+          <div className="flex items-center gap-1 mb-0.5">
+            <Ship size={10} className="text-amber" />
+            <span className="text-[10px] font-mono text-muted">Shipping</span>
+          </div>
+          <div className="text-[11px] font-mono text-amber font-bold">{oilActivity?.shippingDensity || 'Normal'}</div>
+        </div>
+        <div className="bg-card rounded-lg p-1.5 border border-border">
+          <div className="flex items-center gap-1 mb-0.5">
+            <Anchor size={10} className="text-cyan" />
+            <span className="text-[10px] font-mono text-muted">Port Status</span>
+          </div>
+          <div className="text-[14px] font-mono text-cyan font-bold">{oilActivity?.portClosures ?? 0}</div>
+          <div className="text-[10px] font-mono text-muted">closures</div>
+        </div>
+        <div className="bg-card rounded-lg p-1.5 border border-border">
+          <div className="flex items-center gap-1 mb-0.5">
+            <Waves size={10} className="text-purple" />
+            <span className="text-[10px] font-mono text-muted">SST Anom</span>
           </div>
           <div className={`text-[14px] font-mono font-bold ${(sst?.anomaly ?? 0) >= 0 ? 'text-red' : 'text-cyan'}`}>
             {sst?.anomaly ? `${sst.anomaly > 0 ? '+' : ''}${sst.anomaly}${sst.unit}` : 'N/A'}
           </div>
-          <div className="text-[10px] font-mono text-muted">{sst?.region ?? 'Global'}</div>
-        </div>
-        <div className="bg-card rounded-lg p-2 border border-border">
-          <div className="flex items-center gap-1 mb-1">
-            <AlertTriangle size={10} className="text-amber" />
-            <span className="text-[10px] font-mono text-muted uppercase">Risk Level</span>
-          </div>
-          <div className="text-[14px] font-mono text-amber font-bold">
-            {(fires?.total ?? 0) > 50 ? 'ELEVATED' : (fires?.total ?? 0) > 10 ? 'MODERATE' : 'LOW'}
-          </div>
-          <div className="text-[10px] font-mono text-muted">Based on fire density</div>
         </div>
       </div>
 
+      {/* Map */}
       <div className="flex-1 min-h-0 relative bg-card rounded-lg border border-border overflow-hidden mb-2">
-        <div className="absolute inset-0 bg-gradient-to-b from-navy-light/30 to-navy-light/60">
-          {/* Simple world map outline using a grid */}
-          <svg viewBox="0 0 400 200" className="w-full h-full opacity-30">
-            <line x1="0" y1="100" x2="400" y2="100" stroke="#1A2030" strokeWidth="0.5" />
-            <line x1="200" y1="0" x2="200" y2="200" stroke="#1A2030" strokeWidth="0.5" />
-            <line x1="0" y1="50" x2="400" y2="50" stroke="#1A2030" strokeWidth="0.3" />
-            <line x1="0" y1="150" x2="400" y2="150" stroke="#1A2030" strokeWidth="0.3" />
-            <line x1="100" y1="0" x2="100" y2="200" stroke="#1A2030" strokeWidth="0.3" />
-            <line x1="300" y1="0" x2="300" y2="200" stroke="#1A2030" strokeWidth="0.3" />
-            {/* ME region box */}
-            <rect x="180" y="55" width="60" height="40" fill="none" stroke="#8B5CF6" strokeWidth="0.5" strokeDasharray="4,2" opacity="0.5" />
-            <text x="210" y="52" fill="#8B5CF6" fontSize="6" textAnchor="middle" fontFamily="IBM Plex Mono">ME Region</text>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628] to-[#060d18]">
+          <svg viewBox="0 0 400 200" className="w-full h-full">
+            {/* Grid lines */}
+            {[50, 100, 150].map(y => (
+              <line key={`h${y}`} x1="0" y1={y} x2="400" y2={y} stroke="#1a2a40" strokeWidth="0.3" />
+            ))}
+            {[100, 200, 300].map(x => (
+              <line key={`v${x}`} x1={x} y1="0" x2={x} y2="200" stroke="#1a2a40" strokeWidth="0.3" />
+            ))}
+
+            {/* Continents outline (simplified) */}
+            {/* Africa */}
+            <path d="M165,80 L170,70 L185,65 L200,60 L205,70 L210,85 L215,100 L212,120 L205,130 L195,140 L185,145 L175,140 L170,125 L165,110 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="0.5" />
+            {/* Europe */}
+            <path d="M175,40 L180,35 L195,30 L210,32 L220,35 L225,40 L220,50 L210,55 L195,58 L185,55 L180,48 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="0.5" />
+            {/* Middle East */}
+            <path d="M210,55 L220,50 L235,48 L250,50 L255,58 L250,65 L240,70 L230,68 L220,65 L215,60 Z" fill="#111d30" stroke="#2a3a50" strokeWidth="0.5" />
+            {/* Asia */}
+            <path d="M250,30 L280,25 L320,28 L350,35 L360,50 L350,65 L330,70 L300,68 L280,60 L265,55 L255,45 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="0.5" />
+            {/* Americas */}
+            <path d="M50,30 L65,25 L75,30 L70,50 L60,70 L55,90 L50,110 L45,120 L40,130 L50,145 L55,155 L50,170 L40,180 L35,165 L30,140 L35,120 L40,100 L35,80 L40,60 L45,45 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="0.5" />
+
+            {/* Oil regions */}
+            {OIL_REGIONS.map(region => {
+              const { x, y } = latLngToXY(region.lat, region.lng, 400, 200)
+              const isSelected = selectedRegion === region.name
+              return (
+                <g key={region.name} onClick={() => setSelectedRegion(isSelected ? null : region.name)} className="cursor-pointer">
+                  <circle cx={x} cy={y} r={region.radius * 3} fill={region.color} opacity={isSelected ? 0.2 : 0.08} stroke={region.color} strokeWidth="0.5" strokeDasharray={isSelected ? 'none' : '2,2'} />
+                  <circle cx={x} cy={y} r="2.5" fill={region.color} opacity="0.9">
+                    <animate attributeName="r" values="2;3.5;2" dur="2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.9;0.5;0.9" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={x} cy={y} r="1" fill="white" opacity="0.8" />
+                  <text x={x} y={y - region.radius * 3 - 3} fill={region.color} fontSize="5" textAnchor="middle" fontFamily="IBM Plex Mono" fontWeight="bold">{region.name}</text>
+                  <text x={x} y={y - region.radius * 3 + 2} fill={region.color} fontSize="3.5" textAnchor="middle" fontFamily="IBM Plex Mono" opacity="0.7">{region.risk}</text>
+                </g>
+              )
+            })}
+
+            {/* Trade routes (dashed lines) */}
+            <path d="M220,58 Q240,75 330,55" fill="none" stroke="#FF6B35" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.4" />
+            <path d="M220,58 Q250,80 310,50" fill="none" stroke="#2DD4BF" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.3" />
+            <path d="M220,58 Q190,70 180,80" fill="none" stroke="#F59E0B" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.3" />
           </svg>
 
-          {/* Fire hotspots */}
+          {/* Fire hotspots overlaid */}
           {fires?.hotspots?.map(f => {
             const { x, y } = latLngToXY(f.lat, f.lng, 100, 100)
-            const size = Math.max(2, Math.min(6, f.frp / 5))
+            const size = Math.max(2, Math.min(5, f.frp / 8))
             const color = f.brightness > 400 ? '#EF4444' : f.brightness > 300 ? '#F59E0B' : '#F97316'
             return (
-              <div
-                key={f.id}
-                className="absolute rounded-full animate-pulse"
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  width: size,
-                  height: size,
-                  backgroundColor: color,
-                  boxShadow: `0 0 ${size * 2}px ${color}`,
-                  transform: 'translate(-50%, -50%)',
-                }}
-                title={`${f.satellite} | ${f.date} | FRP: ${f.frp}`}
-              />
+              <div key={f.id} className="absolute rounded-full animate-pulse" style={{
+                left: `${x}%`, top: `${y}%`, width: size, height: size,
+                backgroundColor: color, boxShadow: `0 0 ${size * 2}px ${color}`,
+                transform: 'translate(-50%, -50%)',
+              }} title={f.title || `${f.satellite} | ${f.date}`} />
             )
           })}
         </div>
+
+        {/* Map legend */}
+        <div className="absolute bottom-2 left-2 bg-[#0a0e14]/90 border border-white/10 rounded p-1.5 space-y-0.5">
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-red animate-pulse" />
+            <span className="text-[10px] text-muted font-mono">CRITICAL</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber" />
+            <span className="text-[10px] text-muted font-mono">ELEVATED</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-teal" />
+            <span className="text-[10px] text-muted font-mono">NORMAL</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-px bg-amber/50 border-dashed" style={{ borderBottom: '1px dashed #F59E0B' }} />
+            <span className="text-[10px] text-muted font-mono">TRADE ROUTE</span>
+          </div>
+        </div>
       </div>
 
+      {/* Oil Activity News */}
+      {oilActivity?.recentEvents && oilActivity.recentEvents.length > 0 && (
+        <div className="space-y-1">
+          <span className="text-[10px] font-mono text-muted tracking-wider uppercase">OIL REGION UPDATES</span>
+          <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
+            {oilActivity.recentEvents.map((event, i) => (
+              <div key={i} className="flex items-start gap-2 px-2 py-1 rounded bg-white/[0.015] hover:bg-white/[0.03]">
+                <MapPin size={10} className="text-purple mt-0.5 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] text-white/80 leading-snug line-clamp-1">{event.title}</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] text-muted font-mono">{event.source}</span>
+                    <span className="text-[10px] text-purple/70 font-mono font-medium">{event.time}</span>
+                    <span className="text-[10px] text-muted font-mono px-1 rounded bg-white/[0.04]">{event.type}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sources */}
       {data?.sources && (
-        <div className="flex gap-3 text-[10px] font-mono text-muted">
+        <div className="flex gap-3 text-[10px] font-mono text-muted mt-1">
           {data.sources.map(s => (
             <span key={s.name}>📡 {s.name} ({s.latency})</span>
           ))}

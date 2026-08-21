@@ -650,10 +650,13 @@ app.get('/market/news', async (c) => {
 async function fetchGDELTMultiQuery(): Promise<unknown[]> {
   const queries = [
     'crude oil price',
-    'OPEC production cut',
+    'OPEC production cut output',
     'oil pipeline disruption',
     'middle east oil conflict',
     'oil tanker attack sanctions',
+    'oil supply shortage inventories',
+    'Strait of Hormuz shipping',
+    'US oil production refinery',
   ]
 
   const allArticles: Array<{ id: string; title: string; source: string; time: string; rawDate: string; location: string; sentiment: string; score: number; category: string; severity: number }> = []
@@ -662,7 +665,7 @@ async function fetchGDELTMultiQuery(): Promise<unknown[]> {
   const results = await Promise.allSettled(
     queries.map(async (q) => {
       try {
-        const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=15&format=json&sort=DateDesc`
+        const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=25&format=json&sort=DateDesc`
         const res = await fetch(url, { signal: AbortSignal.timeout(6000) })
         if (!res.ok) return []
         const text = await res.text()
@@ -709,6 +712,9 @@ async function fetchDisruptionNews(): Promise<unknown[]> {
     'middle east oil conflict military',
     'oil tanker shipping disruption',
     'crude oil supply shortage',
+    'oil price surge OPEC decision',
+    'Strait of Hormuz blockade',
+    'oil refinery explosion shutdown',
   ]
 
   const allArticles: Array<{ title: string; source: string; pubDate: string }> = []
@@ -1982,9 +1988,27 @@ app.get('/market/satellite', async (c) => {
       region: 'Middle East (25°E-65°E, 12°N-40°N)',
     },
     sst: sst || { region: 'Global Ocean', anomaly: 0, unit: '°C' },
+    oilActivity: await (async () => {
+      const oilNews = await fetchGoogleNewsRSS('oil pipeline attack disruption shipping tanker', 5)
+      const portNews = await fetchGoogleNewsRSS('oil port closure terminal shutdown', 3)
+      const allOil = [...oilNews, ...portNews]
+      return {
+        activeIncidents: fires.length + Math.floor(allOil.length * 0.3),
+        shippingDensity: fires.length > 30 ? 'Disrupted' : fires.length > 15 ? 'Elevated' : 'Normal',
+        portClosures: portNews.filter(n => n.title.toLowerCase().includes('close') || n.title.toLowerCase().includes('shutdown')).length,
+        pipelineAlerts: oilNews.filter(n => n.title.toLowerCase().includes('pipeline')).length,
+        recentEvents: allOil.slice(0, 5).map(n => ({
+          title: n.title,
+          source: n.source,
+          time: formatTimeAgo(n.pubDate),
+          type: n.title.toLowerCase().includes('pipeline') ? 'Pipeline' : n.title.toLowerCase().includes('tanker') || n.title.toLowerCase().includes('shipping') ? 'Shipping' : n.title.toLowerCase().includes('port') ? 'Port' : 'General',
+        })),
+      }
+    })(),
     sources: [
-      { name: 'NASA EONET', url: 'https://eonet.gsfc.nasa.gov', description: 'Earth Observatory natural event tracker — active fires', latency: '~3h' },
+      { name: 'NASA EONET', url: 'https://eonet.gsfc.nasa.gov', description: 'Earth Observatory natural event tracker — active fires near oil regions', latency: '~3h' },
       { name: 'NOAA Coral Reef Watch', url: 'https://coralreefwatch.noaa.gov', description: 'Sea surface temperature anomaly', latency: '1d' },
+      { name: 'Google News', url: 'https://news.google.com', description: 'Oil pipeline, shipping, and port activity', latency: '~1h' },
     ],
     lastUpdated: new Date().toISOString(),
   }

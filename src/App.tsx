@@ -32,7 +32,7 @@ class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { h
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             MODULE ERROR — {this.props.name}
           </div>
-          <div className="text-[9px] text-[#6b7280]">{this.state.error}</div>
+          <div className="text-[9px] text-[#94A3B8]">{this.state.error}</div>
         </div>
       )
     }
@@ -83,7 +83,7 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
                   'flex items-center gap-1.5 px-2.5 py-1 text-[8px] font-bold tracking-[0.12em] transition-all border',
                   active
                     ? 'border-[#00ff88]/30 bg-[#00ff88]/[0.08] text-[#00ff88]'
-                    : 'border-transparent text-[#6b7280] hover:text-[#e0e0e0] hover:bg-white/[0.03]'
+                    : 'border-transparent text-[#94A3B8] hover:text-[#e0e0e0] hover:bg-white/[0.03]'
                 )}
                 style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                 <Icon size={11} style={{ color: active ? item.color : undefined }} />
@@ -120,12 +120,12 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
                   borderColor: auth.role === 'admin' ? '#F5A62340' : '#2a2a3a',
                   backgroundColor: auth.role === 'admin' ? '#F5A62315' : '#ffffff08'
                 }}>
-                {auth.role === 'admin' ? <Shield size={11} className="text-[#F5A623]" /> : <User size={11} className="text-[#6b7280]" />}
+                {auth.role === 'admin' ? <Shield size={11} className="text-[#F5A623]" /> : <User size={11} className="text-[#94A3B8]" />}
               </div>
               <span className="text-[10px] font-medium text-[#e0e0e0]">{auth.name}</span>
             </div>
             <button onClick={onLogout}
-              className="p-1.5 hover:bg-[#ff3366]/10 text-[#6b7280] hover:text-[#ff3366] transition-colors"
+              className="p-1.5 hover:bg-[#ff3366]/10 text-[#94A3B8] hover:text-[#ff3366] transition-colors"
               title="Sign out">
               <LogOut size={13} />
             </button>
@@ -153,7 +153,7 @@ function AuthGate({ auth, children }: { auth: AuthState | null; children: ReactN
 
 function AppRoutes({ auth, setAuth }: {
   auth: AuthState | null
-  setAuth: React.Dispatch<React.SetStateAction<AuthState | null>>
+  setAuth: (next: AuthState | null) => void
 }) {
   return (
     <div className="min-h-screen bg-bg relative">
@@ -181,13 +181,35 @@ function AppRoutes({ auth, setAuth }: {
   )
 }
 
+const AUTH_STORAGE_KEY = 'crudepulse_auth'
+
+function loadAuth(): AuthState | null {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed && parsed.isLoggedIn && parsed.email) return parsed
+    return null
+  } catch { return null }
+}
+
 export default function App() {
-  const [auth, setAuth] = useState<AuthState | null>(null)
-  if (!auth) return <AuthScreen onLogin={(a) => setAuth(a)} />
+  const [auth, setAuth] = useState<AuthState | null>(loadAuth)
+
+  const handleSetAuth = (next: AuthState | null) => {
+    setAuth(next)
+    if (next) {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next))
+    } else {
+      localStorage.removeItem(AUTH_STORAGE_KEY)
+    }
+  }
+
+  if (!auth) return <AuthScreen onLogin={(a) => handleSetAuth(a)} />
 
   return (
     <BrowserRouter>
-      <AppRoutes auth={auth} setAuth={setAuth} />
+      <AppRoutes auth={auth} setAuth={handleSetAuth} />
     </BrowserRouter>
   )
 }
@@ -267,7 +289,7 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
             style={{ fontFamily: 'Orbitron, monospace', textShadow: '0 0 20px #00ff8840' }}>
             <span className="cyber-glitch">CRUDE</span><span className="text-[#00ff88]">PULSE</span>
           </h1>
-          <p className="text-[10px] text-[#6b7280] tracking-[0.3em] uppercase"
+          <p className="text-[10px] text-[#94A3B8] tracking-[0.3em] uppercase"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             <span className="text-[#00ff88]/60">&gt;</span> SECURE ACCESS TERMINAL
           </p>
@@ -281,13 +303,13 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
                 <div className="text-4xl mb-4">📧</div>
                 <h2 className="text-sm font-bold text-white tracking-wider mb-2"
                   style={{ fontFamily: 'Orbitron, monospace' }}>CHECK YOUR EMAIL</h2>
-                <p className="text-[10px] text-[#6b7280] mb-1" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+                <p className="text-[10px] text-[#94A3B8] mb-1" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                   Confirmation link sent to:
                 </p>
                 <p className="text-[11px] text-[#00ff88] font-bold mb-3" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                   {email}
                 </p>
-                <p className="text-[9px] text-[#6b7280]/60 mb-5" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+                <p className="text-[9px] text-[#94A3B8]/60 mb-5" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                   Click the link to activate. Expires in 24h.
                 </p>
                 <div className="flex gap-3 justify-center">
@@ -316,14 +338,14 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
                     style={{ fontFamily: 'Orbitron, monospace' }}>
                     {isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'}
                   </h2>
-                  <span className="text-[8px] text-[#6b7280] tracking-widest"
+                  <span className="text-[8px] text-[#94A3B8] tracking-widest"
                     style={{ fontFamily: 'Share Tech Mono, monospace' }}>SECURE</span>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-3">
                   {isSignUp && (
                     <div>
-                      <label className="block text-[8px] text-[#6b7280] mb-1 tracking-[0.2em] uppercase"
+                      <label className="block text-[8px] text-[#94A3B8] mb-1 tracking-[0.2em] uppercase"
                         style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                         <span className="text-[#00ff88]/60">&gt;</span> NAME
                       </label>
@@ -336,7 +358,7 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
                     </div>
                   )}
                   <div>
-                    <label className="block text-[8px] text-[#6b7280] mb-1 tracking-[0.2em] uppercase"
+                    <label className="block text-[8px] text-[#94A3B8] mb-1 tracking-[0.2em] uppercase"
                       style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                       <span className="text-[#00ff88]/60">&gt;</span> EMAIL
                     </label>
@@ -348,7 +370,7 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[8px] text-[#6b7280] mb-1 tracking-[0.2em] uppercase"
+                    <label className="block text-[8px] text-[#94A3B8] mb-1 tracking-[0.2em] uppercase"
                       style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                       <span className="text-[#00ff88]/60">&gt;</span> PASSWORD
                     </label>
@@ -358,7 +380,7 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
                       <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
                         className="cyber-input w-full pr-9" />
                       <button type="button" onClick={() => setShowPw(!showPw)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7280]/40 hover:text-[#00ff88] transition-colors">
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]/40 hover:text-[#00ff88] transition-colors">
                         {showPw ? <EyeOff size={13} /> : <Eye size={13} />}
                       </button>
                     </div>
@@ -381,7 +403,7 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
             )}
           </div>
           <div className="border-t border-[#2a2a3a] px-6 py-3 flex items-center justify-center">
-            <span className="text-[10px] text-[#6b7280]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+            <span className="text-[10px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
               {isSignUp ? 'EXISTING USER?' : 'NO ACCOUNT?'}
               <button onClick={() => { setIsSignUp(!isSignUp); setError(''); setConfirmSent(false) }}
                 className="ml-1 text-[#00ff88] hover:text-[#00ff88]/80 font-bold">

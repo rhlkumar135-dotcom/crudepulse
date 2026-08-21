@@ -6,7 +6,7 @@ const config: Record<Cadence, { label: string; color: string }> = {
   live: { label: 'LIVE', color: '#00ff88' },
   daily: { label: 'DAILY', color: '#F5A623' },
   weekly: { label: 'WEEKLY', color: '#00d4ff' },
-  periodic: { label: 'PERIODIC', color: '#6b7280' },
+  periodic: { label: 'PERIODIC', color: '#94A3B8' },
 }
 
 export function CadenceBadge({ cadence, className }: { cadence: Cadence; className?: string }) {
