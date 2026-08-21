@@ -8,7 +8,7 @@ export interface MarketState<T> {
   lastUpdated: string | null
 }
 
-export function useMarketData<T>(endpoint: string, _tier: string = 'free', refreshInterval: number = 1000) {
+export function useMarketData<T>(endpoint: string, _tier: string = 'free', refreshInterval: number = 15_000) {
   const [state, setState] = useState<MarketState<T>>({ data: null, loading: true, error: null, source: null, lastUpdated: null })
   const mountedRef = useRef(true)
   const dataRef = useRef<T | null>(null)

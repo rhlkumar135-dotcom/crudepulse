@@ -151,7 +151,7 @@ export default function CopernicusMap() {
       } catch (e) { if (alive) setError(String(e)) }
     }
     load()
-    const iv = setInterval(load, 60_000)
+    const iv = setInterval(load, 15_000)
     return () => { alive = false; clearInterval(iv) }
   }, [])
 

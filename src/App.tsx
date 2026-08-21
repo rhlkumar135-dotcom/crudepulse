@@ -1,6 +1,6 @@
 import { useState, useEffect, Component, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { BarChart3, User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper } from 'lucide-react'
+import { User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
 import { LandingPage } from '@/components/LandingPage'
@@ -62,12 +62,8 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
     <>
       <TickerBar />
       <header className="h-14 border-b border-[#2a2a3a] flex items-center px-5 gap-4 bg-[#0a0a0f]/90 backdrop-blur-md">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0">
-          <div className="w-8 h-8 flex items-center justify-center border border-[#00ff88]/40 bg-[#00ff88]/10"
-            style={{ clipPath: 'polygon(0 4px, 4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px))' }}>
-            <BarChart3 size={16} className="text-[#00ff88]" />
-          </div>
+        {/* Brand */}
+        <Link to="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
           <span className="text-sm font-black tracking-[0.1em] text-white"
             style={{ fontFamily: 'Orbitron, monospace' }}>
             CRUDE<span className="text-[#00ff88]">PULSES</span>
@@ -286,15 +282,8 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
       <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[300px] bg-[#ff00ff]/[0.01] blur-[150px] rounded-full" />
 
       <div className="w-full max-w-md relative z-10">
-        {/* Logo */}
+        {/* Brand */}
         <div className="text-center mb-8">
-          <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="absolute inset-0 bg-[#00ff88]/10 blur-2xl rounded-full" />
-            <div className="relative w-20 h-20 bg-[#12121a] border-2 border-[#00ff88] flex items-center justify-center"
-              style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}>
-              <BarChart3 size={36} className="text-[#00ff88]" />
-            </div>
-          </div>
           <h1 className="text-3xl font-black tracking-[0.15em] text-white mb-2 uppercase"
             style={{ fontFamily: 'Orbitron, monospace', textShadow: '0 0 20px #00ff8840' }}>
             <span className="cyber-glitch">CRUDE</span><span className="text-[#00ff88]">PULSES</span>

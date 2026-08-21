@@ -26,8 +26,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function PriceNewsChart() {
-  const { data: priceData } = useMarketData<PriceResponse>('/api/market/prices', 'free', 1000)
-  const { data: newsData } = useMarketData<NewsResponse>('/api/market/news', 'free', 60000)
+  const { data: priceData } = useMarketData<PriceResponse>('/api/market/prices', 'free', 10_000)
+  const { data: newsData } = useMarketData<NewsResponse>('/api/market/news', 'free', 15_000)
   const [hoveredPrice, setHoveredPrice] = useState<number | null>(null)
 
   const wtiHistory = (priceData?.wti?.history || []).filter((p: any) => p && typeof p.close === 'number')

@@ -479,7 +479,7 @@ export function SatelliteIntelPage() {
       }
     }
     load()
-    const iv = setInterval(load, 60_000)
+    const iv = setInterval(load, 15_000)
     return () => { alive = false; clearInterval(iv) }
   }, [])
 

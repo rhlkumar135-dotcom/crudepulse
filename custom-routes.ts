@@ -613,7 +613,7 @@ app.get('/market/prices', async (c) => {
 
 app.get('/market/news', async (c) => {
   const tier = c.req.query('tier') || 'free'
-  const newsTtl = 60 * SECOND
+  const newsTtl = 30 * SECOND
 
   const cached = getCache<{ items: unknown[] }>('news')
   if (cached && isCacheFresh('news', newsTtl)) {
@@ -733,7 +733,7 @@ async function fetchDisruptionNews(): Promise<unknown[]> {
 
 app.get('/market/disruptions', async (c) => {
   const cached = getCache<{ events: unknown[] }>('disruptions')
-  if (cached && isCacheFresh('disruptions', 60 * SECOND)) {
+  if (cached && isCacheFresh('disruptions', 30 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -1960,7 +1960,7 @@ async function fetchDustAerosol(): Promise<Array<{ date: string; aod: number; re
 
 app.get('/market/satellite', async (c) => {
   const cached = getCache('satellite')
-  if (cached && isCacheFresh('satellite', 60 * SECOND)) {
+  if (cached && isCacheFresh('satellite', 30 * SECOND)) {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -2281,7 +2281,7 @@ async function fetchV4SST(): Promise<{
 app.get('/v4/satellite/intel', async (c) => {
   const cacheKey = 'v4-satellite-intel'
   const cached = getCache(cacheKey)
-  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+  if (cached && isCacheFresh(cacheKey, 30 * SECOND)) {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 

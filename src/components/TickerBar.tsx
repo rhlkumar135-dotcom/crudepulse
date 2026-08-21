@@ -40,7 +40,7 @@ export function TickerBar() {
 
   useEffect(() => {
     fetchPrices()
-    const iv = setInterval(fetchPrices, 1000)
+    const iv = setInterval(fetchPrices, 10_000)
     return () => clearInterval(iv)
   }, [fetchPrices])
 

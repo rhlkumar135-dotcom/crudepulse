@@ -74,14 +74,6 @@ export function LandingPage() {
 
         {/* ═══ HERO ═══ */}
         <div className="text-center mb-20">
-          {/* Logo */}
-          <div className="relative w-20 h-20 mx-auto mb-8">
-            <div className="absolute inset-0 bg-[#00ff88]/8 blur-2xl rounded-full" />
-            <div className="relative w-20 h-20 bg-[#0C1018] border border-[#00ff88]/30 flex items-center justify-center rounded-lg">
-              <BarChart3 size={32} className="text-[#00ff88]" />
-            </div>
-          </div>
-
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-4"
             style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
             Crude Oil Intelligence
