@@ -631,10 +631,10 @@ app.get('/market/rigs', async (c) => {
   const dataPoints: Array<{ oilRigs: number; change: number; date: string; source: string }> = []
   for (const article of allRigNews) {
     const title = article.title
-    const toMatch = title.match(/to\s+(\d{3,4})/i)
+    const toMatch = title.match(/(?:oil|crude)[^\d]*?(\d{3,4})/i) || title.match(/to\s+(\d{3,4})/i)
     if (!toMatch) continue
     const oilRigs = parseInt(toMatch[1])
-    if (oilRigs < 200 || oilRigs > 1000) continue
+    if (oilRigs < 200 || oilRigs > 800) continue
 
     let change = 0
     const changeUp = title.match(/(?:up|add|gain|increas)[^\d]*?(\d+)/i)
@@ -867,9 +867,9 @@ app.get('/market/refinery', async (c) => {
   if (currentCsv) {
     const current = parseEIAUtilization(currentCsv)
     if (current) {
-      // Fetch historical weeks for chart data (parallel, limited)
+      // Fetch historical weeks for chart data — limit to 8 most recent to avoid timeouts
       const archiveDates = await fetchEIAArchiveDates()
-      const historyPromises = archiveDates.map(async (path) => {
+      const historyPromises = archiveDates.slice(0, 8).map(async (path) => {
         const csv = await fetchEIATable2(`https://www.eia.gov${path}`)
         return csv ? parseEIAUtilization(csv) : null
       })
