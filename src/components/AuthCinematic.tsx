@@ -122,14 +122,27 @@ function AnimatedBackground() {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Deep gradient base */}
+      {/* Blurred background image */}
+      <div className="absolute inset-0"
+        style={{
+          backgroundImage: 'url(/login-bg.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'blur(12px) brightness(0.45) saturate(1.1)',
+          transform: 'scale(1.05)',
+        }}
+      />
+
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#050810]/80 via-[#050810]/60 to-[#050810]/85" />
+
+      {/* Neon glow accents */}
       <div className="absolute inset-0"
         style={{
           background: `
             radial-gradient(ellipse 120% 80% at 30% 20%, rgba(0,255,136,0.04) 0%, transparent 60%),
             radial-gradient(ellipse 100% 60% at 70% 80%, rgba(255,0,255,0.03) 0%, transparent 60%),
-            radial-gradient(ellipse 80% 80% at 50% 50%, rgba(0,212,255,0.02) 0%, transparent 70%),
-            linear-gradient(180deg, #050810 0%, #0a0f18 50%, #080c14 100%)
+            radial-gradient(ellipse 80% 80% at 50% 50%, rgba(0,212,255,0.02) 0%, transparent 70%)
           `
         }}
       />
