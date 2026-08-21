@@ -115,49 +115,49 @@ export default function CopernicusMap() {
       {/* Map */}
       <div className="flex-1 min-h-0 relative bg-card rounded-lg border border-border overflow-hidden mb-2">
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628] to-[#060d18]">
-          <svg viewBox="0 0 400 200" className="w-full h-full">
+          <svg viewBox="0 0 800 400" className="w-full h-full">
             {/* Grid lines */}
-            {[50, 100, 150].map(y => (
-              <line key={`h${y}`} x1="0" y1={y} x2="400" y2={y} stroke="#1a2a40" strokeWidth="0.3" />
+            {[100, 200, 300].map(y => (
+              <line key={`h${y}`} x1="0" y1={y} x2="800" y2={y} stroke="#1a2a40" strokeWidth="0.5" />
             ))}
-            {[100, 200, 300].map(x => (
-              <line key={`v${x}`} x1={x} y1="0" x2={x} y2="200" stroke="#1a2a40" strokeWidth="0.3" />
+            {[200, 400, 600].map(x => (
+              <line key={`v${x}`} x1={x} y1="0" x2={x} y2="400" stroke="#1a2a40" strokeWidth="0.5" />
             ))}
 
             {/* Continents outline (simplified) */}
             {/* Africa */}
-            <path d="M165,80 L170,70 L185,65 L200,60 L205,70 L210,85 L215,100 L212,120 L205,130 L195,140 L185,145 L175,140 L170,125 L165,110 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="0.5" />
+            <path d="M330,160 L340,140 L370,130 L400,120 L410,140 L420,170 L430,200 L424,240 L410,260 L390,280 L370,290 L350,280 L340,250 L330,220 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="1" />
             {/* Europe */}
-            <path d="M175,40 L180,35 L195,30 L210,32 L220,35 L225,40 L220,50 L210,55 L195,58 L185,55 L180,48 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="0.5" />
+            <path d="M350,80 L360,70 L390,60 L420,64 L440,70 L450,80 L440,100 L420,110 L390,116 L370,110 L360,96 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="1" />
             {/* Middle East */}
-            <path d="M210,55 L220,50 L235,48 L250,50 L255,58 L250,65 L240,70 L230,68 L220,65 L215,60 Z" fill="#111d30" stroke="#2a3a50" strokeWidth="0.5" />
+            <path d="M420,110 L440,100 L470,96 L500,100 L510,116 L500,130 L480,140 L460,136 L440,130 L430,120 Z" fill="#111d30" stroke="#2a3a50" strokeWidth="1" />
             {/* Asia */}
-            <path d="M250,30 L280,25 L320,28 L350,35 L360,50 L350,65 L330,70 L300,68 L280,60 L265,55 L255,45 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="0.5" />
+            <path d="M500,60 L560,50 L640,56 L700,70 L720,100 L700,130 L660,140 L600,136 L560,120 L530,110 L510,90 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="1" />
             {/* Americas */}
-            <path d="M50,30 L65,25 L75,30 L70,50 L60,70 L55,90 L50,110 L45,120 L40,130 L50,145 L55,155 L50,170 L40,180 L35,165 L30,140 L35,120 L40,100 L35,80 L40,60 L45,45 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="0.5" />
+            <path d="M100,60 L130,50 L150,60 L140,100 L120,140 L110,180 L100,220 L90,240 L80,260 L100,290 L110,310 L100,340 L80,360 L70,330 L60,280 L70,240 L80,200 L70,160 L80,120 L90,90 Z" fill="#0f1a2a" stroke="#1a2a40" strokeWidth="1" />
 
             {/* Oil regions */}
             {OIL_REGIONS.map(region => {
-              const { x, y } = latLngToXY(region.lat, region.lng, 400, 200)
+              const { x, y } = latLngToXY(region.lat, region.lng, 800, 400)
               const isSelected = selectedRegion === region.name
               return (
                 <g key={region.name} onClick={() => setSelectedRegion(isSelected ? null : region.name)} className="cursor-pointer">
-                  <circle cx={x} cy={y} r={region.radius * 3} fill={region.color} opacity={isSelected ? 0.2 : 0.08} stroke={region.color} strokeWidth="0.5" strokeDasharray={isSelected ? 'none' : '2,2'} />
-                  <circle cx={x} cy={y} r="2.5" fill={region.color} opacity="0.9">
-                    <animate attributeName="r" values="2;3.5;2" dur="2s" repeatCount="indefinite" />
+                  <circle cx={x} cy={y} r={region.radius * 6} fill={region.color} opacity={isSelected ? 0.2 : 0.08} stroke={region.color} strokeWidth="0.8" strokeDasharray={isSelected ? 'none' : '4,4'} />
+                  <circle cx={x} cy={y} r="4" fill={region.color} opacity="0.9">
+                    <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.9;0.5;0.9" dur="2s" repeatCount="indefinite" />
                   </circle>
-                  <circle cx={x} cy={y} r="1" fill="white" opacity="0.8" />
-                  <text x={x} y={y - region.radius * 3 - 3} fill={region.color} fontSize="5" textAnchor="middle" fontFamily="IBM Plex Mono" fontWeight="bold">{region.name}</text>
-                  <text x={x} y={y - region.radius * 3 + 2} fill={region.color} fontSize="3.5" textAnchor="middle" fontFamily="IBM Plex Mono" opacity="0.7">{region.risk}</text>
+                  <circle cx={x} cy={y} r="1.5" fill="white" opacity="0.8" />
+                  <text x={x} y={y - region.radius * 6 - 6} fill={region.color} fontSize="9" textAnchor="middle" fontFamily="IBM Plex Mono" fontWeight="bold">{region.name}</text>
+                  <text x={x} y={y - region.radius * 6 + 4} fill={region.color} fontSize="6" textAnchor="middle" fontFamily="IBM Plex Mono" opacity="0.7">{region.risk}</text>
                 </g>
               )
             })}
 
             {/* Trade routes (dashed lines) */}
-            <path d="M220,58 Q240,75 330,55" fill="none" stroke="#FF6B35" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.4" />
-            <path d="M220,58 Q250,80 310,50" fill="none" stroke="#2DD4BF" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.3" />
-            <path d="M220,58 Q190,70 180,80" fill="none" stroke="#F59E0B" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.3" />
+            <path d="M440,116 Q480,150 660,110" fill="none" stroke="#FF6B35" strokeWidth="1.5" strokeDasharray="6,6" opacity="0.4" />
+            <path d="M440,116 Q500,160 620,100" fill="none" stroke="#2DD4BF" strokeWidth="1.5" strokeDasharray="6,6" opacity="0.3" />
+            <path d="M440,116 Q380,140 360,160" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="6,6" opacity="0.3" />
           </svg>
 
           {/* Fire hotspots overlaid */}

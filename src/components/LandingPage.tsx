@@ -35,7 +35,7 @@ export function LandingPage() {
             <h1 className="text-5xl md:text-7xl font-black tracking-[0.15em] text-white mb-4 uppercase"
               style={{ fontFamily: 'Orbitron, monospace', textShadow: '0 0 20px #00ff8840, 0 0 40px #00ff8820' }}>
               <span className="cyber-glitch">CRUDE</span>
-              <span className="text-[#00ff88]">PULSE</span>
+              <span className="text-[#00ff88]">PULSES</span>
             </h1>
 
             <p className="text-xs text-[#94A3B8] tracking-[0.3em] uppercase mb-6" style={{ fontFamily: 'Share Tech Mono, monospace' }}>

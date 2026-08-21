@@ -68,7 +68,7 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
           </div>
           <span className="text-sm font-black tracking-[0.1em] text-white"
             style={{ fontFamily: 'Orbitron, monospace' }}>
-            CRUDE<span className="text-[#00ff88]">PULSE</span>
+            CRUDE<span className="text-[#00ff88]">PULSES</span>
           </span>
         </Link>
 
@@ -294,7 +294,7 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
           </div>
           <h1 className="text-3xl font-black tracking-[0.15em] text-white mb-2 uppercase"
             style={{ fontFamily: 'Orbitron, monospace', textShadow: '0 0 20px #00ff8840' }}>
-            <span className="cyber-glitch">CRUDE</span><span className="text-[#00ff88]">PULSE</span>
+            <span className="cyber-glitch">CRUDE</span><span className="text-[#00ff88]">PULSES</span>
           </h1>
           <p className="text-[10px] text-[#94A3B8] tracking-[0.3em] uppercase"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>

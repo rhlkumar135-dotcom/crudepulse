@@ -31,19 +31,19 @@ export function GlobalFlowMap() {
   return (
     <div className="space-y-2">
       {/* Legend */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-4 flex-wrap">
         {Object.entries(regionColors).filter(([k]) => k !== 'Other').map(([region, color]) => (
-          <div key={region} className="flex items-center gap-1">
-            <span className="w-[5px] h-[5px] rounded-full" style={{ backgroundColor: color }} />
-            <span className="text-[10px] text-text-dim font-mono">{region}</span>
+          <div key={region} className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+            <span className="text-xs text-text-dim font-mono">{region}</span>
           </div>
         ))}
         <div className="flex-1" />
-        <span className="text-[10px] text-text-dim font-mono">{(totalVol / 1000000).toFixed(0)}M total bbl/d</span>
+        <span className="text-xs text-text-dim font-mono">{(totalVol / 1000000).toFixed(0)}M total bbl/d</span>
       </div>
 
       {/* SVG Map */}
-      <div className="relative h-[190px] rounded-lg overflow-hidden border border-white/[0.03]"
+      <div className="relative h-[380px] rounded-lg overflow-hidden border border-white/[0.03]"
         style={{ background: 'linear-gradient(135deg, #0D1117, #0F1318)' }}>
         {/* Grid lines */}
         <svg viewBox="0 0 800 400" className="w-full h-full absolute inset-0 opacity-10">
@@ -86,12 +86,12 @@ export function GlobalFlowMap() {
                   opacity={isActive ? 0.9 : 0.3}
                   className="transition-all duration-300"
                 />
-                <circle cx={fromX} cy={fromY} r={isActive ? 4 : 2.5} fill={color} opacity={0.8} className="transition-all" />
-                <circle cx={toX} cy={toY} r={isActive ? 3.5 : 2} fill={color} opacity={0.6} className="transition-all" />
+                <circle cx={fromX} cy={fromY} r={isActive ? 6 : 3.5} fill={color} opacity={0.8} className="transition-all" />
+                <circle cx={toX} cy={toY} r={isActive ? 5 : 3} fill={color} opacity={0.6} className="transition-all" />
                 {isActive && (
                   <>
-                    <rect x={midX - 35} y={midY - 18} width="70" height="14" rx="3" fill="#0F1318" stroke={color} strokeOpacity={0.3} />
-                    <text x={midX} y={midY - 9} textAnchor="middle" fill={color} fontSize="9" fontFamily="IBM Plex Mono" fontWeight="600">
+                    <rect x={midX - 50} y={midY - 22} width="100" height="18" rx="3" fill="#0F1318" stroke={color} strokeOpacity={0.3} />
+                    <text x={midX} y={midY - 10} textAnchor="middle" fill={color} fontSize="11" fontFamily="IBM Plex Mono" fontWeight="600">
                       {(flow.volume / 1000000).toFixed(1)}M bbl/d
                     </text>
                   </>
@@ -103,7 +103,7 @@ export function GlobalFlowMap() {
       </div>
 
       {/* Flow list */}
-      <div className="space-y-0 max-h-[140px] overflow-y-auto">
+      <div className="space-y-0 max-h-[220px] overflow-y-auto">
         {top15.map((flow, i) => {
           const color = regionColors[getRegion(flow.from)] || '#6B7A90'
           const pct = ((flow.volume / totalVol) * 100)
@@ -111,20 +111,20 @@ export function GlobalFlowMap() {
             <div
               key={flow.id}
               onClick={() => setSelected(selected?.id === flow.id ? null : flow)}
-              className={`flex items-center gap-2 py-1.5 px-1 cursor-pointer transition-colors rounded ${
+              className={`flex items-center gap-2.5 py-2 px-2 cursor-pointer transition-colors rounded ${
                 selected?.id === flow.id ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'
               }`}
             >
-              <span className="text-[10px] text-text-dim/40 font-mono w-3 text-right">{i + 1}</span>
-              <span className="w-[5px] h-[5px] rounded-full shrink-0" style={{ backgroundColor: color }} />
-              <span className="text-[10px] text-text font-mono truncate min-w-0">{flow.from}</span>
-              <span className="text-text-dim/30 text-[11px]">→</span>
-              <span className="text-[10px] text-text font-mono truncate min-w-0">{flow.to}</span>
+              <span className="text-xs text-text-dim/40 font-mono w-4 text-right">{i + 1}</span>
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+              <span className="text-xs text-text font-mono truncate min-w-0">{flow.from}</span>
+              <span className="text-text-dim/30 text-sm">→</span>
+              <span className="text-xs text-text font-mono truncate min-w-0">{flow.to}</span>
               <div className="flex-1" />
-              <div className="w-16 h-[3px] rounded-full bg-white/[0.04] overflow-hidden shrink-0">
+              <div className="w-20 h-1.5 rounded-full bg-white/[0.04] overflow-hidden shrink-0">
                 <div className="h-full rounded-full" style={{ width: `${pct * 3}%`, backgroundColor: color, opacity: 0.6 }} />
               </div>
-              <span className="text-[10px] text-amber font-mono font-semibold tabular-nums w-10 text-right">{(flow.volume / 1000000).toFixed(1)}M</span>
+              <span className="text-xs text-amber font-mono font-semibold tabular-nums w-12 text-right">{(flow.volume / 1000000).toFixed(1)}M</span>
             </div>
           )
         })}
