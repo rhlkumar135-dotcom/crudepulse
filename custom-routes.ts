@@ -2501,34 +2501,28 @@ function computeImportanceScore(article: { tone?: number; ageMs: number; mention
   return +(mentionPart + tonePart + recencyPart).toFixed(3)
 }
 
-// Fetch GDELT GEO 2.0 — returns GeoJSON features with lat/lng per article
-async function fetchGDELTGeo(query: string, timespan = '1440'): Promise<Array<{
+// Fetch GDELT DOC 2.0 — article list with sourcecountry + socialimage
+async function fetchGDELTDoc(query: string, maxrecords = 50): Promise<Array<{
   title: string; url: string; seendate: string; domain: string;
-  lat: number; lng: number; tone: number; sourcecountry: string
+  sourcecountry: string; socialimage: string; tone: number
 }>> {
   try {
-    const url = `https://api.gdeltproject.org/api/v2/geo/geo?query=${encodeURIComponent(query)}&format=GeoJSON&timespan=${timespan}&maxpoints=50`
-    const res = await fetch(url, { signal: AbortSignal.timeout(12000) })
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=${maxrecords}&format=json&sort=DateDesc`
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
     if (!res.ok) return []
     const text = await res.text()
-    // GDELT GEO returns GeoJSON — features have article metadata + geometry
-    if (!text.startsWith('{') && !text.startsWith('[')) return []
+    if (!text.startsWith('{')) return []
     const data = JSON.parse(text)
-    const features = data.features || data.articles || []
-    return features.map((f: any) => {
-      const props = f.properties || f
-      const coords = f.geometry?.coordinates || [0, 0]
-      return {
-        title: props.title || props.name || '',
-        url: props.url || props.domain || '',
-        seendate: props.seendate || props.date || '',
-        domain: props.domain || props.sourcename || '',
-        lat: Array.isArray(coords[1]) ? coords[1][1] : (coords[1] || 0),
-        lng: Array.isArray(coords[0]) ? coords[0][0] : (coords[0] || 0),
-        tone: parseFloat(props.tone || props.Tone || 0),
-        sourcecountry: props.sourcecountry || props.SOURCECOMMONNAME || '',
-      }
-    }).filter((a: any) => a.title && a.lat !== 0 && a.lng !== 0)
+    const articles = data.articles || []
+    return articles.map((a: any) => ({
+      title: a.title || '',
+      url: a.url || '',
+      seendate: a.seendate || '',
+      domain: a.domain || '',
+      sourcecountry: a.sourcecountry || '',
+      socialimage: a.socialimage || '',
+      tone: 0,
+    })).filter((a: any) => a.title)
   } catch { return [] }
 }
 
@@ -2557,44 +2551,48 @@ async function fetchTrendingTopics(): Promise<Array<{ topic: string; velocity: n
 app.get('/news/atlas', async (c) => {
   const cacheKey = 'news-atlas'
   const cached = getCache(cacheKey)
-  if (cached && isCacheFresh(cacheKey, 15 * MINUTE)) {
+  if (cached && isCacheFresh(cacheKey, 5 * MINUTE)) {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 
-  // Fetch GDELT GEO 2.0 + Google News RSS in parallel
-  const [geoResults, gnewsResults, trending] = await Promise.allSettled([
-    Promise.allSettled([
-      fetchGDELTGeo('crude oil OR OPEC OR energy', '1440'),
-      fetchGDELTGeo('oil disruption attack sanctions', '1440'),
-      fetchGDELTGeo('oil pipeline refinery infrastructure', '1440'),
-    ]),
-    Promise.allSettled([
-      fetchGoogleNewsRSS('crude oil price OPEC', 30),
-      fetchGoogleNewsRSS('oil disruption attack sanctions', 20),
-      fetchGoogleNewsRSS('oil pipeline refinery infrastructure', 15),
-      fetchGoogleNewsRSS('oil spill environmental emissions', 10),
-      fetchGoogleNewsRSS('oil tanker shipping strait', 10),
-    ]),
-    fetchTrendingTopics(),
+  // Fetch Google News RSS (primary, reliable) + GDELT DOC 2.0 (supplementary, rate-limited)
+  // Google News returns fresh 24h articles; GDELT DOC fills the gaps
+  const gnewsResults = await Promise.allSettled([
+    fetchGoogleNewsRSS('crude oil price OPEC today', 30),
+    fetchGoogleNewsRSS('oil disruption attack military', 20),
+    fetchGoogleNewsRSS('oil pipeline refinery construction', 15),
+    fetchGoogleNewsRSS('oil spill environmental', 10),
+    fetchGoogleNewsRSS('oil tanker shipping strait', 15),
+    fetchGoogleNewsRSS('oil price market futures crude', 15),
+    fetchGoogleNewsRSS('Hormuz Suez Red Sea oil shipping', 15),
+    fetchGoogleNewsRSS('oil production OPEC cut output', 10),
+    fetchGoogleNewsRSS('oil demand supply global energy', 10),
+    fetchGoogleNewsRSS('WTI Brent crude oil latest', 10),
+    fetchGoogleNewsRSS('oil sanctions Russia Iran Venezuela', 10),
+    fetchGoogleNewsRSS('oil rig drilling Permian shale', 10),
   ])
 
-  // Merge GDELT GEO results
-  const allGeoArticles: Array<{
+  // GDELT DOC: only 2 queries, sequential to avoid 429
+  const docResults = await Promise.allSettled([
+    fetchGDELTDoc('crude oil OR OPEC', 50),
+    new Promise(r => setTimeout(r, 1500)).then(() => fetchGDELTDoc('oil disruption attack', 50)),
+  ])
+
+  const trending = await fetchTrendingTopics().catch(() => [] as Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>)
+
+  // Merge GDELT DOC results
+  const allDocArticles: Array<{
     title: string; url: string; seendate: string; domain: string;
-    lat: number; lng: number; tone: number; sourcecountry: string
+    sourcecountry: string; socialimage: string; tone: number
   }> = []
-  if (geoResults.status === 'fulfilled') {
-    for (const r of geoResults.value) {
-      if (r.status === 'fulfilled') allGeoArticles.push(...r.value)
-    }
+  for (const r of docResults) {
+    if (r.status === 'fulfilled') allDocArticles.push(...r.value)
   }
 
   // Merge Google News results
   const allGnewsArticles: Array<{ title: string; source: string; pubDate: string }> = []
-  if (gnewsResults.status === 'fulfilled') {
-    for (const r of gnewsResults.value) {
-      if (r.status === 'fulfilled') allGnewsArticles.push(...r.value)
-    }
+  for (const r of gnewsResults) {
+    if (r.status === 'fulfilled') allGnewsArticles.push(...r.value)
   }
 
   // Build stories with deduplication
@@ -2609,36 +2607,34 @@ app.get('/news/atlas', async (c) => {
 
   const seenTitles: string[] = []
 
-  // Process GDELT GEO articles (they have lat/lng + tone)
-  for (const a of allGeoArticles) {
+  // Process GDELT DOC articles (use sourcecountry for geolocation + socialimage)
+  for (const a of allDocArticles) {
     if (!a.title) continue
-    const key = a.title.toLowerCase().slice(0, 50)
-    if (seenTitles.some(s => titleSimilarity(s, a.title) > 0.6)) continue
+    if (seenTitles.some(s => titleSimilarity(s, a.title) > 0.55)) continue
     seenTitles.push(a.title)
 
     const rawDate = parseGDELTD(a.seendate)
     const ageMs = Date.now() - new Date(rawDate).getTime()
-    if (ageMs > 30 * 24 * 3600_000) continue // 30 day retention
+    // Accept articles up to 7 days old (not 30 — GDELT only covers 7 days)
+    if (ageMs < 0 || ageMs > 7 * 24 * 3600_000) continue
 
     const loc = inferNewsLocation(a.title, a.sourcecountry)
-    const storyLat = a.lat || loc.lat
-    const storyLng = a.lng || loc.lng
 
     stories.push({
-      id: `geo-${stories.length}`,
+      id: `doc-${stories.length}`,
       title: a.title,
       source: a.domain || 'GDELT',
       url: a.url,
-      lat: storyLat,
-      lng: storyLng,
+      lat: loc.lat + (Math.random() - 0.5) * 1.5,
+      lng: loc.lng + (Math.random() - 0.5) * 1.5,
       location: loc.name,
       category: classifyNewsCategory(a.title),
       tone: a.tone || 0,
-      importanceScore: computeImportanceScore({ tone: a.tone, ageMs, mentionVolume: allGeoArticles.filter(g => titleSimilarity(g.title, a.title) > 0.3).length }),
+      importanceScore: computeImportanceScore({ tone: a.tone, ageMs, mentionVolume: allDocArticles.filter(g => titleSimilarity(g.title, a.title) > 0.25).length }),
       ageMs,
       rawDate,
       timeAgo: formatTimeAgo(rawDate),
-      imageUrl: null,
+      imageUrl: a.socialimage || null,
       topicCount: 1,
     })
   }
@@ -2646,13 +2642,12 @@ app.get('/news/atlas', async (c) => {
   // Process Google News articles (no lat/lng, infer from title)
   for (const a of allGnewsArticles) {
     if (!a.title) continue
-    const key = a.title.toLowerCase().slice(0, 50)
-    if (seenTitles.some(s => titleSimilarity(s, a.title) > 0.6)) continue
+    if (seenTitles.some(s => titleSimilarity(s, a.title) > 0.55)) continue
     seenTitles.push(a.title)
 
-    const rawDate = a.pubDate || new Date().toISOString()
+    const rawDate = a.pubDate ? new Date(a.pubDate).toISOString() : new Date().toISOString()
     const ageMs = Date.now() - new Date(rawDate).getTime()
-    if (ageMs > 30 * 24 * 3600_000) continue
+    if (ageMs < 0 || ageMs > 7 * 24 * 3600_000) continue
 
     const loc = inferNewsLocation(a.title)
 
@@ -2661,12 +2656,12 @@ app.get('/news/atlas', async (c) => {
       title: a.title,
       source: a.source || 'Google News',
       url: '',
-      lat: loc.lat + (Math.random() - 0.5) * 2, // slight scatter to avoid exact overlap
+      lat: loc.lat + (Math.random() - 0.5) * 2,
       lng: loc.lng + (Math.random() - 0.5) * 2,
       location: loc.name,
       category: classifyNewsCategory(a.title),
       tone: 0,
-      importanceScore: computeImportanceScore({ tone: 0, ageMs, mentionVolume: allGnewsArticles.filter(g => titleSimilarity(g.title, a.title) > 0.3).length }),
+      importanceScore: computeImportanceScore({ tone: 0, ageMs, mentionVolume: allGnewsArticles.filter(g => titleSimilarity(g.title, a.title) > 0.25).length }),
       ageMs,
       rawDate,
       timeAgo: formatTimeAgo(rawDate),
