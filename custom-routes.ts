@@ -750,7 +750,7 @@ function parseCSVLine(line: string): string[] {
 }
 
 function parseEIAUtilization(csv: string): { date: string; overall: number; padd1: number; padd2: number; padd3: number; padd4: number; padd5: number; inputs: number; capacity: number } | null {
-  const allLines = csv.split('\n')
+  const allLines = csv.replace(/\r/g, '').split('\n')
   if (allLines.length < 5) return null
 
   const extractDate = (csv: string): string => {
