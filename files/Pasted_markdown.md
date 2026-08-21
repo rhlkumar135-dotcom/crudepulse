@@ -1,215 +1,335 @@
-A new portal page: comprehensive, image-rich, interactive news displayed on a live world map
-1. Purpose
-A dedicated page (/news) presenting all recent oil-relevant news as an interactive, geotagged, image-rich experience — not a plain headline list. Users see a live world map with pins where news is happening, and can browse the same content as a rich scrollable feed. This is the most visually engaging "discovery" surface in the product — designed for browsing, not just monitoring.
-2. Core Design Concept
-Split view: interactive world map (left/top) + scrollable article feed (right/bottom), synced — hovering/clicking a map pin scrolls the feed to that article and vice versa.
-Map pins are geotagged automatically (see §4 — GDELT does this natively), clustered when zoomed out, colored by topic category (disruption = red, price/market = amber, policy/OPEC = blue, environmental = green, infrastructure = purple).
-Article cards show: image (when available), headline, one-line AI-generated summary (reuse the LLM pattern from the Daily Brief feature), source + timestamp, region tag, and a "read more" link out to the original source (never reproduce full article text — link out, consistent with copyright practice).
-Filters: by region, topic category, recency (last 24h/7d/30d), and source.
-Live updating: new pins/cards animate in as fresh data arrives, with a "X new stories" toast rather than jarring auto-scroll.
-3. Detailed Pin System
-3.1 Pin Anatomy & Sizing
-Pins are not uniform — size scales with a computed Importance Score, a transparent (non-ML) weighted formula: (mention_volume_last_1h × 0.4) + (|GDELT_tone_score| × 0.35) + (recency_decay_factor × 0.25). Higher score = larger pin. This means a minor regional mention renders small; a major disruption event renders large and impossible to miss — the map self-prioritizes without the user needing to filter.
-Pin shape: circular base with a colored ring (category color, §3.2) and a solid fill whose opacity reflects recency (fully opaque <1h old, fading to 60% opacity as it approaches 24h, further fading toward the 30-day retention edge).
-3.2 Pin Color Coding (category)
-Category
-Color
-Hex
-Example Events
-Disruption/Conflict
-Red
-#EF4444
-Attacks, strikes, chokepoint incidents, sanctions enforcement
-Price/Market Move
-Amber
-#F5A623
-Major price swings, trading news, futures activity
-Policy/OPEC
-Blue
-#3B82F6
-OPEC+ decisions, government policy, regulatory action
-Environmental/Spill
-Green
-#2DD4BF
-Spill candidates (linking to the Satellite layer's spill detection), emissions events, environmental policy
-Infrastructure
-Purple
-#A78BFA
-Pipeline/refinery construction, capacity changes, new discoveries
-This palette must remain colorblind-considerate: pair every color with a distinct pin icon/shape (not color alone) — e.g., a flame glyph for disruption, a dollar glyph for price, a gavel glyph for policy, a droplet glyph for environmental, a wrench glyph for infrastructure — so category is legible without relying on color perception alone.
-3.3 Pin Interaction States
-State
-Trigger
-Behavior
-Default
-Idle on map
-Static pin at computed size/color/opacity
-Hover
-Mouse hover (desktop)
-Lightweight preview tooltip: headline + thumbnail + timestamp, no full card
-Active/Selected
-Click/tap
-Map flies-to and centers on pin, full article card expands in the synced feed panel, pin gets a highlighted outline ring
-New-Arrival
-Story surfaced in the last 10 minutes
-Pulsing animation (expanding ring, 2–3 second loop) + a small "Breaking" badge; pulse automatically stops after 10 minutes, reverting to default state
-Clustered
-Multiple pins within proximity at current zoom level
-Renders as a single cluster bubble showing a count (e.g., "12"); cluster color reflects the dominant category among its members; clicking a cluster zooms in to break it apart, never opens a card directly
-Related/Threaded
-Multiple articles covering the same underlying story (see §3.5)
-Pin shows a small stacked-card icon indicator; clicking opens a threaded view showing all related sources under one story headline instead of duplicate pins
-3.4 Interactive Legend
-Persistent overlay panel (top-left or collapsible corner drawer) showing all 5 category swatches with icon + label + live count of currently-visible pins in that category.
-Legend is clickable/toggleable — clicking a category dims/hides that category's pins on both map and feed, letting users isolate (e.g.) only Disruption events. Multi-select (toggle several on/off independently), not radio-button single-select.
-A "reset filters" control restores all categories.
-Legend also displays the current view mode toggle (Pins vs. Heatmap, §3.6) and the active recency window (24h/7d/30d) as part of the same panel, so all view-state controls live in one predictable place rather than scattered across the UI.
-3.5 Story Threading & Deduplication
-Articles covering the same underlying event (common with wire-service stories picked up by many outlets) are grouped server-side into a single Story object with a story_id, using the lightweight similarity heuristic already specified (headline similarity + time window + topic tag — no heavyweight ML).
-The map shows one pin per story, not one per article. The expanded card shows the primary (first-published or highest-authority) source plus a "+N more sources" expandable list.
-This is what keeps the map readable during a major event that generates 30+ articles in an hour, rather than becoming an unreadable pile of duplicate pins.
-3.6 Alternate View: Density Heatmap Mode
-Toggle (in the legend panel) switches pin view to a smooth heatmap layer showing news density by region rather than individual pins — useful for spotting macro patterns ("a lot is happening in the Gulf right now") at a glance, especially at low zoom levels where individual pins would be too small to read.
-Heatmap intensity uses the same Importance Score aggregated by geographic cell, not raw article count alone (so one major story outweighs ten trivial mentions).
-3.7 Timeline Scrubber
-A horizontal scrubber below the map lets users drag back through the last 30 days (matching the product's existing rolling retention window) — dragging replays pins appearing in their original chronological sequence, turning the map into a rewindable news history rather than only a live snapshot.
-A "Live" toggle/button snaps back to real-time mode from any scrubbed position.
-This reuses the same underlying stored history that the Satellite layer and Time Machine concept already depend on — no new data pipeline, just a new UI over existing retained data.
-3.8 Region Quick-Jump & Search
-Preset chips (Middle East, North America, Europe, Asia-Pacific, Global) instantly fly the map camera to that region's bounding box.
-A search bar filters both map pins and the feed by keyword, company name, or country — matching against story headlines/summaries and region tags, live-updating results as the user types (debounced).
-3.9 Trending Ticker
-A slim horizontal ticker strip above or below the map surfaces the top 5 topics by mention-velocity (rate of increase in GDELT mentions over the last hour vs. the prior hour) — e.g., "▲ Hormuz mentions +340% this hour." Clicking a ticker item filters the map/feed to that topic.
-3.10 Bookmarking & Sharing
-Logged-in users (any tier) can bookmark individual stories to a personal reading list, accessible from their account area.
-Each story supports one-click shareable image card generation — this reuses the Market Moment card generator already specified elsewhere in the product, applied here to any individual news story rather than only auto-triggered digest moments.
-3.11 Optional Sound Cue
-An optional, off-by-default toggle plays a subtle audio "ping" when a new Breaking pin arrives — consistent with (and reusable from) the ambient sonification concept elsewhere in the product, but scoped here to a simple discrete notification sound rather than continuous generative audio.
-4. Data Sources
+CrudePulse — 10 New Tabs: Detailed Requirements, Navigation Update & Data Source Cadence
+Merged with the Landing/Signup/Live-Value Animation specification
+This document adds 10 new oil-domain pages to the portal, updates the top-level navigation to accommodate the expanded tab count, and applies the live-value flash-animation requirement (§4 of the prior document, FR-117–FR-121) to every live number introduced here. It also gives an honest cadence assessment per tab — see §0 before the per-tab sections, since "per second" live data is not actually achievable from free public oil sources, and the product's own data-honesty principle requires saying so rather than implying otherwise.
+0. Cadence Honesty Note (read first)
+No free, public, legal source provides genuine per-second oil market data — real intraday tick-level feeds are commercial products (Bloomberg, Refinitiv, exchange direct feeds) that cost real money. Free-tier APIs (Alpha Vantage, etc.) offer either delayed quotes (typically 15-min delayed) or daily/settlement-level data, and are additionally rate-limited (25 req/day on Alpha Vantage's free tier, as already established elsewhere in this spec).
+What this document does instead: for each tab, it states the fastest genuinely available free cadence, applies the existing cadence-badge system (🟢 LIVE sub-hourly / 🟡 DAILY / 🔵 WEEKLY / ⚪ PERIODIC) honestly, and never claims per-second or continuous-live where the underlying source doesn't support it. Where a tab's data is closer to per-minute (e.g., delayed stock quotes on oil majors), that's stated explicitly as "delayed, cached, refreshed every N minutes" — not "live."
+1. Navigation & Layout Update
+With 5 existing pages (/v1, /v2, /v3, /v4, /news) plus 10 new pages, the top-level nav grows to 15 entries — the existing simple horizontal nav bar no longer fits comfortably, especially on smaller viewports.
+1.1 Functional Requirements
+ID
+Requirement
+FR-122
+Top-level navigation shall widen its container to accommodate up to 15 tab entries on large viewports (desktop), increasing max-width proportionally rather than compressing tab labels to illegibility.
+FR-123
+On medium/smaller viewports where 15 tabs cannot fit legibly even at reduced padding, navigation shall group related tabs under category dropdowns rather than shrinking text further — suggested grouping: Core (/v1, /v2, /v3, /v4), Markets & Finance (Oil Majors, Futures Curve, Freight/Shipping, Downstream Products), Supply & Infrastructure (Crude Grades, SPR Tracker, Refinery Directory, Pipeline Map), Policy & Risk (OPEC+ Compliance, Sanctions Tracker), Discover (/news).
+FR-124
+Each category dropdown shall be keyboard-navigable and clearly labeled, consistent with existing accessibility requirements (NFR-26).
+FR-125
+On mobile viewports, navigation shall collapse to a hamburger/drawer menu preserving the same category grouping from FR-123, rather than a horizontally scrolling single-row tab strip (which becomes unusable at 15 items on a phone width).
+FR-126
+Tab width within any given row/group shall size to content (not fixed-width truncation) up to a reasonable max, so labels like "Global Refinery Directory" remain fully readable rather than clipped with ellipsis.
+2. Tab: Crude Grades & Quality Explorer (/grades)
+2.1 Purpose
+Explains why crude prices differ between benchmarks — API gravity, sulfur content, and other quality specs across WTI, Brent, Dubai, Urals, Oman, and other traded grades — turning an often-confusing pricing gap into an understood one.
+2.2 Functional Requirements
+ID
+Requirement
+FR-127
+System shall display a comparison table/card grid of at least 8 major traded crude grades with API gravity, sulfur %, and a plain-language "light/heavy, sweet/sour" classification.
+FR-128
+System shall show each grade's current price alongside its quality specs, so users can see quality-adjusted price differences directly (e.g., why Brent trades at a premium/discount to WTI).
+FR-129
+Grade-to-grade comparison shall support a selectable overlay (pick any 2–4 grades to compare side-by-side).
+2.3 Data Sources & Cadence
 Source
-What It Provides
+Data
 Cadence
 Access
-Key Required
-GDELT GEO 2.0 API
-Automatically geotagged news events (lat/lon per article) — this is what makes the map genuinely interactive without you building your own geocoding pipeline
-~15 min
-https://blog.gdeltproject.org/gdelt-geo-2-0-api-debuts/
-Free, no key
-GDELT DOC 2.0 API
-Article metadata including a sharingimage field (article's associated image URL where available), tone score, topic
-~15 min
-https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/
-Free, no key
-NewsAPI (already integrated)
-Higher-quality headline/image pairs (urlToImage field) for top-volume stories
-Cached, 2–4h per existing rate-limit design
-https://newsapi.org/
-Free tier, 100 req/day
-Google News RSS
-Free supplementary feed diversity beyond NewsAPI's daily cap, no key needed — query via https://news.google.com/rss/search?q=<query>
-Near-real-time
-Public RSS, no signup
-None
-Reuters Energy RSS / oilprice.com RSS / EIA blog RSS
-Curated, oil-industry-specific feeds as a higher-signal supplementary source
-Varies, several/day
-Public RSS endpoints (verify current URLs at each publisher, subject to change)
-None
-Wikimedia Commons
-Free, appropriately-licensed fallback imagery for topic categories when no article image exists (e.g., a generic labeled "refinery," "tanker," "OPEC meeting" stock image)
-N/A (static library)
-https://commons.wikimedia.org/
-None, but must respect individual image licenses (most CC-BY/CC-BY-SA — attribution required)
-Image-handling requirement (important): when an article has no native image, the system may show a topic-appropriate stock image from Wikimedia Commons only if clearly labeled as generic/illustrative ("Representative image" badge) — never presented as if it depicts the actual event. This avoids misleading users into thinking a stock photo is real footage of a specific incident.
-5. Functional Requirements
-5.1 Core Map & Feed
+EIA Open Data
+Grade-specific price series where available (WTI, Brent, others)
+🟡 Daily
+eia.gov/opendata
+Published grade specification references (industry-standard API gravity/sulfur tables)
+Static quality specs
+⚪ Periodic (annual review, specs rarely change)
+Public refiner/industry references — compile once, update rarely
+Honest cadence: quality specs are reference data (⚪ Periodic); price differentials update daily (🟡). No genuine sub-daily source exists for this tab.
+3. Tab: Oil Majors Financial Snapshot (/majors)
+3.1 Purpose
+Earnings, market cap, and upstream/downstream revenue split for major public oil companies (ExxonMobil, Shell, BP, Chevron, TotalEnergies, ConocoPhillips, and Aramco where public data exists).
+3.2 Functional Requirements
 ID
 Requirement
-FR-77
-System shall display a world map with pins for all oil-relevant news events geotagged via GDELT GEO 2.0, refreshed every 15 minutes.
-FR-78
-Map pins shall be color-coded and icon-coded by topic category (§3.2) and clustered at low zoom levels to avoid visual overload.
-FR-79
-System shall display a synchronized scrollable article feed alongside the map; selecting a pin or feed item highlights/scrolls the corresponding counterpart.
-FR-80
-Each article card shall display an image where available (via GDELT sharingimage or NewsAPI urlToImage), a one-line AI-generated summary, source, timestamp, and region tag.
-FR-81
-System shall never reproduce full article text — cards link out to the original source for full reading.
-FR-82
-When no native article image exists, system shall optionally display a clearly-labeled generic/illustrative stock image (Wikimedia Commons, properly attributed) rather than a blank card — labeling must make clear the image is representative, not the actual event.
-FR-83
-System shall support filtering by region, topic category, recency window (24h/7d/30d), and source.
-FR-84
-New stories arriving after initial page load shall be indicated via a non-disruptive "X new stories" toast/badge rather than automatically re-sorting or scrolling the user's current view.
-FR-85
-System shall deduplicate near-identical stories covered by multiple outlets into a single Story object per §3.5, rather than showing duplicate pins/cards.
-5.2 Pin Behavior & Sizing
+FR-130
+System shall display current market cap, latest quarterly revenue/earnings, and stock price for each tracked major, refreshed per §3.3's cadence.
+FR-131
+System shall show a simple upstream vs. downstream revenue split per company where disclosed in filings.
+FR-132
+Stock price figures shall be explicitly labeled as delayed (per §0), never presented as live tick data.
+FR-133
+Every price/financial figure on this page shall apply the live-value flash animation (merged requirement, see §12) when its cached value changes between refreshes.
+3.3 Data Sources & Cadence
+Source
+Data
+Cadence
+Access
+SEC EDGAR (free, no key)
+Quarterly filings — revenue, earnings, segment breakdown
+🔵 Weekly poll for new filings (filings themselves are quarterly events)
+sec.gov/edgar
+Alpha Vantage (already integrated)
+Stock price (delayed)
+🟡 Cached/refreshed every 4h, consistent with existing rate-limit-respecting cron design — genuinely NOT per-minute given the 25 req/day cap shared across the whole product
+alphavantage.co
+Honest cadence: this tab cannot be faster than the product's existing Alpha Vantage quota allows. If per-minute stock quotes are genuinely wanted, that requires a paid market-data provider — flagged here as an explicit non-free gap, not silently worked around.
+4. Tab: Strategic Petroleum Reserves Tracker (/spr)
+4.1 Purpose
+US SPR levels plus other major countries' strategic reserves where publicly reported (China, Japan, South Korea, EU member states via IEA reporting obligations).
+4.2 Functional Requirements
 ID
 Requirement
-FR-86
-System shall compute an Importance Score per story using the formula in §3.1 and scale pin size accordingly; the formula and its weights shall be documented/visible to the user (e.g., via an info tooltip) rather than presented as an opaque black-box ranking.
-FR-87
-Pin fill opacity shall decay with story age per §3.1's schedule, giving the map a visual "freshness" gradient without requiring the user to check timestamps individually.
-FR-88
-New-arrival pins shall pulse for exactly 10 minutes from first surfacing, then revert permanently to default state — pulsing shall not re-trigger on subsequent unrelated updates to the same story.
-FR-89
-Cluster bubbles shall display an accurate live count and shall recompute/redraw as the user zooms, never showing a stale count from a previous zoom level.
-5.3 Legend & View Controls
+FR-134
+System shall display current US SPR level (barrels) with historical trend chart.
+FR-135
+System shall display reserve levels for other IEA member countries where publicly disclosed, noting explicitly which countries do not publish this data (e.g., China's SPR levels are not officially disclosed — this shall be stated, not silently omitted as if no data exists).
+FR-136
+System shall show SPR draws/releases as annotated events on the trend chart (e.g., "released X million barrels, [date], [stated reason]").
+4.3 Data Sources & Cadence
+Source
+Data
+Cadence
+Access
+EIA Open Data (Weekly Petroleum Status Report)
+US SPR level
+🔵 Weekly
+eia.gov/opendata
+IEA member country reporting (public summary data)
+Non-US reserve levels where disclosed
+⚪ Periodic (varies by country, often monthly/quarterly)
+iea.org (public reports; note IEA's full database is subscription, but summary/member reporting is publicly referenced)
+Honest cadence: this is inherently a slow-moving dataset — weekly at best for the US, slower elsewhere. No faster free source exists because governments simply don't report this more often.
+5. Tab: Global Refinery Directory (/refineries)
+5.1 Purpose
+Searchable, facility-level database: capacity, complexity, owner, location, and crude slate per refinery — the drill-down complement to the existing Refinery Utilization Heatmap (which shows regional aggregates, not individual facilities).
+5.2 Functional Requirements
 ID
 Requirement
-FR-90
-The legend panel shall show all 5 categories with icon, color swatch, label, and a live count of currently-visible pins in that category, updating as filters/zoom change.
-FR-91
-Clicking a legend category shall toggle (not replace) that category's visibility on both map and feed simultaneously — multiple categories may be independently toggled off at once.
-FR-92
-A single "reset filters" control shall restore all categories and the default recency window in one action.
-FR-93
-The Pins/Heatmap view toggle (§3.6) shall live within the same legend panel as category filters, not as a separate disconnected control.
-FR-94
-Heatmap mode intensity shall be computed from aggregated Importance Score per geographic cell, not raw pin count, consistent with §3.6.
-5.4 Timeline, Search & Navigation
+FR-137
+System shall provide a searchable/filterable directory of major global refineries with capacity (bbl/day), complexity index where available, owner/operator, and location.
+FR-138
+Each refinery entry shall link to its location on the map (reusing existing map tooling from V2), and cross-link to the Satellite Intelligence Layer's facility watchlist where the refinery is already monitored there.
+FR-139
+System shall clearly label this dataset's refresh cadence as annual/periodic — it must NOT be presented alongside faster-cadence tabs without a distinct, less-urgent visual treatment (e.g., no "LIVE" badge anywhere on this page).
+5.3 Data Sources & Cadence
+Source
+Data
+Cadence
+Access
+EIA Refinery Capacity Report
+US refinery-level capacity/ownership
+⚪ Periodic (annual report)
+eia.gov/petroleum/refinerycapacity
+International refinery data (public disclosures, company reports)
+Non-US refinery specs
+⚪ Periodic, compiled/maintained manually — no single free live API covers this globally
+Compiled from public company/government disclosures
+Honest cadence: this is reference data by nature — refineries don't change capacity daily. Weekly/live badges do not apply here at all.
+6. Tab: Pipeline Network Map (/pipelines)
+6.1 Purpose
+Major crude/product pipelines globally — capacity, ownership, and recent outages — the physical-infrastructure complement to the existing trade-flow Sankey map (which shows commercial flows, not physical routes).
+6.2 Functional Requirements
 ID
 Requirement
-FR-95
-The timeline scrubber shall allow dragging across the full 30-day retention window, replaying pin arrivals in true chronological sequence at the scrubbed position.
-FR-96
-A "Live" control shall be persistently visible while scrubbed to a past position, allowing one-click return to real-time mode.
-FR-97
-Region quick-jump chips shall animate the map camera (smooth fly-to, not an instant jump cut) to each preset region's bounding box.
-FR-98
-The search bar shall filter map and feed simultaneously against story headlines, summaries, and region/entity tags, with debounced live results as the user types.
-5.5 Trending, Bookmarking & Sharing
+FR-140
+System shall display major pipelines as routed lines on a map, with capacity and ownership shown on click/hover.
+FR-141
+System shall overlay recent outage/incident flags on affected pipeline segments, sourced from the existing GDELT disruption pipeline (reusing Module 6's infrastructure, filtered for pipeline-related keywords) rather than building a separate news integration.
+FR-142
+Pipeline capacity/ownership data shall be labeled periodic; outage flags shall carry the faster GDELT-derived cadence badge (🟢, ~15–30 min) since they reuse that existing live pipeline.
+6.3 Data Sources & Cadence
+Source
+Data
+Cadence
+Access
+EIA pipeline data (US)
+US pipeline capacity/routes
+⚪ Periodic
+eia.gov
+Public pipeline operator disclosures
+International major pipelines
+⚪ Periodic, manually compiled
+Various public operator/government sources
+GDELT (already integrated)
+Outage/incident detection
+🟢 ~15–30 min (reused from existing Module 6 pipeline)
+gdeltproject.org
+Honest cadence: the physical network data is static/periodic; only the outage-flag layer is genuinely fast, and that's because it's reusing an already-fast source, not because pipeline data itself updates quickly.
+7. Tab: Tanker Freight & Shipping Cost Tracker (/freight)
+7.1 Purpose
+Freight rate trends (Baltic Dirty Tanker Index-style) connecting chokepoint congestion (already tracked in V2's Module 2) to actual shipping cost impact.
+7.2 Functional Requirements
 ID
 Requirement
-FR-99
-The trending ticker shall rank topics by mention-velocity (current-hour vs. prior-hour GDELT mention rate), refreshed every 15 minutes alongside the core pin data.
-FR-100
-Clicking a trending ticker item shall apply it as a live filter to both map and feed, consistent with the search/filter behavior in §5.4.
-FR-101
-Logged-in users on any tier shall be able to bookmark a story to a personal reading list, persisted to their account.
-FR-102
-Each story shall support one-click shareable image card generation, reusing the existing Market Moment card generator rather than a separate rendering pipeline.
-FR-103
-The optional Breaking-pin sound cue shall default to off and persist the user's on/off preference across sessions.
-6. Non-Functional Requirements
+FR-143
+System shall display freight rate trend charts for major tanker routes, updated per §7.3's cadence.
+FR-144
+System shall show a correlation callout (reusing the existing correlation-callout mechanism, FR-15) between chokepoint risk score (Module 2) and freight rate movement, where a meaningful relationship is statistically present.
+7.3 Data Sources & Cadence
+Source
+Data
+Cadence
+Access
+Baltic Exchange
+Freight index summary data (limited free tier — full index data is subscription; free/public summaries are less granular)
+🔵 Daily (best available free granularity)
+balticexchange.com (verify current free-data terms; full index history typically requires a paid subscription)
+EIA shipping/transport commentary
+Contextual shipping cost narrative
+⚪ Periodic
+eia.gov
+Honest cadence and gap disclosure: this is the one tab where the free data landscape is genuinely thin — the Baltic Exchange's full index is a paid product; only limited public summaries are free. This tab should launch with a clear "data availability may be limited" note rather than promising a rich free feed that may not actually be sustainable — worth validating actual current Baltic Exchange free-tier terms before committing to this tab's full scope.
+8. Tab: Futures Curve / Contango-Backwardation Viewer (/futures)
+8.1 Purpose
+Shows the forward price curve shape (contango vs. backwardation), which reveals storage economics and market expectations — a materially different signal than spot price alone.
+8.2 Functional Requirements
 ID
 Requirement
-NFR-20
-GDELT GEO/DOC polling shall run as a shared cron job (15 min) feeding both the existing Disruption Radar module and this new News Atlas page — avoid duplicate GDELT integrations.
-NFR-21
-AI-generated summaries (FR-80) shall be cached per-story (generate once, reuse), not regenerated per page view, to control LLM API cost.
-NFR-22
-Map rendering shall lazy-load/code-split independently (per the existing multi-page architecture pattern) so this page's map tooling doesn't affect load time elsewhere in the product.
-NFR-23
-Deduplication (FR-85) shall use a simple similarity heuristic (headline text similarity + same time window + same topic tag) — not a heavyweight ML dedup system, consistent with the product's general no-unnecessary-ML principle.
-NFR-24
-Pin clustering and rendering shall remain performant with at least several hundred concurrent story pins on screen — use viewport-based rendering/virtualization for the feed list and standard map-library clustering (not custom-built) for the map layer.
-NFR-25
-The category color palette shall be paired with distinct icons/shapes (§3.2) so the map remains legible for colorblind users without relying on color alone.
-NFR-26
-Map and legend controls shall be keyboard-navigable and screen-reader labeled (pin categories, counts, and selected-story state announced), consistent with general accessibility practice.
-NFR-27
-On mobile viewports, the split map/feed view shall stack (map on top, feed below, or a swipeable toggle) rather than compressing both into an unusably small side-by-side layout.
-NFR-28
-Timeline scrubbing (FR-95) shall query pre-aggregated/cached historical data rather than re-querying GDELT live for past windows, since GDELT's live endpoint is not intended for this access pattern.
+FR-145
+System shall display the current futures curve (price by contract month) for WTI and Brent.
+FR-146
+System shall label the curve shape (contango/backwardation/flat) with a plain-language one-line explanation of what that shape typically implies.
+FR-147
+System shall show curve shape history over the last 30 days (reusing the product's standard rolling retention window) so users can see whether the market structure is shifting.
+8.3 Data Sources & Cadence
+Source
+Data
+Cadence
+Access
+Alpha Vantage / CME public settlement data
+Futures settlement prices by contract month
+🟡 Daily (settlement-based — genuinely NOT intraday-live on free tiers)
+alphavantage.co, cmegroup.com (public settlement data, not live feed)
+Honest cadence: futures curves on free data are settlement-based (once/day), not continuously live — stated plainly rather than implying a live-updating curve.
+9. Tab: OPEC+ Quota Compliance Tracker (/opec-compliance)
+9.1 Purpose
+Each OPEC+ member's agreed production quota vs. actual production over time — a recurring, genuinely newsworthy data story not covered elsewhere in the product.
+9.2 Functional Requirements
+ID
+Requirement
+FR-148
+System shall display each OPEC+ member's current quota alongside actual production, with a compliance percentage.
+FR-149
+System shall show compliance trend over time (rolling chart), highlighting members with sustained over/under-production.
+FR-150
+System shall cross-link to the existing Supply-Demand Simulator (Module 7) so compliance data can feed into simulator scenarios rather than existing as an isolated dataset.
+9.3 Data Sources & Cadence
+Source
+Data
+Cadence
+Access
+OPEC Monthly Oil Market Report
+Quotas, member statements
+⚪ Periodic (monthly)
+opec.org/opec_web/en/data_graphs/40.htm
+EIA International Energy Statistics
+Actual country-level production
+🟡 Monthly (matches OPEC's own report cadence closely)
+eia.gov/opendata
+Honest cadence: this is inherently a monthly-cadence dataset because that's how often OPEC itself reports — no faster free source exists or would be meaningful (production isn't measured/reported more granularly).
+10. Tab: Downstream Product Prices (/downstream)
+10.1 Purpose
+Gasoline, diesel, jet fuel, and heating oil prices — connects upstream crude price moves to what consumers actually experience, and pairs naturally with the earlier-proposed "My Barrel Impact" personal calculator idea.
+10.2 Functional Requirements
+ID
+Requirement
+FR-151
+System shall display current regional average prices for gasoline, diesel, jet fuel, and heating oil (US regions via EIA; other regions where free data exists).
+FR-152
+System shall show a synced chart comparing crude price movement against downstream product price movement over the same period, making the lag/pass-through relationship visible.
+FR-153
+System shall clearly label the geographic scope of each price series (e.g., "US Gulf Coast average," "US national average") since downstream prices vary significantly by region and a single "global" number would be misleading.
+10.3 Data Sources & Cadence
+Source
+Data
+Cadence
+Access
+EIA Gasoline & Diesel Retail Prices
+US regional retail prices
+🔵 Weekly
+eia.gov/petroleum/gasdiesel
+EIA Jet Fuel / Heating Oil series
+US wholesale/retail prices
+🔵 Weekly
+eia.gov/opendata
+Honest cadence: EIA's retail price surveys are weekly by design — this is the genuine ceiling for free downstream price data, not a limitation of this product's implementation.
+11. Tab: Sanctions & Trade Restrictions Tracker (/sanctions)
+11.1 Purpose
+A running list of active oil-related sanctions by country/entity — the legal/policy complement to the Dark Fleet Tracker's vessel-behavior signal.
+11.2 Functional Requirements
+ID
+Requirement
+FR-154
+System shall display currently active oil-related sanctions with country/entity, date enacted, and a plain-language scope summary.
+FR-155
+System shall cross-reference sanctioned entities against the Dark Fleet Tracker's vessel data where a named vessel or operator overlaps (reusing existing OFAC integration already specified for that module, rather than duplicating it).
+FR-156
+System shall poll for newly added sanctions entries and surface a "recently added" indicator for entries added within the last 7 days.
+11.3 Data Sources & Cadence
+Source
+Data
+Cadence
+Access
+OFAC Sanctions List
+US sanctions
+🟡 Daily poll for updates (list itself updates irregularly, as issued — daily poll catches new entries promptly)
+sanctionslist.ofac.treas.gov
+EU Sanctions Map
+EU sanctions
+🟡 Daily poll
+sanctionsmap.eu (public data)
+Honest cadence: sanctions are issued irregularly (not on a fixed schedule), so "daily poll" means "checked daily for whatever changed," not "updates daily" — an important distinction to preserve in the UI's cadence badge (should read something like "checked daily" rather than a generic "DAILY" badge that implies the underlying reality changes daily).
+12. Merged Requirement: Live-Value Animation Applies to All 10 New Tabs
+Per the prior document's §4 (FR-117–FR-121), every live/cached numeric value across the product must play the brief directional flash animation on change. This is explicitly extended to every new tab in this document:
+ID
+Requirement
+FR-157
+Every numeric value across all 10 new tabs (prices, quotas, compliance %, reserve levels, freight rates, capacity figures) shall apply the existing flash-on-change animation (FR-117–FR-121) when its underlying cached value changes between refreshes — no new tab is exempt from this requirement.
+FR-158
+Given several of these tabs have genuinely slow (weekly/monthly/periodic) cadence, the flash animation will naturally fire far less often on these pages than on /v1's price ticker — this is correct and expected behavior, not a bug; the animation should never be artificially triggered on an unchanged value just to appear "more live" than the data actually is (this would directly violate the product's core data-honesty principle).
+13. Summary Table — All 10 New Tabs
+Tab
+Route
+Fastest Genuine Cadence
+Primary Free Source
+Crude Grades & Quality Explorer
+/grades
+Daily (price), Periodic (specs)
+EIA
+Oil Majors Financial Snapshot
+/majors
+4h cached (price), Weekly (filings)
+SEC EDGAR, Alpha Vantage
+Strategic Petroleum Reserves Tracker
+/spr
+Weekly
+EIA
+Global Refinery Directory
+/refineries
+Periodic (annual)
+EIA Refinery Capacity Report
+Pipeline Network Map
+/pipelines
+Periodic (network), ~15–30min (outage flags via GDELT)
+EIA, GDELT
+Tanker Freight & Shipping Cost Tracker
+/freight
+Daily (limited free granularity — gap flagged)
+Baltic Exchange (public summary only)
+Futures Curve Viewer
+/futures
+Daily (settlement-based)
+Alpha Vantage, CME public settlement
+OPEC+ Quota Compliance Tracker
+/opec-compliance
+Monthly
+OPEC, EIA
+Downstream Product Prices
+/downstream
+Weekly
+EIA
+Sanctions & Trade Restrictions Tracker
+/sanctions
+Daily poll (irregular underlying updates)
+OFAC, EU Sanctions Map
+No tab in this set achieves true per-second or continuous-live data — this is a structural fact of free public oil-market data, not a shortfall in this specification. The fastest genuinely live layer in the entire product remains V4's satellite/GDELT infrastructure (5–15 min) and V1's WebSocket-pushed price/news modules — these 10 new tabs are intentionally the product's slower, deeper reference layer, and are badged accordingly rather than being misrepresented as faster than they are.

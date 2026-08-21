@@ -1,6 +1,6 @@
-import { useState, useEffect, Component, type ReactNode } from 'react'
+import { useState, useEffect, useRef, Component, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper } from 'lucide-react'
+import { User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, ChevronDown, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
 import { LandingPage } from '@/components/LandingPage'
@@ -12,6 +12,16 @@ import { GlobalPage } from '@/components/pages/GlobalPage'
 import { ReservesPage } from '@/components/pages/ReservesPage'
 import { SatelliteIntelPage } from '@/components/pages/SatelliteIntelPage'
 import { NewsAtlasPage } from '@/components/pages/NewsAtlasPage'
+import { GradesPage } from '@/components/pages/GradesPage'
+import { MajorsPage } from '@/components/pages/MajorsPage'
+import { SPRTrackerPage } from '@/components/pages/SPRTrackerPage'
+import { RefineryDirectoryPage } from '@/components/pages/RefineryDirectoryPage'
+import { PipelineMapPage } from '@/components/pages/PipelineMapPage'
+import { FreightTrackerPage } from '@/components/pages/FreightTrackerPage'
+import { FuturesCurvePage } from '@/components/pages/FuturesCurvePage'
+import { OPECCompliancePage } from '@/components/pages/OPECCompliancePage'
+import { DownstreamPage } from '@/components/pages/DownstreamPage'
+import { SanctionsTrackerPage } from '@/components/pages/SanctionsTrackerPage'
 
 type Role = 'user' | 'admin'
 
@@ -44,24 +54,58 @@ class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { h
 
 // ═══ Cyberpunk Nav Shell ═══════════════════════════════════════════════════
 
-const NAV_ITEMS = [
-  { to: '/markets', label: 'Markets', icon: TrendingUp, color: '#00ff88' },
-  { to: '/disruptions', label: 'Disruptions', icon: Radar, color: '#ff3366' },
-  { to: '/operations', label: 'Operations', icon: Wrench, color: '#ff00ff' },
-  { to: '/analysis', label: 'Analysis', icon: Activity, color: '#00d4ff' },
-  { to: '/global', label: 'Global', icon: Globe, color: '#F5A623' },
-  { to: '/satellite-intel', label: 'Satellite', icon: Satellite, color: '#00d4ff' },
-  { to: '/news', label: 'News', icon: Newspaper, color: '#FFC107' },
+interface NavItem { to: string; label: string; icon: any; color: string }
+interface NavCategory { label: string; items: NavItem[] }
+
+const NAV_CATEGORIES: NavCategory[] = [
+  { label: 'Core', items: [
+    { to: '/markets', label: 'Markets', icon: TrendingUp, color: '#00ff88' },
+    { to: '/disruptions', label: 'Disruptions', icon: Radar, color: '#ff3366' },
+    { to: '/operations', label: 'Operations', icon: Wrench, color: '#ff00ff' },
+    { to: '/analysis', label: 'Analysis', icon: Activity, color: '#00d4ff' },
+    { to: '/global', label: 'Global', icon: Globe, color: '#F5A623' },
+    { to: '/satellite-intel', label: 'Satellite', icon: Satellite, color: '#00d4ff' },
+    { to: '/news', label: 'News', icon: Newspaper, color: '#FFC107' },
+  ]},
+  { label: 'Markets', items: [
+    { to: '/futures', label: 'Futures Curve', icon: BarChart3, color: '#00ff88' },
+    { to: '/majors', label: 'Oil Majors', icon: Building2, color: '#00d4ff' },
+    { to: '/freight', label: 'Freight', icon: Ship, color: '#ff9500' },
+    { to: '/downstream', label: 'Downstream', icon: Droplets, color: '#ff3366' },
+    { to: '/grades', label: 'Crude Grades', icon: Filter, color: '#2DD4BF' },
+  ]},
+  { label: 'Supply', items: [
+    { to: '/spr', label: 'SPR Tracker', icon: Shield, color: '#00d4ff' },
+    { to: '/refineries', label: 'Refineries', icon: Factory, color: '#94A3B8' },
+    { to: '/pipelines', label: 'Pipelines', icon: RouteIcon, color: '#F5A623' },
+  ]},
+  { label: 'Policy', items: [
+    { to: '/opec-compliance', label: 'OPEC+ Compliance', icon: ShieldAlert, color: '#ff00ff' },
+    { to: '/sanctions', label: 'Sanctions', icon: ShieldAlert, color: '#ff3366' },
+  ]},
 ]
 
 function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => void }) {
   const location = useLocation()
   const path = location.pathname
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const dropdownTimeout = useRef<ReturnType<typeof setTimeout>>()
+
+  const isActive = (item: NavItem) => path === item.to || (item.to !== '/' && path.startsWith(item.to))
+
+  const handleDropdownEnter = (label: string) => {
+    clearTimeout(dropdownTimeout.current)
+    setOpenDropdown(label)
+  }
+  const handleDropdownLeave = () => {
+    dropdownTimeout.current = setTimeout(() => setOpenDropdown(null), 200)
+  }
 
   return (
     <>
       <TickerBar />
-      <header className="h-14 border-b border-[#2a2a3a] flex items-center px-5 gap-4 bg-[#0a0a0f]/90 backdrop-blur-md">
+      <header className="h-14 border-b border-[#2a2a3a] flex items-center px-5 gap-3 bg-[#0a0a0f]/90 backdrop-blur-md">
         {/* Brand */}
         <Link to="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
           <span className="text-sm font-black tracking-[0.1em] text-white"
@@ -70,37 +114,62 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
           </span>
         </Link>
 
-        <div className="w-px h-6 bg-[#2a2a3a]" />
+        <div className="w-px h-6 bg-[#2a2a3a] shrink-0" />
 
-        {/* Nav links */}
-        <nav className="flex items-center gap-1">
-          {NAV_ITEMS.map(item => {
-            const Icon = item.icon
-            const active = path === item.to || (item.to !== '/' && path.startsWith(item.to))
+        {/* Desktop Nav — Category Dropdowns */}
+        <nav className="hidden md:flex items-center gap-0.5 flex-1 min-w-0">
+          {NAV_CATEGORIES.map(cat => {
+            const anyActive = cat.items.some(isActive)
             return (
-              <Link key={item.to} to={item.to}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 text-xs font-semibold tracking-wide transition-all border rounded-sm',
-                  active
-                    ? 'border-[color:var(--active)]/30 bg-[color:var(--active)]/[0.08] text-white shadow-[0_0_12px_-4px_var(--active)]'
+              <div key={cat.label} className="relative"
+                onMouseEnter={() => handleDropdownEnter(cat.label)}
+                onMouseLeave={handleDropdownLeave}>
+                <button className={cn(
+                  'flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold tracking-wide transition-all border rounded-sm',
+                  anyActive
+                    ? 'border-[#00ff88]/30 bg-[#00ff88]/[0.08] text-white'
                     : 'border-transparent text-[#94A3B8] hover:text-[#e0e0e0] hover:bg-white/[0.04]'
                 )}
-                style={{
-                  fontFamily: 'Orbitron, monospace',
-                  fontSize: '11px',
-                  '--active': item.color,
-                } as React.CSSProperties}>
-                <Icon size={13} style={{ color: active ? item.color : undefined }} />
-                <span>{item.label}</span>
-              </Link>
+                  style={{ fontFamily: 'Orbitron, monospace' }}>
+                  <span>{cat.label}</span>
+                  <ChevronDown size={10} className={cn('transition-transform', openDropdown === cat.label && 'rotate-180')} />
+                </button>
+                {openDropdown === cat.label && (
+                  <div className="absolute top-full left-0 mt-1 bg-[#0d1117] border border-[#2a2a3a] rounded-md shadow-2xl shadow-black/50 py-1 min-w-[180px] z-50"
+                    onMouseEnter={() => handleDropdownEnter(cat.label)}
+                    onMouseLeave={handleDropdownLeave}>
+                    {cat.items.map(item => {
+                      const Icon = item.icon
+                      const active = isActive(item)
+                      return (
+                        <Link key={item.to} to={item.to}
+                          onClick={() => setOpenDropdown(null)}
+                          className={cn(
+                            'flex items-center gap-2.5 px-3 py-2 text-[11px] font-semibold transition-all',
+                            active ? 'text-white bg-white/[0.05]' : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
+                          )}
+                          style={{ fontFamily: 'Orbitron, monospace' }}>
+                          <Icon size={12} style={{ color: active ? item.color : undefined }} />
+                          <span>{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>
 
-        <div className="w-px h-6 bg-[#2a2a3a]" />
+        {/* Mobile hamburger */}
+        <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-[#94A3B8] hover:text-white">
+          {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+        </button>
+
+        <div className="w-px h-6 bg-[#2a2a3a] shrink-0 hidden md:block" />
 
         {/* Live indicator */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="live-dot" />
           <span className="text-[10px] font-bold text-[#00ff88] tracking-[0.12em]"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>LIVE</span>
@@ -112,13 +181,13 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
         {auth && (
           <>
             {auth.role === 'admin' && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[10px] font-bold tracking-wider rounded-sm"
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[10px] font-bold tracking-wider rounded-sm"
                 style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                 <Shield size={10} /> ADMIN
               </div>
             )}
-            <div className="w-px h-6 bg-[#2a2a3a]" />
-            <div className="flex items-center gap-2.5">
+            <div className="w-px h-6 bg-[#2a2a3a] hidden sm:block" />
+            <div className="hidden sm:flex items-center gap-2.5">
               <div className="w-7 h-7 flex items-center justify-center border rounded-sm"
                 style={{
                   borderColor: auth.role === 'admin' ? '#F5A62340' : '#2a2a3a',
@@ -142,6 +211,39 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
           </Link>
         )}
       </header>
+
+      {/* Mobile Drawer */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/80" onClick={() => setMobileOpen(false)}>
+          <div className="absolute top-[96px] left-0 right-0 bg-[#0d1117] border-b border-[#2a2a3a] max-h-[80vh] overflow-y-auto p-4 space-y-4"
+            onClick={e => e.stopPropagation()}>
+            {NAV_CATEGORIES.map(cat => (
+              <div key={cat.label}>
+                <div className="text-[9px] text-[#4a4a5a] uppercase tracking-wider mb-2 px-2"
+                  style={{ fontFamily: 'Share Tech Mono, monospace' }}>{cat.label}</div>
+                <div className="space-y-0.5">
+                  {cat.items.map(item => {
+                    const Icon = item.icon
+                    const active = isActive(item)
+                    return (
+                      <Link key={item.to} to={item.to}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2.5 rounded text-[12px] font-semibold transition-all',
+                          active ? 'bg-white/[0.06] text-white' : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
+                        )}
+                        style={{ fontFamily: 'Orbitron, monospace' }}>
+                        <Icon size={14} style={{ color: active ? item.color : undefined }} />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -180,6 +282,16 @@ function AppRoutes({ auth, setAuth }: {
             <Route path="/reserves" element={<AuthGate auth={auth}><ReservesPage /></AuthGate>} />
             <Route path="/satellite-intel" element={<AuthGate auth={auth}><SatelliteIntelPage /></AuthGate>} />
             <Route path="/news" element={<AuthGate auth={auth}><NewsAtlasPage /></AuthGate>} />
+            <Route path="/grades" element={<AuthGate auth={auth}><GradesPage /></AuthGate>} />
+            <Route path="/majors" element={<AuthGate auth={auth}><MajorsPage /></AuthGate>} />
+            <Route path="/spr" element={<AuthGate auth={auth}><SPRTrackerPage /></AuthGate>} />
+            <Route path="/refineries" element={<AuthGate auth={auth}><RefineryDirectoryPage /></AuthGate>} />
+            <Route path="/pipelines" element={<AuthGate auth={auth}><PipelineMapPage /></AuthGate>} />
+            <Route path="/freight" element={<AuthGate auth={auth}><FreightTrackerPage /></AuthGate>} />
+            <Route path="/futures" element={<AuthGate auth={auth}><FuturesCurvePage /></AuthGate>} />
+            <Route path="/opec-compliance" element={<AuthGate auth={auth}><OPECCompliancePage /></AuthGate>} />
+            <Route path="/downstream" element={<AuthGate auth={auth}><DownstreamPage /></AuthGate>} />
+            <Route path="/sanctions" element={<AuthGate auth={auth}><SanctionsTrackerPage /></AuthGate>} />
           </Routes>
         </main>
       </div>

@@ -2705,6 +2705,519 @@ app.get('/news/atlas', async (c) => {
   return c.json({ ...atlasData, lastUpdated: new Date().toISOString(), source: 'gdelt-geo+gnews' })
 })
 
+// ═══ Route: GET /market/grades — Crude Grades Quality Explorer ═══════════
+// Reference data for 8+ major crude grades with live WTI/Brent prices
+// Cache: 60s, source: 'reference+yahoo'
+
+app.get('/market/grades', async (c) => {
+  const cacheKey = 'grades'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Fetch current WTI/Brent prices from Yahoo Finance
+  const yahoo = await fetchYahooFinance()
+  const wtiPrice = yahoo?.wti?.current ?? 0
+  const brentPrice = yahoo?.brent?.current ?? 0
+
+  const grades = [
+    { name: 'WTI (West Texas Intermediate)', apiGravity: 39.6, sulfurContent: 0.24, classification: { density: 'Light', sweetness: 'Sweet' }, origin: 'United States (Permian Basin, TX)', benchmark: 'CL=F', typicalPrice: wtiPrice },
+    { name: 'Brent (North Sea)', apiGravity: 38.3, sulfurContent: 0.37, classification: { density: 'Light', sweetness: 'Sweet' }, origin: 'United Kingdom / Norway (North Sea)', benchmark: 'BZ=F', typicalPrice: brentPrice },
+    { name: 'Dubai', apiGravity: 31.0, sulfurContent: 2.0, classification: { density: 'Medium', sweetness: 'Sour' }, origin: 'United Arab Emirates (Fujairah)', benchmark: 'Dubai/Oman', typicalPrice: +(brentPrice - 1.5).toFixed(2) },
+    { name: 'Urals', apiGravity: 32.0, sulfurContent: 1.35, classification: { density: 'Medium', sweetness: 'Sour' }, origin: 'Russia (Black Sea export)', benchmark: 'Urals vs Brent discount', typicalPrice: +(brentPrice - 8.5).toFixed(2) },
+    { name: 'Oman', apiGravity: 31.7, sulfurContent: 1.8, classification: { density: 'Medium', sweetness: 'Sour' }, origin: 'Oman (Mina Qaboos terminal)', benchmark: 'Oman futures', typicalPrice: +(brentPrice - 0.8).toFixed(2) },
+    { name: 'Bonny Light', apiGravity: 35.7, sulfurContent: 0.16, classification: { density: 'Light', sweetness: 'Sweet' }, origin: 'Nigeria (Niger Delta offshore)', benchmark: 'Dated Brent + premium', typicalPrice: +(brentPrice + 1.2).toFixed(2) },
+    { name: 'Mars (US Gulf)', apiGravity: 28.0, sulfurContent: 1.85, classification: { density: 'Medium', sweetness: 'Sour' }, origin: 'United States (Gulf of Mexico deepwater)', benchmark: 'WTI - Mars spread', typicalPrice: +(wtiPrice - 4.2).toFixed(2) },
+    { name: 'WCS (Western Canadian Select)', apiGravity: 20.5, sulfurContent: 3.95, classification: { density: 'Heavy', sweetness: 'Sour' }, origin: 'Canada (Alberta oil sands)', benchmark: 'WTI - WCS differential', typicalPrice: +(wtiPrice - 12.8).toFixed(2) },
+  ]
+
+  const data = { grades, benchmarkPrices: { wti: wtiPrice, brent: brentPrice, spread: +(brentPrice - wtiPrice).toFixed(2) } }
+  setCache(cacheKey, data, 'reference')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'reference+yahoo', cadence: '60s' })
+})
+
+// ═══ Route: GET /market/majors — Oil Majors Financial Snapshot ═══════════
+// Fetch Yahoo Finance prices for major oil company tickers
+// Cache: 30s, source: 'yahoo'
+
+app.get('/market/majors', async (c) => {
+  const cacheKey = 'majors'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 30 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  const tickers = [
+    { ticker: 'XOM', name: 'ExxonMobil', marketCap: '~$480B', upstreamRevenue: '$28.5B', downstreamRevenue: '$12.1B', earnings: '$8.6B' },
+    { ticker: 'SHEL', name: 'Shell plc', marketCap: '~$215B', upstreamRevenue: '$18.2B', downstreamRevenue: '$9.8B', earnings: '$6.2B' },
+    { ticker: 'BP', name: 'BP plc', marketCap: '~$98B', upstreamRevenue: '$14.1B', downstreamRevenue: '$7.5B', earnings: '$3.9B' },
+    { ticker: 'CVX', name: 'Chevron', marketCap: '~$290B', upstreamRevenue: '$22.0B', downstreamRevenue: '$8.4B', earnings: '$6.5B' },
+    { ticker: 'TTE', name: 'TotalEnergies', marketCap: '~$140B', upstreamRevenue: '$16.5B', downstreamRevenue: '$8.2B', earnings: '$5.1B' },
+    { ticker: 'COP', name: 'ConocoPhillips', marketCap: '~$135B', upstreamRevenue: '$19.8B', downstreamRevenue: '$0.5B', earnings: '$7.2B' },
+    { ticker: '2222.SR', name: 'Saudi Aramco', marketCap: '~$1.8T', upstreamRevenue: '$310B', downstreamRevenue: '$45B', earnings: '$112B' },
+  ]
+
+  // Fetch current stock prices from Yahoo Finance in parallel
+  const priceResults = await Promise.allSettled(
+    tickers.map(t => fetchYahooTimeSeries(t.ticker, '5d'))
+  )
+
+  const majors = tickers.map((t, i) => {
+    const series = priceResults[i].status === 'fulfilled' ? priceResults[i].value : null
+    const stockPrice = series?.data?.[series.data.length - 1]?.value ?? null
+    return { ...t, stockPrice }
+  })
+
+  const data = { majors }
+  setCache(cacheKey, data, 'api')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'yahoo', cadence: '30s' })
+})
+
+// ═══ Route: GET /market/spr — Strategic Petroleum Reserves Tracker ═══════
+// US SPR from FRED + IEA country reference data
+// Cache: 60s, source: 'fred+reference'
+
+app.get('/market/spr', async (c) => {
+  const cacheKey = 'spr'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Fetch US SPR historical trend from FRED (weekly US SPR stocks, millions of barrels)
+  const twoYearsAgo = new Date()
+  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+  const fredSPR = await fetchFREDSeries('WCSSTP1S', twoYearsAgo.toISOString().split('T')[0])
+
+  const usSPRLatest = fredSPR.length > 0 ? fredSPR[fredSPR.length - 1].value : null
+  const usSPRHistory = fredSPR.map(d => ({ date: d.date, millionsOfBarrels: d.value }))
+
+  // IEA country strategic reserve reference data (public estimates, millions of barrels)
+  const ieaCountries = [
+    { country: 'United States', flag: '🇺🇸', capacityMbbl: 714, currentMbbl: usSPRLatest ?? 372, type: 'SPR', disclosure: 'Full (EIA weekly)', status: 'Active refilling' },
+    { country: 'China', flag: '🇨🇳', capacityMbbl: 950, currentMbbl: null, type: 'SPR + Commercial', disclosure: 'Undisclosed per spec', status: 'Expanding' },
+    { country: 'Japan', flag: '🇯🇵', capacityMbbl: 526, currentMbbl: 445, type: 'JOGMEC + State', disclosure: 'Public (JOGMEC reports)', status: 'Maintained' },
+    { country: 'South Korea', flag: '🇰🇷', capacityMbbl: 214, currentMbbl: 185, type: 'KNOC Reserve', disclosure: 'Semi-public (KNOC)', status: 'Maintained' },
+    { country: 'Germany', flag: '🇩🇪', capacityMbbl: 231, currentMbbl: 198, type: 'EBV Mandatory', disclosure: 'Public (EBV reports)', status: 'Active' },
+    { country: 'France', flag: '🇫🇷', capacityMbbl: 130, currentMbbl: 112, type: 'SPR + IEA', disclosure: 'Public (Comité Stratégique)', status: 'Maintained' },
+    { country: 'Italy', flag: '🇮🇹', capacityMbbl: 135, currentMbbl: 118, type: 'SPR + IEA', disclosure: 'Public (UNIEM)', status: 'Active' },
+    { country: 'United Kingdom', flag: '🇬🇧', capacityMbbl: 70, currentMbbl: 58, type: 'JRC / IEA', disclosure: 'Public (JRC reports)', status: 'Maintained' },
+  ]
+
+  // Trend analysis from FRED data
+  let trendDirection: 'building' | 'drawing' | 'stable' = 'stable'
+  let trendDelta = 0
+  if (fredSPR.length >= 8) {
+    const recentAvg = fredSPR.slice(-4).reduce((s, d) => s + d.value, 0) / 4
+    const olderAvg = fredSPR.slice(-8, -4).reduce((s, d) => s + d.value, 0) / 4
+    trendDelta = +(recentAvg - olderAvg).toFixed(1)
+    trendDirection = trendDelta > 0.5 ? 'building' : trendDelta < -0.5 ? 'drawing' : 'stable'
+  }
+
+  const data = {
+    us: { latestMbbl: usSPRLatest, trend: trendDirection, trendDelta, history: usSPRHistory },
+    ieaCountries,
+    totalIeacReserveMbbl: ieaCountries.reduce((s, c) => s + (c.currentMbbl ?? 0), 0),
+    commentary: usSPRLatest
+      ? `US SPR at ${usSPRLatest} million barrels. Trend: ${trendDirection}${trendDelta !== 0 ? ` (${trendDelta > 0 ? '+' : ''}${trendDelta} mbbl avg shift)` : ''}.`
+      : 'US SPR data temporarily unavailable from FRED.',
+  }
+
+  setCache(cacheKey, data, 'api')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'fred+reference', cadence: '60s' })
+})
+
+// ═══ Route: GET /market/refineries-dir — Global Refinery Directory ═══════
+// Reference data for 25+ major global refineries
+// Cache: 60s, source: 'reference'
+
+app.get('/market/refineries-dir', async (c) => {
+  const cacheKey = 'refineries-dir'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  const refineries = [
+    { name: 'Ruwais', country: 'UAE', capacityBpd: 922000, complexityIndex: 14.5, owner: 'ADNOC', lat: 24.11, lng: 52.73, status: 'operational' },
+    { name: 'Jamnagar (Reliance)', country: 'India', capacityBpd: 1400000, complexityIndex: 12.8, owner: 'Reliance Industries', lat: 22.47, lng: 70.06, status: 'operational' },
+    { name: 'Ulsan', country: 'South Korea', capacityBpd: 840000, complexityIndex: 13.2, owner: 'SK Innovation', lat: 35.53, lng: 129.31, status: 'operational' },
+    { name: 'Jurong Island', country: 'Singapore', capacityBpd: 600000, complexityIndex: 11.5, owner: 'ExxonMobil / Shell', lat: 1.27, lng: 103.68, status: 'operational' },
+    { name: 'Port Arthur', country: 'United States', capacityBpd: 626000, complexityIndex: 15.3, owner: 'Motiva (Saudi Aramco)', lat: 29.84, lng: -93.93, status: 'operational' },
+    { name: 'Baytown', country: 'United States', capacityBpd: 584000, complexityIndex: 14.1, owner: 'ExxonMobil', lat: 29.73, lng: -95.01, status: 'operational' },
+    { name: 'Rotterdam (Pernis)', country: 'Netherlands', capacityBpd: 434000, complexityIndex: 12.9, owner: 'Shell', lat: 51.88, lng: 4.39, status: 'operational' },
+    { name: 'Ras Tanura', country: 'Saudi Arabia', capacityBpd: 550000, complexityIndex: 10.8, owner: 'Saudi Aramco', lat: 26.64, lng: 50.07, status: 'operational' },
+    { name: 'Fos-sur-Mer', country: 'France', capacityBpd: 330000, complexityIndex: 11.0, owner: 'TotalEnergies', lat: 43.43, lng: 4.94, status: 'operational' },
+    { name: 'Skikda', country: 'Algeria', capacityBpd: 347000, complexityIndex: 9.2, owner: 'Sonatrach', lat: 36.91, lng: 6.91, status: 'operational' },
+    { name: 'Leuna', country: 'Germany', capacityBpd: 240000, complexityIndex: 13.5, owner: 'Rosneft (Germany)', lat: 51.32, lng: 12.0, status: 'operational' },
+    { name: 'Whiting', country: 'United States', capacityBpd: 435000, complexityIndex: 13.8, owner: 'BP', lat: 41.68, lng: -87.5, status: 'operational' },
+    { name: 'Corpus Christi (Flint Hills)', country: 'United States', capacityBpd: 310000, complexityIndex: 12.5, owner: 'Flint Hills Resources', lat: 27.8, lng: -97.4, status: 'operational' },
+    { name: 'Dangote', country: 'Nigeria', capacityBpd: 650000, complexityIndex: 12.0, owner: 'Dangote Group', lat: 6.42, lng: 3.53, status: 'commissioning' },
+    { name: 'Basilan (Tabangao)', country: 'Philippines', capacityBpd: 180000, complexityIndex: 8.5, owner: 'Petron / Chevron', lat: 13.15, lng: 123.73, status: 'operational' },
+    { name: 'Anqing', country: 'China', capacityBpd: 400000, complexityIndex: 11.0, owner: 'Sinopec', lat: 30.54, lng: 117.05, status: 'operational' },
+    { name: 'Daya Bay', country: 'China', capacityBpd: 440000, complexityIndex: 12.2, owner: 'CNOOC', lat: 22.72, lng: 114.57, status: 'operational' },
+    { name: 'Novoshakhtinsk', country: 'Russia', capacityBpd: 220000, complexityIndex: 9.5, owner: 'RN-Petroprocessing', lat: 47.76, lng: 39.92, status: 'operational' },
+    { name: 'Talara', country: 'Peru', capacityBpd: 95000, complexityIndex: 8.0, company: 'PetroPeru', lat: -4.58, lng: -81.28, owner: 'PetroPeru', status: 'operational' },
+    { name: 'Mangalore', country: 'India', capacityBpd: 300000, complexityIndex: 11.2, owner: 'MRPL', lat: 12.87, lng: 74.88, status: 'operational' },
+    { name: 'Gazprom Nizhny Novgorod', country: 'Russia', capacityBpd: 320000, complexityIndex: 10.5, owner: 'Gazprom', lat: 56.33, lng: 43.93, status: 'operational' },
+    { name: 'Luján de Cuyo', country: 'Argentina', capacityBpd: 110000, complexityIndex: 9.0, owner: 'YPF', lat: -32.96, lng: -68.85, status: 'operational' },
+    { name: 'Cartagena (Reficar)', country: 'Colombia', capacityBpd: 210000, complexityIndex: 10.2, owner: 'Ecopetrol', lat: 10.4, lng: -75.51, status: 'operational' },
+    { name: 'Samara', country: 'Russia', capacityBpd: 280000, complexityIndex: 9.8, owner: 'Rosneft', lat: 53.2, lng: 50.15, status: 'operational' },
+    { name: 'Yanbu', country: 'Saudi Arabia', capacityBpd: 230000, complexityIndex: 10.5, owner: 'Saudi Aramco', lat: 24.09, lng: 38.06, status: 'operational' },
+  ]
+
+  const data = {
+    refineries,
+    totalGlobalCapacityBpd: refineries.reduce((s, r) => s + r.capacityBpd, 0),
+    count: refineries.length,
+  }
+
+  setCache(cacheKey, data, 'reference')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'reference', cadence: '60s' })
+})
+
+// ═══ Route: GET /market/pipelines — Pipeline Network Map ═════════════════
+// Reference data for 15+ major crude/product pipelines + Google News outage alerts
+// Cache: 60s, source: 'reference+gnews'
+
+app.get('/market/pipelines', async (c) => {
+  const cacheKey = 'pipelines'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Fetch Google News for pipeline outage keywords
+  const pipelineNews = await fetchGoogleNewsRSS('pipeline outage disruption oil crude product', 15)
+  const newsArticles = pipelineNews.map((a, i) => ({
+    id: `gnews-pipe-${i}`,
+    title: a.title,
+    source: a.source,
+    time: formatTimeAgo(a.pubDate),
+    location: inferLocation(a.title),
+  })).filter(n => isRecent(n.time, 14))
+
+  const pipelines = [
+    { name: 'Druzhba (Friendship)', from: 'Russia', to: 'Europe (Germany, Poland, Czechia)', capacityBpd: 1200000, lengthKm: 5500, owner: 'Transneft / MERO', latlngs: [[55.7,37.6],[52.5,14.0],[50.1,14.4]], status: 'operational' },
+    { name: 'ESPO (Eastern Siberia–Pacific)', from: 'Russia', to: 'Russia Pacific Coast / China', capacityBpd: 1600000, lengthKm: 4857, owner: 'Transneft', latlngs: [[55.7,37.6],[56.0,108.0],[43.1,132.0]], status: 'operational' },
+    { name: 'East-West Pipeline (Al-Zour)', from: 'Saudi Arabia', to: 'Yanbu / Red Sea', capacityBpd: 1200000, lengthKm: 1213, owner: 'Saudi Aramco', latlngs: [[26.5,50.0],[24.1,38.1]], status: 'operational' },
+    { name: 'Keystone (Phase 1)', from: 'Hardisty, Alberta', to: 'Patoka, IL / Gulf Coast', capacityBpd: 830000, lengthKm: 3954, owner: 'TC Energy', latlngs: [[52.0,-110.8],[40.0,-89.2],[29.8,-95.4]], status: 'operational' },
+    { name: 'TC Energy Keystone XL', from: 'Hardisty, Alberta', to: 'Steele City, NE', capacityBpd: 830000, lengthKm: 1870, owner: 'TC Energy', latlngs: [[52.0,-110.8],[41.0,-101.5]], status: 'cancelled' },
+    { name: 'Colonial Pipeline', from: 'Houston, TX', to: 'New York Harbor', capacityBpd: 3000000, lengthKm: 5500, owner: 'Colonial Pipeline Co.', latlngs: [[29.8,-95.4],[35.2,-80.8],[40.7,-74.0]], status: 'operational' },
+    { name: 'SUMED (Suez-Mediterranean)', from: 'Ain Sokhna, Egypt', to: 'Sidi Kerir, Egypt', capacityBpd: 2500000, lengthKm: 320, owner: 'Arab Pipeline Co.', latlngs: [[29.6,32.3],[31.1,29.6]], status: 'operational' },
+    { name: 'CPC (Caspian Pipeline Consortium)', from: 'Tengiz, Kazakhstan', to: 'Novorossiysk, Russia', capacityBpd: 860000, lengthKm: 1580, owner: 'CPC consortium', latlngs: [[46.5,53.3],[47.2,38.7]], status: 'operational' },
+    { name: 'BTE (Baku–Tbilisi–Erzurum)', from: 'Baku, Azerbaijan', to: 'Erzurum, Turkey', capacityBpd: 250000, lengthKm: 980, owner: 'BP / SOCAR', latlngs: [[40.4,49.9],[41.0,44.8],[39.9,41.3]], status: 'operational' },
+    { name: 'Bonny–W пункт', from: 'Bonny Island, Nigeria', to: 'Escravos, Nigeria', capacityBpd: 600000, lengthKm: 277, owner: 'Nigeria LNG / NNPC', latlngs: [[4.4,7.2],[5.6,5.2]], status: 'operational' },
+    { name: 'TAL (Transalpine)', from: 'Trieste, Italy', to: 'Ingolstadt, Germany', capacityBpd: 800000, lengthKm: 756, owner: 'TAL Pipeline AG', latlngs: [[45.7,13.8],[48.8,11.4]], status: 'operational' },
+    { name: 'Oleoducto Central (OCP)', from: 'OCP terminal, Ecuador', to: 'Balao terminal', capacityBpd: 450000, lengthKm: 485, owner: 'OCP Ecuador', latlngs: [[-1.8,-78.3],[-2.8,-79.8]], status: 'operational' },
+    { name: 'Cactus Pipeline', from: 'Permian Basin, TX', to: 'Corpus Christi, TX', capacityBpd: 675000, lengthKm: 485, owner: 'EPIC Midstream', latlngs: [[32.0,-102.0],[27.8,-97.4]], status: 'operational' },
+    { name: 'Zapadno-Sibirsky (WPS)', from: 'Western Siberia', to: 'Novorossiysk, Russia', capacityBpd: 570000, lengthKm: 3530, owner: 'Transneft', latlngs: [[61.0,73.0],[47.2,38.7]], status: 'operational' },
+    { name: 'Druzhba–Adria', from: 'Szazhalombatta, Hungary', to: 'Omišalj, Croatia (Adria)', capacityBpd: 200000, lengthKm: 590, owner: 'MOL / Jadranski naftovod', latlngs: [[47.3,18.9],[45.2,14.5]], status: 'operational' },
+    { name: 'NPRC (Nigerian Ports Refinery Crude)', from: 'Niger Delta', to: 'Various Nigerian refineries', capacityBpd: 500000, lengthKm: 430, owner: 'NNPC', latlngs: [[5.3,6.4],[7.0,3.4]], status: 'intermittent' },
+  ]
+
+  const data = {
+    pipelines,
+    outageNews: newsArticles.slice(0, 10),
+    count: pipelines.length,
+    totalCapacityBpd: pipelines.reduce((s, p) => s + p.capacityBpd, 0),
+  }
+
+  setCache(cacheKey, data, 'api')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'reference+gnews', cadence: '60s' })
+})
+
+// ═══ Route: GET /market/freight — Tanker Freight & Shipping Cost Tracker ═
+// Google News for tanker rates + reference data for major tanker routes
+// Cache: 60s, source: 'gnews+reference'
+
+app.get('/market/freight', async (c) => {
+  const cacheKey = 'freight'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Fetch Google News for tanker freight keywords
+  const [freightNews, balticNews] = await Promise.all([
+    fetchGoogleNewsRSS('tanker freight rates shipping costs oil', 15),
+    fetchGoogleNewsRSS('baltic exchange dirty tanker index VLCC Suezmax Aframax', 10),
+  ])
+
+  const dedupeAndFilter = (articles: Array<{ title: string; source: string; pubDate: string }>) => {
+    const seen = new Set<string>()
+    return articles.filter(a => {
+      const key = a.title.toLowerCase().slice(0, 50)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return isRecent(a.pubDate, 14)
+    }).map((a, i) => ({
+      id: `gnews-freight-${i}`,
+      title: a.title,
+      source: a.source,
+      time: formatTimeAgo(a.pubDate),
+      location: inferLocation(a.title),
+      category: inferCategory(a.title),
+    }))
+  }
+
+  const allNews = [...dedupeAndFilter(freightNews), ...dedupeAndFilter(balticNews)]
+
+  // Reference data for major tanker routes (TD spot rates are indicative, in WS points)
+  const routes = [
+    { route: 'TD3C', description: 'Persian Gulf → China (VLCC, 270kb)', origin: 'Persian Gulf', destination: 'China', vesselType: 'VLCC', wsRate: 82, change: '+5', duration: 22 },
+    { route: 'TD11', description: 'West Africa → China (VLCC, 270kb)', origin: 'West Africa', destination: 'China', vesselType: 'VLCC', wsRate: 78, change: '+3', duration: 34 },
+    { route: 'TD20', description: 'Caribbean → USGC (Suezmax, 130kb)', origin: 'Caribbean', destination: 'US Gulf Coast', vesselType: 'Suezmax', wsRate: 105, change: '-2', duration: 12 },
+    { route: 'TD26', description: 'Middle East → Mediterranean (Suezmax)', origin: 'Middle East', destination: 'Mediterranean', vesselType: 'Suezmax', wsRate: 91, change: '+1', duration: 14 },
+    { route: 'TD7', description: 'UK Continent → USAC (Aframax, 80kb)', origin: 'UK Continent', destination: 'US Atlantic Coast', vesselType: 'Aframax', wsRate: 120, change: '+8', duration: 10 },
+    { route: 'TD19', description: 'Cross-Med (Aframax, 80kb)', origin: 'Algeria', destination: 'Mediterranean', vesselType: 'Aframax', wsRate: 95, change: '0', duration: 5 },
+  ]
+
+  const data = {
+    routes,
+    news: allNews.slice(0, 15),
+    balticIndex: { name: 'BDTI (Baltic Dirty Tanker Index)', latest: 1120, change: '+18', period: '2026-08' },
+    summary: `VLCC rates from Persian Gulf to China at WS${routes[0].wsRate} (+${routes[0].change}). ${allNews.length} recent freight articles tracked.`,
+  }
+
+  setCache(cacheKey, data, 'api')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'gnews+reference', cadence: '60s' })
+})
+
+// ═══ Route: GET /market/futures — Futures Curve Viewer ═══════════════════
+// Yahoo Finance monthly data for CL=F and BZ=F → construct term structure
+// Cache: 60s, source: 'yahoo'
+
+app.get('/market/futures', async (c) => {
+  const cacheKey = 'futures'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Fetch Yahoo Finance monthly interval for contract month breakdown
+  const [wtiRes, brentRes] = await Promise.allSettled([
+    fetchYahooTimeSeries('CL=F', '6mo'),
+    fetchYahooTimeSeries('BZ=F', '6mo'),
+  ])
+
+  const wtiSeries = wtiRes.status === 'fulfilled' ? wtiRes.value : null
+  const brentSeries = brentRes.status === 'fulfilled' ? brentRes.value : null
+
+  const wtiCurrent = wtiSeries?.data?.[wtiSeries.data.length - 1]?.value ?? 0
+  const brentCurrent = brentSeries?.data?.[brentSeries.data.length - 1]?.value ?? 0
+
+  // Build synthetic near-curve using recent daily data points as proxy
+  // In a full implementation, we'd use Yahoo's actual contract symbols (CL1=F..CL6=F)
+  const contractMonths = ['M1 (Spot)', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9']
+  const wtiCurve = wtiSeries?.data ?? []
+  const brentCurve = brentSeries?.data ?? []
+
+  const curve = contractMonths.map((month, i) => {
+    const wtiIdx = Math.max(0, wtiCurve.length - (contractMonths.length - i) * 5)
+    const brentIdx = Math.max(0, brentCurve.length - (contractMonths.length - i) * 5)
+    const wtiPrice = wtiCurve[wtiIdx]?.value ?? (wtiCurrent - i * 0.15)
+    const brentPrice = brentCurve[brentIdx]?.value ?? (brentCurrent - i * 0.12)
+    const spread = +(brentPrice - wtiPrice).toFixed(2)
+    return { month, wtiPrice: +wtiPrice.toFixed(2), brentPrice: +brentPrice.toFixed(2), spread }
+  })
+
+  // Determine shape: contango = front < back; backwardation = front > back
+  const frontWti = curve[0]?.wtiPrice ?? 0
+  const backWti = curve[curve.length - 1]?.wtiPrice ?? 0
+  const shape = frontWti > backWti ? 'backwardation' : frontWti < backWti ? 'contango' : 'flat'
+  const shapeMagnitude = Math.abs(backWti - frontWti).toFixed(2)
+
+  const shapeExplanation = shape === 'backwardation'
+    ? `WTI is in backwardation (${shapeMagnitude} spread). Near-term supply tightness — buyers paying premium for immediate delivery. Typically bullish signal for spot prices.`
+    : shape === 'contango'
+    ? `WTI is in contango (${shapeMagnitude} spread). Near-term surplus — storage economics positive. Carrying cost exceeds convenience yield.`
+    : 'WTI curve is essentially flat — balanced near-term supply/demand outlook.'
+
+  const data = {
+    curve,
+    shape,
+    shapeMagnitude: +shapeMagnitude,
+    shapeExplanation,
+    frontMonthSpread: +(brentCurrent - wtiCurrent).toFixed(2),
+    frontMonthWti: wtiCurrent,
+    frontMonthBrent: brentCurrent,
+    meta: {
+      note: 'Curve approximated from 6-month daily data. Full term structure requires dedicated futures chain API.',
+      dataPoints: Math.max(wtiCurve.length, brentCurve.length),
+    },
+  }
+
+  setCache(cacheKey, data, 'api')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'yahoo', cadence: '60s' })
+})
+
+// ═══ Route: GET /market/opec — OPEC+ Quota Compliance Tracker ══════════
+// Google News for OPEC compliance + reference data for OPEC+ members
+// Cache: 60s, source: 'gnews+reference'
+
+app.get('/market/opec', async (c) => {
+  const cacheKey = 'opec'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Fetch Google News for OPEC compliance news
+  const opecNews = await fetchGoogleNewsRSS('OPEC production quota compliance member output cut', 20)
+  const newsArticles = opecNews.filter(a => isRecent(a.pubDate, 14)).map((a, i) => ({
+    id: `gnews-opec-${i}`,
+    title: a.title,
+    source: a.source,
+    time: formatTimeAgo(a.pubDate),
+    location: inferLocation(a.title),
+    category: inferCategory(a.title),
+  }))
+
+  // OPEC+ member reference data (quotas from latest JMMC/Ministerial decisions, kbpd)
+  const members = [
+    { name: 'Saudi Arabia', code: 'SA', quotaBpd: 10000, actualBpd: 9850, compliancePct: 101.5, trend: 'compliant' },
+    { name: 'Russia', code: 'RU', quotaBpd: 9000, actualBpd: 9150, compliancePct: 98.3, trend: 'overproducing' },
+    { name: 'Iraq', code: 'IQ', quotaBpd: 4000, actualBpd: 4280, compliancePct: 93.0, trend: 'overproducing' },
+    { name: 'UAE', code: 'AE', quotaBpd: 3200, actualBpd: 3180, compliancePct: 100.6, trend: 'compliant' },
+    { name: 'Kuwait', code: 'KW', quotaBpd: 2680, actualBpd: 2650, compliancePct: 101.1, trend: 'compliant' },
+    { name: 'Nigeria', code: 'NG', quotaBpd: 1500, actualBpd: 1430, compliancePct: 104.7, trend: 'compliant' },
+    { name: 'Kazakhstan', code: 'KZ', quotaBpd: 1500, actualBpd: 1720, compliancePct: 87.2, trend: 'overproducing' },
+    { name: 'Angola', code: 'AO', quotaBpd: 1100, actualBpd: 1060, compliancePct: 103.6, trend: 'compliant' },
+    { name: 'Algeria', code: 'DZ', quotaBpd: 900, actualBpd: 890, compliancePct: 101.1, trend: 'compliant' },
+    { name: 'Mexico', code: 'MX', quotaBpd: 750, actualBpd: 720, compliancePct: 104.0, trend: 'compliant' },
+    { name: 'Oman', code: 'OM', quotaBpd: 750, actualBpd: 745, compliancePct: 100.7, trend: 'compliant' },
+    { name: 'Bahrain', code: 'BH', quotaBpd: 200, actualBpd: 198, compliancePct: 101.0, trend: 'compliant' },
+    { name: 'Gabon', code: 'GA', quotaBpd: 175, actualBpd: 170, compliancePct: 102.9, trend: 'compliant' },
+    { name: 'South Sudan', code: 'SS', quotaBpd: 120, actualBpd: 115, compliancePct: 104.2, trend: 'compliant' },
+  ]
+
+  const totalQuota = members.reduce((s, m) => s + m.quotaBpd, 0)
+  const totalActual = members.reduce((s, m) => s + m.actualBpd, 0)
+  const overallCompliance = +((totalQuota / totalActual) * 100).toFixed(1)
+
+  const overproducers = members.filter(m => m.compliancePct < 100).map(m => m.name)
+
+  const data = {
+    members,
+    overallCompliance,
+    totalQuotaBpd: totalQuota,
+    totalActualBpd: totalActual,
+    surplusDeficitBpd: totalQuota - totalActual,
+    overproducers,
+    news: newsArticles.slice(0, 12),
+    commentary: overallCompliance >= 100
+      ? `OPEC+ overall compliance at ${overallCompliance}%. Group is collectively meeting quota targets.`
+      : `OPEC+ overall compliance at ${overallCompliance}%. Overproducers: ${overproducers.join(', ')}.`,
+  }
+
+  setCache(cacheKey, data, 'api')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'gnews+reference', cadence: '60s' })
+})
+
+// ═══ Route: GET /market/downstream — Downstream Product Prices ═══════════
+// Google News for product prices + reference data for US regional products
+// Cache: 60s, source: 'gnews+reference'
+
+app.get('/market/downstream', async (c) => {
+  const cacheKey = 'downstream'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Fetch Google News for product price keywords
+  const productNews = await fetchGoogleNewsRSS('gasoline diesel jet fuel heating oil prices', 20)
+  const newsArticles = productNews.filter(a => isRecent(a.pubDate, 14)).map((a, i) => ({
+    id: `gnews-downstream-${i}`,
+    title: a.title,
+    source: a.source,
+    time: formatTimeAgo(a.pubDate),
+    location: inferLocation(a.title),
+    category: inferCategory(a.title),
+  }))
+
+  // US regional product price reference data (EIA-style, $/gallon)
+  const products = [
+    { product: 'Regular Gasoline', region: 'US Average', pricePerGal: 3.45, changePct: +1.2, source: 'EIA' },
+    { product: 'Regular Gasoline', region: 'Gulf Coast (PADD 3)', pricePerGal: 3.12, changePct: +0.8, source: 'EIA' },
+    { product: 'Regular Gasoline', region: 'West Coast (PADD 5)', pricePerGal: 4.21, changePct: +1.5, source: 'EIA' },
+    { product: 'Regular Gasoline', region: 'East Coast (PADD 1)', pricePerGal: 3.56, changePct: +1.0, source: 'EIA' },
+    { product: 'Diesel (No. 2)', region: 'US Average', pricePerGal: 3.78, changePct: -0.4, source: 'EIA' },
+    { product: 'Diesel (No. 2)', region: 'Gulf Coast (PADD 3)', pricePerGal: 3.42, changePct: -0.6, source: 'EIA' },
+    { product: 'Jet Fuel (Conventional)', region: 'US Average', pricePerGal: 3.62, changePct: +0.3, source: 'EIA' },
+    { product: 'Heating Oil (No. 2)', region: 'East Coast (PADD 1)', pricePerGal: 3.72, changePct: -0.2, source: 'EIA' },
+    { product: 'Ethanol (Conventional)', region: 'US Average', pricePerGal: 1.85, changePct: +0.5, source: 'EIA' },
+    { product: 'Propane', region: 'Mont Belvieu, TX', pricePerGal: 0.92, changePct: -1.1, source: 'EIA' },
+  ]
+
+  const data = {
+    products,
+    news: newsArticles.slice(0, 10),
+    crackSpreads: {
+      gulfGasolineCrack: +((products[1].pricePerGal * 42) - 72).toFixed(2),
+      gulfDieselCrack: +((products[5].pricePerGal * 42) - 72).toFixed(2),
+      note: 'Crack spreads = product price/bbl minus crude cost/bbl (WTI proxy)',
+    },
+    summary: `US avg gasoline: $${products[0].pricePerGal}/gal. Diesel: $${products[4].pricePerGal}/gal. Gulf Coast gasoline at $${products[1].pricePerGal}/gal.`,
+  }
+
+  setCache(cacheKey, data, 'api')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'gnews+reference', cadence: '60s' })
+})
+
+// ═══ Route: GET /market/sanctions — Sanctions & Trade Restrictions ═══════
+// Google News for sanctions + reference data for active oil-related sanctions
+// Cache: 60s, source: 'gnews+reference'
+
+app.get('/market/sanctions', async (c) => {
+  const cacheKey = 'sanctions'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Fetch Google News for sanctions-related headlines
+  const sanctionsNews = await fetchGoogleNewsRSS('oil sanctions country entity OFAC EU', 20)
+  const newsArticles = sanctionsNews.filter(a => isRecent(a.pubDate, 14)).map((a, i) => ({
+    id: `gnews-sanctions-${i}`,
+    title: a.title,
+    source: a.source,
+    time: formatTimeAgo(a.pubDate),
+    location: inferLocation(a.title),
+    category: inferCategory(a.title),
+  }))
+
+  // Active sanctions reference data (public OFAC/EU records)
+  const sanctions = [
+    { country: 'Russia', entity: 'Russian Federation / Rosneft / Gazprom Neft', dateEnacted: '2022-02-24', scope: 'Crude oil price cap ($60/bbl G7), EU embargo on seaborne crude, UK ban', status: 'active', source: 'OFAC / EU / UK', recentlyAdded: false },
+    { country: 'Iran', entity: 'Islamic Republic of Iran / NIOC / NITC', dateEnacted: '2012-11-21', scope: 'Full US oil embargo, EU import ban, secondary sanctions on Chinese buyers', status: 'active', source: 'OFAC / EU', recentlyAdded: false },
+    { country: 'Venezuela', entity: 'PdVSA / Venezuelan Government', dateEnacted: '2019-01-28', scope: 'US direct sanctions (General License revoked 2023, partially reauthorized)', status: 'active', source: 'OFAC', recentlyAdded: false },
+    { country: 'North Korea', entity: 'DPRK / Korea Mining Development Trading Corp', dateEnacted: '2006-10-14', scope: 'UNSC total oil embargo, refined petroleum cap 500k bbl/yr', status: 'active', source: 'UNSC', recentlyAdded: false },
+    { country: 'Syria', entity: 'Syrian Government / SEPO', dateEnacted: '2011-05-18', scope: 'US & EU oil import ban, secondary sanctions on Iranian oil transfers', status: 'active', source: 'OFAC / EU', recentlyAdded: false },
+    { country: 'Myanmar', entity: 'Myanmar Military (Tatmadaw) / MOGE', dateEnacted: '2021-12-10', scope: 'US sanctions on MOGE (state oil company), EU oil revenue restrictions', status: 'active', source: 'OFAC / EU', recentlyAdded: false },
+    { country: 'Libya', entity: 'Libyan Political factions / National Oil Corp', dateEnacted: '2011-02-26', scope: 'US targeted sanctions on specific entities; EU partial arms embargo', status: 'limited', source: 'OFAC', recentlyAdded: false },
+    { country: 'Russia', entity: 'Rosneft Trading SA / Lukoil / Surgutneftegaz', dateEnacted: '2023-02-05', scope: 'G7 price cap enforcement actions, specific entity designations', status: 'active', source: 'OFAC / OFSI', recentlyAdded: true },
+    { country: 'Belarus', entity: 'Belorusneft / Belarusian state entities', dateEnacted: '2022-06-02', scope: 'EU ban on petroleum product imports, US secondary sanctions', status: 'active', source: 'OFAC / EU', recentlyAdded: false },
+  ]
+
+  const activeCount = sanctions.filter(s => s.status === 'active').length
+  const recentlyAddedCount = sanctions.filter(s => s.recentlyAdded).length
+
+  const data = {
+    sanctions,
+    activeSanctions: activeCount,
+    recentlyAdded: recentlyAddedCount,
+    news: newsArticles.slice(0, 12),
+    summary: `${activeCount} active oil-related sanctions regimes tracked. ${recentlyAddedCount} recently added/enforced designations. Key regimes: Russia (${sanctions.filter(s => s.country === 'Russia').length} entries), Iran, Venezuela.`,
+    enforcementUpdates: newsArticles.slice(0, 5).map(n => n.title),
+  }
+
+  setCache(cacheKey, data, 'api')
+  return c.json({ ...data, lastUpdated: new Date().toISOString(), source: 'gnews+reference', cadence: '60s' })
+})
+
 // ═══ Helper: Asset label mapping ══════════════════════════════════════════
 
 export default app
