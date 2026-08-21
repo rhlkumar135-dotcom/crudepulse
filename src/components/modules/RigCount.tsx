@@ -1,10 +1,10 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, CartesianGrid } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ComposedChart, CartesianGrid } from 'recharts'
 import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
 
 interface RigData { basin: string; oilRigs: number; gasRigs: number; totalChange: number }
-interface RigWeek { week: string; total: number; oil: number; gas: number; wtiPrice: number }
-interface RigResponse { total: number; oilTotal: number; gasTotal: number; change: number; basins: RigData[]; history?: RigWeek[] }
+interface RigWeek { date: string; total: number; oil: number; gas: number; change?: number }
+interface RigResponse { total: number; oilTotal: number; gasTotal: number; change: number; basins: RigData[]; history?: RigWeek[]; news?: Array<{ title: string; source: string; time: string }> }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -34,7 +34,7 @@ export function RigCountChart() {
   }))
 
   const timelineData = (data?.history || []).map(r => ({
-    date: r.week.slice(5), total: r.total, oil: r.oil, wti: r.wtiPrice,
+    date: (r.date || '').slice(5), total: r.total, oil: r.oil,
   }))
 
   return (
@@ -70,11 +70,10 @@ export function RigCountChart() {
             <ComposedChart data={timelineData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#141A22" />
               <XAxis dataKey="date" tick={{ fontSize: 7, fontFamily: 'IBM Plex Mono' }} tickLine={false} axisLine={false} interval={7} stroke="#141A22" />
-              <YAxis yAxisId="rigs" tick={{ fontSize: 7 }} tickLine={false} axisLine={false} width={30} stroke="#141A22" />
-              <YAxis yAxisId="price" orientation="right" tick={{ fontSize: 7 }} tickLine={false} axisLine={false} width={30} stroke="#141A22" />
+              <YAxis tick={{ fontSize: 7 }} tickLine={false} axisLine={false} width={30} stroke="#141A22" />
               <Tooltip content={<CustomTooltip />} />
-              <Bar yAxisId="rigs" dataKey="oil" fill="#F5A623" opacity={0.4} name="Rigs" />
-              <Line yAxisId="price" type="monotone" dataKey="wti" stroke="#EF4444" strokeWidth={1} dot={false} name="WTI ($)" strokeDasharray="0" />
+              <Bar dataKey="oil" fill="#F5A623" opacity={0.6} name="Oil Rigs" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="total" fill="#2DD4BF" opacity={0.3} name="Total Rigs" radius={[2, 2, 0, 0]} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

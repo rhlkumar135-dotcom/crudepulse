@@ -3,7 +3,13 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useMarketData } from '@/lib/useMarketData'
 
-interface GeoEvent { id: string; title: string; location: string; severity: number; sentiment: number; source: string; time: string; category: string }
+interface GeoEvent { id: string; title: string; location: string; severity: number; sentiment: string | number; score: number; source: string; time: string; category: string }
+
+function sentimentToNum(s: string | number): number {
+  if (typeof s === 'number') return s
+  const map: Record<string, number> = { positive: 1, negative: -1, neutral: 0 }
+  return map[String(s).toLowerCase()] ?? 0
+}
 
 const categoryColors: Record<string, string> = {
   Attack: '#EF4444', Military: '#F97316', Sanctions: '#A78BFA',
@@ -58,7 +64,7 @@ export function DisruptionRadar() {
 
   const totalEvents = geoEvents.length
   const highSeverity = geoEvents.filter((e: GeoEvent) => e.severity >= 0.7).length
-  const avgTone = totalEvents > 0 ? +(geoEvents.reduce((s: number, e: GeoEvent) => s + e.sentiment, 0) / totalEvents).toFixed(2) : 0
+  const avgTone = totalEvents > 0 ? +(geoEvents.reduce((s: number, e: GeoEvent) => s + sentimentToNum(e.sentiment), 0) / totalEvents).toFixed(2) : 0
 
   const filteredEvents = selectedCategory
     ? geoEvents.filter((e: GeoEvent) => e.category === selectedCategory)
@@ -160,7 +166,8 @@ export function DisruptionRadar() {
         <div className="space-y-0.5 max-h-[180px] overflow-y-auto pr-1">
           {sorted.map(event => {
             const color = categoryColors[event.category] || '#94A3B8'
-            const sentimentIcon = event.sentiment > 0 ? <TrendingUp size={8} className="text-teal" /> : event.sentiment < 0 ? <TrendingDown size={8} className="text-red" /> : <Minus size={8} className="text-muted" />
+            const sentimentVal = sentimentToNum(event.sentiment)
+            const sentimentIcon = sentimentVal > 0 ? <TrendingUp size={8} className="text-teal" /> : sentimentVal < 0 ? <TrendingDown size={8} className="text-red" /> : <Minus size={8} className="text-muted" />
 
             return (
               <div key={event.id} className="flex items-start gap-2 py-1.5 px-2 rounded hover:bg-white/[0.02] transition-colors">
@@ -181,8 +188,8 @@ export function DisruptionRadar() {
                     </span>
                     <div className="flex-1" />
                     {sentimentIcon}
-                    <span className={`text-[8px] font-mono ${event.sentiment >= 0 ? 'text-teal' : 'text-red'}`}>
-                      {event.sentiment > 0 ? '+' : ''}{event.sentiment.toFixed(1)}
+                    <span className={`text-[8px] font-mono ${sentimentVal >= 0 ? 'text-teal' : 'text-red'}`}>
+                      {sentimentVal > 0 ? '+' : ''}{sentimentVal.toFixed(1)}
                     </span>
                   </div>
                 </div>

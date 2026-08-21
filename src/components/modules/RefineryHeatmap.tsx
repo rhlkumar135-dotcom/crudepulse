@@ -2,8 +2,8 @@ import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianG
 import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
 
-interface RefineryData { padd: string; name: string; utilization: number; capacity: number; runs: number; crackSpread: number; trend: string }
-interface RefineryResponse { padd: RefineryData[]; history: Array<{ date: string; overall: number; gulfCoast: number; midwest: number }> }
+interface RefineryData { padd: string; name: string; utilization: number; capacity: number; runs: number; trend: string }
+interface RefineryResponse { padd: RefineryData[]; history: Array<{ date: string; overall: number; gulfCoast: number; midwest: number }>; news?: Array<{ title: string; source: string; time: string }>; inputs?: number; lastUpdated?: string; source?: string }
 
 const paddColors: Record<string, string> = {
   'PADD 1': '#38BDF8', 'PADD 2': '#2DD4BF', 'PADD 3': '#F5A623', 'PADD 4': '#A78BFA', 'PADD 5': '#F472B6',
@@ -66,7 +66,7 @@ export function RefineryHeatmap() {
               <CountUp value={r.capacity} /> KBPD
             </div>
             <div className="text-[8px] text-text-dim/50 font-mono">
-              Crack ${r.crackSpread.toFixed(1)}
+              Runs <CountUp value={r.runs} /> KBPD
             </div>
           </div>
         ))}
