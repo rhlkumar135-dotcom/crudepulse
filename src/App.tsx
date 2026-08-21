@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react
 import { User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
+import { AuthCinematic } from '@/components/AuthCinematic'
 import { LandingPage } from '@/components/LandingPage'
 import { MarketsPage } from '@/components/pages/MarketsPage'
 import { DisruptionsPage } from '@/components/pages/DisruptionsPage'
@@ -291,7 +292,7 @@ export default function App() {
 
 // ═══ Auth Screen — Cyberpunk ════════════════════════════════════════════════
 
-function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
+function AuthScreen(_props: { onLogin: (a: AuthState) => void }) {
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

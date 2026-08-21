@@ -403,6 +403,20 @@ input[type="range"]::-moz-range-thumb {
   background-size: 50px 50px;
 }
 
+/* ═══ Scan Lines ═══ */
+@keyframes scanline {
+  0% { left: 10%; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { left: 90%; opacity: 0; }
+}
+@keyframes scanlineH {
+  0% { top: 10%; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: 90%; opacity: 0; }
+}
+
 /* ═══ Reduced Motion ═══ */
 @media (prefers-reduced-motion: reduce) {
   .cyber-glitch { animation: none; }
