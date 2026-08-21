@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import { BarChart3, User, LogOut, Shield, Eye, EyeOff, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
-import { PricingPage } from '@/components/PricingPage'
 import { LandingPage } from '@/components/LandingPage'
 import { V1Page } from '@/components/pages/V1Page'
 import { V2Page } from '@/components/pages/V2Page'
@@ -40,7 +39,7 @@ class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { h
 
 // ═══ Persistent Nav Shell ═══════════════════════════════════════════════════
 
-function NavBar({ auth, onLogout, onShowPricing }: { auth: AuthState | null; onLogout: () => void; onShowPricing: () => void }) {
+function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => void }) {
   const location = useLocation()
   const path = location.pathname
 
@@ -96,18 +95,6 @@ function NavBar({ auth, onLogout, onShowPricing }: { auth: AuthState | null; onL
                 <Shield size={9} /> ADMIN
               </div>
             )}
-            <div className={cn(
-              'px-2 py-0.5 rounded text-[9px] font-mono font-medium tracking-wider border',
-              auth.tier === 'pro' ? 'bg-amber/[0.08] text-amber border-amber/20' : 'bg-white/[0.03] text-muted border-white/5'
-            )}>
-              {auth.tier === 'pro' ? '⚡ PRO' : 'FREE'}
-            </div>
-            {auth.tier !== 'pro' && (
-              <button onClick={onShowPricing}
-                className="px-2.5 py-1 bg-gradient-to-r from-amber to-amber/90 text-bg rounded-lg text-[9px] font-semibold hover:shadow-md hover:shadow-amber/20 transition-all">
-                UPGRADE
-              </button>
-            )}
             <div className="w-px h-5 bg-border" />
             <div className="flex items-center gap-2">
               <div className={cn('w-6 h-6 rounded-full flex items-center justify-center', auth.role === 'admin' ? 'bg-amber/15 ring-1 ring-amber/30' : 'bg-white/5')}>
@@ -132,14 +119,10 @@ function NavBar({ auth, onLogout, onShowPricing }: { auth: AuthState | null; onL
 
 // ═══ Main App with Routing ══════════════════════════════════════════════════
 
-function AppRoutes({ auth, setAuth, showPricing, setShowPricing }: {
+function AppRoutes({ auth, setAuth }: {
   auth: AuthState | null
   setAuth: React.Dispatch<React.SetStateAction<AuthState | null>>
-  showPricing: boolean
-  setShowPricing: (v: boolean) => void
 }) {
-  if (showPricing) return <PricingPage onBack={() => setShowPricing(false)} />
-
   return (
     <div className="min-h-screen bg-bg relative">
       <div className="fixed inset-0 pointer-events-none">
@@ -147,10 +130,10 @@ function AppRoutes({ auth, setAuth, showPricing, setShowPricing }: {
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[250px] bg-teal/[0.01] blur-[120px] rounded-full" />
       </div>
       <div className="relative z-10">
-        <NavBar auth={auth} onLogout={() => setAuth(null)} onShowPricing={() => setShowPricing(true)} />
+        <NavBar auth={auth} onLogout={() => setAuth(null)} />
         <main>
           <Routes>
-            <Route path="/" element={<LandingPage onShowPricing={() => setShowPricing(true)} />} />
+            <Route path="/" element={<LandingPage />} />
             <Route path="/v1" element={<V1Page />} />
             <Route path="/v2" element={<V2Page />} />
             <Route path="/v3" element={<V3Page />} />
@@ -163,20 +146,18 @@ function AppRoutes({ auth, setAuth, showPricing, setShowPricing }: {
 
 export default function App() {
   const [auth, setAuth] = useState<AuthState | null>(null)
-  const [showPricing, setShowPricing] = useState(false)
-
-  if (!auth) return <AuthScreen onLogin={(a) => setAuth(a)} onShowPricing={() => setShowPricing(true)} />
+  if (!auth) return <AuthScreen onLogin={(a) => setAuth(a)} />
 
   return (
     <BrowserRouter>
-      <AppRoutes auth={auth} setAuth={setAuth} showPricing={showPricing} setShowPricing={setShowPricing} />
+      <AppRoutes auth={auth} setAuth={setAuth} />
     </BrowserRouter>
   )
 }
 
 // ═══ Auth Screen ══════════════════════════════════════════════════════════════
 
-function AuthScreen({ onLogin, onShowPricing }: { onLogin: (a: AuthState) => void; onShowPricing: () => void }) {
+function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -277,16 +258,13 @@ function AuthScreen({ onLogin, onShowPricing }: { onLogin: (a: AuthState) => voi
               </button>
             </form>
           </div>
-          <div className="border-t border-white/[0.04] px-5 py-3 flex items-center justify-between">
+          <div className="border-t border-white/[0.04] px-5 py-3 flex items-center justify-center">
             <span className="text-[10px] text-muted">
               {isSignUp ? 'Have an account?' : "New here?"}
               <button onClick={() => { setIsSignUp(!isSignUp); setError('') }} className="ml-1 text-amber hover:text-amber/80 font-medium">
                 {isSignUp ? 'Sign In' : 'Sign Up Free'}
               </button>
             </span>
-            <button onClick={onShowPricing} className="text-[9px] text-muted hover:text-amber transition-colors font-mono tracking-wider">
-              PRICING →
-            </button>
           </div>
         </div>
       </div>

@@ -40,7 +40,7 @@ export function LandingPage({ onShowPricing }: { onShowPricing?: () => void }) {
                 <div className="w-10 h-10 rounded-xl bg-amber/10 flex items-center justify-center"><Radar size={18} className="text-amber" /></div>
                 <div>
                   <div className="text-sm font-semibold text-text-bright">V2 — Full Dashboard</div>
-                  <div className="text-[9px] text-muted font-mono">10 modules · PRO</div>
+                  <div className="text-[9px] text-muted font-mono">12 modules · FREE</div>
                 </div>
               </div>
               <p className="text-[10px] text-text-dim leading-relaxed mb-3">Complete crude oil terminal with refinery utilization, global flows, chokepoints, storage, and field scorecard.</p>
@@ -52,7 +52,7 @@ export function LandingPage({ onShowPricing }: { onShowPricing?: () => void }) {
                 <div className="w-10 h-10 rounded-xl bg-red/10 flex items-center justify-center"><Globe size={18} className="text-red" /></div>
                 <div>
                   <div className="text-sm font-semibold text-text-bright">V3 — Correlation Engine</div>
-                  <div className="text-[9px] text-muted font-mono">ME ↔ Global Markets · PRO</div>
+                  <div className="text-[9px] text-muted font-mono">ME ↔ Global Markets · FREE</div>
                 </div>
               </div>
               <p className="text-[10px] text-text-dim leading-relaxed mb-3">Quantify how Middle East events correlate with oil, currencies, and global indices — rolling Pearson coefficients, live.</p>

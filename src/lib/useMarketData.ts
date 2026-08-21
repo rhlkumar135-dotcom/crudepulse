@@ -8,15 +8,14 @@ export interface MarketState<T> {
   lastUpdated: string | null
 }
 
-export function useMarketData<T>(endpoint: string, tier: string = 'free', refreshInterval: number = 1000) {
+export function useMarketData<T>(endpoint: string, _tier: string = 'free', refreshInterval: number = 1000) {
   const [state, setState] = useState<MarketState<T>>({ data: null, loading: true, error: null, source: null, lastUpdated: null })
   const mountedRef = useRef(true)
   const dataRef = useRef<T | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
-      const url = endpoint.includes('?') ? `${endpoint}&tier=${tier}` : `${endpoint}?tier=${tier}`
-      const res = await fetch(url)
+      const res = await fetch(endpoint)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const body = await res.json()
       if (mountedRef.current) {
@@ -28,7 +27,7 @@ export function useMarketData<T>(endpoint: string, tier: string = 'free', refres
         setState(prev => ({ ...prev, loading: false, error: err.message || 'Failed to load', data: prev.data ?? dataRef.current }))
       }
     }
-  }, [endpoint, tier])
+  }, [endpoint])
 
   useEffect(() => {
     mountedRef.current = true

@@ -10,7 +10,7 @@ export function V3Page() {
         <span className="text-border">·</span>
         <span className="text-[9px] text-amber font-mono font-semibold">V3 CORRELATION ENGINE</span>
         <span className="text-border">·</span>
-        <span className="text-[8px] text-muted/50 font-mono">ME ↔ Global Markets · PRO</span>
+        <span className="text-[8px] text-muted/50 font-mono">ME ↔ Global Markets · FREE</span>
       </div>
 
       <div className="glass-card overflow-hidden">

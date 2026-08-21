@@ -24,7 +24,7 @@ export function V2Page() {
         <span className="text-border">·</span>
         <span className="text-[9px] text-amber font-mono font-semibold">V2 TERMINAL</span>
         <span className="text-border">·</span>
-        <span className="text-[8px] text-muted/50 font-mono">10 modules + V3 correlation · PRO</span>
+            <span className="text-[8px] text-muted/50 font-mono">12 modules + V3 correlation · All Free</span>
       </div>
 
       {/* Module A — Price + News */}
