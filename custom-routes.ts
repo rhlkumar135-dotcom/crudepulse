@@ -818,11 +818,15 @@ function parseEIAUtilization(csv: string): { date: string; overall: number; padd
 
 async function fetchEIATable2(datePath?: string): Promise<string | null> {
   try {
-    const base = datePath || 'https://ir.eia.gov/wpsr'
-    const url = `${base}/table2.csv`
+    let url: string
+    if (datePath) {
+      url = `${datePath}/csv/table2.csv`
+    } else {
+      url = 'https://ir.eia.gov/wpsr/table2.csv'
+    }
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(12000),
       redirect: 'follow',
     })
     if (!res.ok) return null
