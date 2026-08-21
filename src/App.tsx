@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Component, type ReactNode } from 'react'
 import {
   TrendingUp, Radar, Wrench, Clock, BarChart3,
   User, LogOut, Zap, Shield, Users, Eye, EyeOff,
@@ -31,6 +31,22 @@ interface AuthState {
 }
 
 const API = '/api'
+
+class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { hasError: boolean; error: string }> {
+  state = { hasError: false, error: '' }
+  static getDerivedStateFromError(err: Error) { return { hasError: true, error: err.message } }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 rounded-xl bg-red/[0.04] border border-red/10">
+          <div className="text-[10px] font-mono text-red mb-1">Module Error — {this.props.name}</div>
+          <div className="text-[9px] font-mono text-muted/60">{this.state.error}</div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 export default function App() {
   const [auth, setAuth] = useState<AuthState | null>(null)
@@ -152,7 +168,7 @@ export default function App() {
                   </span>
                 )}
               </div>
-              <div className="px-5 pb-4"><PriceNewsChart /></div>
+              <div className="px-5 pb-4"><ErrorBoundary name="Price & News"><PriceNewsChart /></ErrorBoundary></div>
               <div className="border-t border-white/[0.04] mx-5 py-2">
                 <div className="text-[8px] font-mono text-muted/50">GDELT + Alpha Vantage + NewsAPI · Refresh: {isPro ? '4h' : '8h'}</div>
               </div>
@@ -169,7 +185,7 @@ export default function App() {
                   <CadenceBadge cadence="live" />
                   <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.02 · GDELT</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><DisruptionRadar /></div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ErrorBoundary name="Disruption Radar"><DisruptionRadar /></ErrorBoundary></div>
                 <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">GDELT Project · No key required · 30-min refresh</div></div>
               </div>
             </div>
@@ -181,7 +197,7 @@ export default function App() {
                   <CadenceBadge cadence="weekly" />
                   <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.03</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><RigCountChart /></div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ErrorBoundary name="Rig Count"><RigCountChart /></ErrorBoundary></div>
                 <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">Baker Hughes · Public weekly XLSX</div></div>
               </div>
             </div>
@@ -193,7 +209,7 @@ export default function App() {
                   <CadenceBadge cadence="periodic" />
                   <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.04</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ReservesClock /></div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ErrorBoundary name="Reserves"><ReservesClock /></ErrorBoundary></div>
                 <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">EIA · USGS · Annual</div></div>
               </div>
             </div>
@@ -209,7 +225,7 @@ export default function App() {
                   <CadenceBadge cadence="daily" />
                   <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.05 · EIA</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><SupplyDemandSim /></div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ErrorBoundary name="Supply-Demand"><SupplyDemandSim /></ErrorBoundary></div>
                 <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">EIA STEO + OPEC MOMR · Daily</div></div>
               </div>
             </div>
@@ -221,7 +237,7 @@ export default function App() {
                   <CadenceBadge cadence="weekly" />
                   <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.06 · EIA</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><RefineryHeatmap /></div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ErrorBoundary name="Refinery"><RefineryHeatmap /></ErrorBoundary></div>
                 <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">EIA WPSR · PADD regions · Weekly</div></div>
               </div>
             </div>
@@ -237,7 +253,7 @@ export default function App() {
                   <CadenceBadge cadence="weekly" />
                   <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.07 · UN Comtrade</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><GlobalFlow /></div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ErrorBoundary name="Global Flow"><GlobalFlow /></ErrorBoundary></div>
                 <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">UN Comtrade + OPEC ASB · Monthly</div></div>
               </div>
             </div>
@@ -249,7 +265,7 @@ export default function App() {
                   <CadenceBadge cadence="daily" />
                   <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.08 · 8 straits</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><Chokepoints /></div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ErrorBoundary name="Chokepoints"><Chokepoints /></ErrorBoundary></div>
                 <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">GDELT disruption overlay + reference data</div></div>
               </div>
             </div>
@@ -261,7 +277,7 @@ export default function App() {
                   <CadenceBadge cadence="weekly" />
                   <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.09</span>
                 </div>
-                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><StorageSatellite /></div>
+                <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto"><ErrorBoundary name="Storage + Satellite"><StorageSatellite /></ErrorBoundary></div>
                 <div className="border-t border-white/[0.04] mx-5 py-2"><div className="text-[8px] font-mono text-muted/50">EIA + Sentinel-2 · Weekly</div></div>
               </div>
             </div>
@@ -276,7 +292,7 @@ export default function App() {
                 <CadenceBadge cadence="periodic" />
                 <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">MOD.10 · OPEC ASB</span>
               </div>
-              <div className="px-5 pb-4"><FieldScorecard /></div>
+              <div className="px-5 pb-4"><ErrorBoundary name="Field Scorecard"><FieldScorecard /></ErrorBoundary></div>
               <div className="border-t border-white/[0.04] mx-5 py-2">
                 <div className="text-[8px] font-mono text-muted/50">OPEC ASB + IHS Markit · Annual/Quarterly</div>
               </div>
