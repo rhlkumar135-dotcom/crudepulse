@@ -1,19 +1,9 @@
 import { Hono } from 'hono'
-import { Pool } from 'pg'
 
 const app = new Hono()
 
-let pool: Pool | null = null
-function getPool() {
-  if (!pool && process.env.DATABASE_URL) {
-    pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
-  }
-  return pool
-}
-
 import { createHash, randomBytes } from 'crypto'
 
-let tableReady = false
 let adminSeeded = false
 
 function hashPassword(password: string): string {
@@ -32,42 +22,34 @@ function generateToken(): string {
   return randomBytes(32).toString('hex')
 }
 
+async function getPrisma() {
+  const { prisma } = await import('./src/lib/db')
+  return prisma
+}
+
 async function ensureAdmin() {
   if (adminSeeded) return
   try {
-    const p = getPool()
-    if (!p) return
-    if (!tableReady) {
-      await p.query(`
-        CREATE TABLE IF NOT EXISTS users (
-          id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-          email TEXT UNIQUE NOT NULL,
-          name TEXT,
-          password_hash TEXT,
-          tier TEXT DEFAULT 'free',
-          role TEXT DEFAULT 'user',
-          email_confirmed BOOLEAN DEFAULT false,
-          confirmation_token TEXT,
-          token_expiry TIMESTAMP,
-          "createdAt" TIMESTAMP DEFAULT NOW()
-        )
-      `)
-      // Add columns if table already existed without them
-      const cols = await p.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'users'`)
-      const existing = new Set(cols.rows.map((r: any) => r.column_name))
-      if (!existing.has('password_hash')) await p.query(`ALTER TABLE users ADD COLUMN password_hash TEXT`)
-      if (!existing.has('email_confirmed')) await p.query(`ALTER TABLE users ADD COLUMN email_confirmed BOOLEAN DEFAULT false`)
-      if (!existing.has('confirmation_token')) await p.query(`ALTER TABLE users ADD COLUMN confirmation_token TEXT`)
-      if (!existing.has('token_expiry')) await p.query(`ALTER TABLE users ADD COLUMN token_expiry TIMESTAMP`)
-      tableReady = true
-    }
-    // Seed admin with confirmed email
+    const prisma = await getPrisma()
     const adminHash = hashPassword('CrudePulse@2026!')
-    await p.query(
-      `INSERT INTO users (email, name, role, tier, email_confirmed, password_hash) VALUES ('rhlkumar135@gmail.com', 'RHL Kumar', 'admin', 'pro', true, $1)
-       ON CONFLICT (email) DO UPDATE SET role = 'admin', tier = 'pro', email_confirmed = true, password_hash = $1`,
-      [adminHash]
-    )
+    const existing = await (prisma as any).user.findUnique({ where: { email: 'rhlkumar135@gmail.com' } })
+    if (!existing) {
+      await (prisma as any).user.create({
+        data: {
+          email: 'rhlkumar135@gmail.com',
+          name: 'RHL Kumar',
+          role: 'admin',
+          tier: 'pro',
+          emailConfirmed: true,
+          passwordHash: adminHash,
+        },
+      })
+    } else {
+      await (prisma as any).user.update({
+        where: { email: 'rhlkumar135@gmail.com' },
+        data: { role: 'admin', tier: 'pro', emailConfirmed: true, passwordHash: adminHash },
+      })
+    }
     adminSeeded = true
   } catch (e) { console.error('Admin seed failed:', e); adminSeeded = true }
 }
@@ -133,17 +115,17 @@ app.post('/auth/signup', async (c) => {
   if (body.password.length < 6) return c.json({ error: 'Password must be at least 6 characters' }, 400)
 
   await ensureAdmin()
-  const p = getPool()
-  if (!p) return c.json({ error: 'Database not configured' }, 503)
+  const prisma = await getPrisma()
 
-  const existing = await p.query('SELECT id, email_confirmed FROM users WHERE email = $1', [body.email])
-  if (existing.rows.length) {
-    const user = existing.rows[0]
-    if (!user.email_confirmed) {
-      // Resend confirmation
+  const existing = await (prisma as any).user.findUnique({ where: { email: body.email } })
+  if (existing) {
+    if (!existing.emailConfirmed) {
       const token = generateToken()
       const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
-      await p.query('UPDATE users SET confirmation_token = $1, token_expiry = $2 WHERE email = $3', [token, expiry, body.email])
+      await (prisma as any).user.update({
+        where: { email: body.email },
+        data: { confirmationToken: token, tokenExpiry: expiry },
+      })
       await sendConfirmationEmail(body.email, body.name || body.email.split('@')[0], token)
       return c.json({ message: 'Account exists but email not confirmed. A new confirmation email has been sent.' })
     }
@@ -155,18 +137,36 @@ app.post('/auth/signup', async (c) => {
   const token = generateToken()
   const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-  const result = await p.query(
-    `INSERT INTO users (email, name, password_hash, tier, role, email_confirmed, confirmation_token, token_expiry)
-     VALUES ($1, $2, $3, 'free', 'user', false, $4, $5)
-     RETURNING id, email, name, tier, role, email_confirmed`,
-    [body.email, name, passwordHashed, token, tokenExpiry]
-  )
+  const user = await (prisma as any).user.create({
+    data: {
+      email: body.email,
+      name,
+      passwordHash: passwordHashed,
+      tier: 'free',
+      role: 'user',
+      emailConfirmed: false,
+      confirmationToken: token,
+      tokenExpiry,
+    },
+    select: { id: true, email: true, name: true, tier: true, role: true, emailConfirmed: true },
+  })
 
   const emailSent = await sendConfirmationEmail(body.email, name, token)
+  if (emailSent) {
+    return c.json({
+      message: 'Account created. Please check your email to confirm your account.',
+      emailSent: true,
+      user,
+    })
+  }
+  // No SMTP configured — auto-confirm so user can log in immediately
+  await (prisma as any).user.update({
+    where: { id: user.id },
+    data: { emailConfirmed: true, confirmationToken: null, tokenExpiry: null },
+  })
   return c.json({
-    message: 'Account created. Please check your email to confirm your account.',
-    emailSent,
-    user: result.rows[0],
+    message: 'Account created. You can now sign in.',
+    user: { ...user, emailConfirmed: true },
   })
 })
 
@@ -174,31 +174,28 @@ app.get('/auth/confirm/:token', async (c) => {
   const token = c.req.param('token')
   if (!token) return c.json({ error: 'Token required' }, 400)
 
-  const p = getPool()
-  if (!p) return c.json({ error: 'Database not configured' }, 503)
+  const prisma = await getPrisma()
 
-  const result = await p.query(
-    'SELECT id, email, name FROM users WHERE confirmation_token = $1 AND token_expiry > NOW()',
-    [token]
-  )
-  if (!result.rows.length) {
+  const user = await (prisma as any).user.findFirst({
+    where: { confirmationToken: token, tokenExpiry: { gt: new Date() } },
+  })
+  if (!user) {
     return c.json({ error: 'Invalid or expired confirmation link' }, 400)
   }
 
-  await p.query(
-    'UPDATE users SET email_confirmed = true, confirmation_token = NULL, token_expiry = NULL WHERE confirmation_token = $1',
-    [token]
-  )
+  await (prisma as any).user.update({
+    where: { id: user.id },
+    data: { emailConfirmed: true, confirmationToken: null, tokenExpiry: null },
+  })
 
   const baseUrl = process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'www.crudepulses.com'
-  // Return HTML redirect to login page with success message
   return c.html(`
     <!DOCTYPE html>
-    <html><head><meta http-equiv="refresh" content="3;url=https://${baseUrl}/v2"></head>
+    <html><head><meta http-equiv="refresh" content="3;url=https://${baseUrl}/"></head>
     <body style="background:#0A0E14;color:#E8ECF0;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
       <div style="text-align:center">
         <h1 style="color:#2DD4BF">✅ Email Confirmed!</h1>
-        <p style="color:#8892A0">Welcome to CrudePulse, ${result.rows[0].name || 'trader'}.</p>
+        <p style="color:#8892A0">Welcome to CrudePulse, ${user.name || 'trader'}.</p>
         <p style="color:#8892A0">Redirecting in 3 seconds...</p>
       </div>
     </body></html>
@@ -210,28 +207,22 @@ app.post('/auth/login', async (c) => {
   if (!body.email || !body.password) return c.json({ error: 'Email and password required' }, 400)
 
   await ensureAdmin()
-  const p = getPool()
-  if (!p) return c.json({ error: 'Database not configured' }, 503)
+  const prisma = await getPrisma()
 
-  const result = await p.query(
-    'SELECT id, email, name, tier, role, password_hash, email_confirmed FROM users WHERE email = $1',
-    [body.email]
-  )
-  if (!result.rows.length) return c.json({ error: 'Invalid email or password' }, 401)
+  const user = await (prisma as any).user.findUnique({
+    where: { email: body.email },
+    select: { id: true, email: true, name: true, tier: true, role: true, passwordHash: true, emailConfirmed: true },
+  })
+  if (!user) return c.json({ error: 'Invalid email or password' }, 401)
 
-  const user = result.rows[0]
-
-  // Check password
-  if (!user.password_hash) {
-    // Legacy user without password — force reset
+  if (!user.passwordHash) {
     return c.json({ error: 'Account needs password setup. Please sign up again.' }, 400)
   }
-  if (!verifyPassword(body.password, user.password_hash)) {
+  if (!verifyPassword(body.password, user.passwordHash)) {
     return c.json({ error: 'Invalid email or password' }, 401)
   }
 
-  // Check email confirmation
-  if (!user.email_confirmed) {
+  if (!user.emailConfirmed) {
     return c.json({ error: 'Please confirm your email before logging in. Check your inbox.' }, 403)
   }
 
@@ -245,26 +236,34 @@ app.get('/auth/me', async (c) => {
   if (!email) return c.json({ error: 'email query param required' }, 400)
 
   await ensureAdmin()
-  const p = getPool()
-  if (!p) return c.json({ error: 'Database not configured' }, 503)
+  const prisma = await getPrisma()
 
-  const result = await p.query('SELECT id, email, name, tier, role FROM users WHERE email = $1 AND email_confirmed = true', [email])
-  if (!result.rows.length) return c.json({ error: 'User not found' }, 404)
-  return c.json({ user: result.rows[0] })
+  const user = await (prisma as any).user.findFirst({
+    where: { email, emailConfirmed: true },
+    select: { id: true, email: true, name: true, tier: true, role: true },
+  })
+  if (!user) return c.json({ error: 'User not found' }, 404)
+  return c.json({ user })
 })
 
 app.get('/admin/users', async (c) => {
   const email = c.req.query('email')
   if (!email) return c.json({ error: 'Unauthorized' }, 401)
 
-  const p = getPool()
-  if (!p) return c.json({ error: 'Database not configured' }, 503)
+  await ensureAdmin()
+  const prisma = await getPrisma()
 
-  const adminCheck = await p.query('SELECT role FROM users WHERE email = $1', [email])
-  if (!adminCheck.rows.length || adminCheck.rows[0].role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
+  const adminCheck = await (prisma as any).user.findUnique({
+    where: { email },
+    select: { role: true },
+  })
+  if (!adminCheck || adminCheck.role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
 
-  const result = await p.query('SELECT id, email, name, tier, role, "createdAt" FROM users ORDER BY "createdAt" DESC')
-  return c.json({ users: result.rows })
+  const users = await (prisma as any).user.findMany({
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, email: true, name: true, tier: true, role: true, createdAt: true },
+  })
+  return c.json({ users })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════
