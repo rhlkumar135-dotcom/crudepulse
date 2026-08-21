@@ -1212,6 +1212,286 @@ function processEIAReserves(data: Array<{ country: string; period: string; value
     }))
 }
 
+// ═══ Module V3: Middle East ↔ Global Markets Correlation Engine ══════════════
+// Computes rolling Pearson correlations between ME event tone and global markets
+// Sources: Google News ME-filtered RSS, Yahoo Finance (currencies, indices, oil)
+
+interface AssetTimeSeries {
+  symbol: string
+  label: string
+  data: Array<{ date: string; value: number }>
+}
+
+// Fetch any Yahoo Finance chart data as time series
+async function fetchYahooTimeSeries(symbol: string, range = '90d'): Promise<AssetTimeSeries | null> {
+  try {
+    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return null
+    const json = await res.json() as YahooChartResponse
+    const result = json.chart?.result?.[0]
+    if (!result?.timestamp) return null
+
+    const closes = result.indicators?.quote?.[0]?.close || []
+    const data = result.timestamp
+      .map((t, i) => ({ date: new Date(t * 1000).toISOString().split('T')[0], value: closes[i] ?? 0 }))
+      .filter(d => d.value > 0)
+
+    return { symbol, label: symbol, data }
+  } catch { return null }
+}
+
+// Fetch ME-filtered events from Google News RSS
+async function fetchMEEvents(): Promise<Array<{ date: string; score: number; title: string; source: string }>> {
+  const queries = [
+    'middle+east+oil+disruption+conflict+sanctions',
+    'saudi+iran+iraq+opec+oil+production',
+    'yemen+houthi+oil+tanker+attack',
+    'iran+sanctions+oil+export',
+    'israel+iran+conflict+oil+energy',
+  ]
+
+  const allArticles: Array<{ title: string; source: string; pubDate: string }> = []
+
+  const results = await Promise.allSettled(
+    queries.map(q => fetchGoogleNewsRSS(q, 10))
+  )
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value) allArticles.push(...r.value)
+  }
+
+  // Deduplicate by title similarity
+  const seen = new Set<string>()
+  const unique = allArticles.filter(a => {
+    const key = a.title.toLowerCase().slice(0, 50)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  // Score each event: negative = disruption/risk, positive = stability
+  return unique.map(a => {
+    const t = a.title.toLowerCase()
+    let score = 0
+    if (t.includes('attack') || t.includes('strike') || t.includes('missile') || t.includes('drone')) score -= 0.8
+    if (t.includes('sanction') || t.includes('embargo') || t.includes('ban')) score -= 0.6
+    if (t.includes('disruption') || t.includes('shutdown') || t.includes('halt')) score -= 0.7
+    if (t.includes('conflict') || t.includes('war') || t.includes('tension')) score -= 0.5
+    if (t.includes('houthi') || t.includes('yemen')) score -= 0.6
+    if (t.includes('supply cut') || t.includes('reduce') || t.includes('cut output')) score -= 0.4
+    if (t.includes('deal') || t.includes('ceasefire') || t.includes('agreement')) score += 0.5
+    if (t.includes('increase') || t.includes('boost') || t.includes('resume')) score += 0.3
+    if (t.includes('surplus') || t.includes('glut')) score += 0.2
+    score = Math.max(-1, Math.min(1, score))
+
+    const date = a.pubDate ? new Date(a.pubDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    return { date, score, title: a.title, source: a.source }
+  })
+}
+
+// Pearson correlation coefficient
+function pearson(x: number[], y: number[]): { r: number; n: number } | null {
+  const n = x.length
+  if (n < 3) return null
+
+  const meanX = x.reduce((a, b) => a + b, 0) / n
+  const meanY = y.reduce((a, b) => a + b, 0) / n
+
+  let num = 0, denX = 0, denY = 0
+  for (let i = 0; i < n; i++) {
+    const dx = x[i] - meanX
+    const dy = y[i] - meanY
+    num += dx * dy
+    denX += dx * dx
+    denY += dy * dy
+  }
+
+  const den = Math.sqrt(denX * denY)
+  if (den === 0) return { r: 0, n }
+  return { r: num / den, n }
+}
+
+// Compute rolling correlation for different windows
+function computeCorrelations(
+  eventScores: Map<string, number>,
+  marketData: Map<string, Map<string, number>>,
+): Record<string, Record<string, { r: number; n: number } | null>> {
+  const windows = [7, 30, 90]
+  const marketNames = Array.from(marketData.keys())
+  const result: Record<string, Record<string, { r: number; n: number } | null>> = {}
+
+  // Build sorted date list
+  const allDates = new Set<string>()
+  for (const [_, series] of marketData) {
+    for (const d of series.keys()) allDates.add(d)
+  }
+  for (const d of eventScores.keys()) allDates.add(d)
+  const sortedDates = Array.from(allDates).sort()
+
+  // Build aligned event score array
+  const eventArray = sortedDates.map(d => eventScores.get(d) ?? 0)
+
+  for (const market of marketNames) {
+    result[market] = {}
+    const marketArray = sortedDates.map(d => marketData.get(market)?.get(d) ?? NaN)
+
+    for (const window of windows) {
+      // Take the last N data points
+      const recentEvent = eventArray.slice(-window)
+      const recentMarket = marketArray.slice(-window)
+
+      // Filter out NaN
+      const validIdx = recentMarket.map((v, i) => !isNaN(v) ? i : -1).filter(i => i >= 0)
+      if (validIdx.length < 3) {
+        result[market][`${window}d`] = null
+        continue
+      }
+
+      const cleanEvent = validIdx.map(i => recentEvent[i])
+      const cleanMarket = validIdx.map(i => recentMarket[i])
+      result[market][`${window}d`] = pearson(cleanEvent, cleanMarket)
+    }
+  }
+
+  return result
+}
+
+// Generate plain-English callouts for strong correlations
+function generateCallouts(correlations: Record<string, Record<string, { r: number; n: number } | null>>): Array<{ text: string; strength: string; market: string; window: string }> {
+  const callouts: Array<{ text: string; strength: string; market: string; window: string }> = []
+
+  for (const [market, windows] of Object.entries(correlations)) {
+    for (const [window, result] of Object.entries(windows)) {
+      if (!result || result.n < 5) continue
+      const abs = Math.abs(result.r)
+      if (abs < 0.4) continue
+
+      const direction = result.r > 0 ? 'positive' : 'inverse'
+      const strength = abs >= 0.7 ? 'strong' : abs >= 0.5 ? 'moderate' : 'notable'
+      const label = marketLabel(market)
+
+      callouts.push({
+        text: `Middle East event tone shows a ${strength} ${direction} correlation with ${label} over the last ${window} (r=${result.r.toFixed(2)}, n=${result.n}).`,
+        strength,
+        market,
+        window,
+      })
+    }
+  }
+
+  return callouts.sort((a, b) => {
+    const sa = a.strength === 'strong' ? 0 : a.strength === 'moderate' ? 1 : 2
+    const sb = b.strength === 'strong' ? 0 : b.strength === 'moderate' ? 1 : 2
+    return sa - sb
+  })
+}
+
+function marketLabel(symbol: string): string {
+  const labels: Record<string, string> = {
+    'CL=F': 'WTI Crude Oil',
+    'BZ=F': 'Brent Crude Oil',
+    'EURUSD=X': 'EUR/USD',
+    'EGPUSD=X': 'EGP/USD (Egyptian Pound)',
+    'TRY=X': 'TRY/USD (Turkish Lira)',
+    'DX-Y.NYB': 'US Dollar Index (DXY)',
+    '^GSPC': 'S&P 500',
+    '^FTSE': 'FTSE 100',
+    '^N225': 'Nikkei 225',
+  }
+  return labels[symbol] || symbol
+}
+
+app.get('/market/correlation', async (c) => {
+  const cached = getCache('correlation')
+  if (cached && isCacheFresh('correlation', 60 * SECOND)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Define tracked assets
+  const assets: Array<{ symbol: string; label: string; type: string; excluded?: boolean; exclusionReason?: string }> = [
+    { symbol: 'CL=F', label: 'WTI Crude', type: 'oil' },
+    { symbol: 'BZ=F', label: 'Brent Crude', type: 'oil' },
+    { symbol: 'EURUSD=X', label: 'EUR/USD', type: 'currency' },
+    { symbol: 'EGPUSD=X', label: 'EGP/USD', type: 'currency' },
+    { symbol: 'TRY=X', label: 'TRY/USD', type: 'currency' },
+    { symbol: 'DX-Y.NYB', label: 'USD Index (DXY)', type: 'currency' },
+    { symbol: '^GSPC', label: 'S&P 500', type: 'index' },
+    { symbol: '^FTSE', label: 'FTSE 100', type: 'index' },
+    { symbol: '^N225', label: 'Nikkei 225', type: 'index' },
+    // Gulf-pegged currencies — excluded from correlation (FR-31)
+    { symbol: 'SAR=X', label: 'SAR/USD', type: 'currency-excluded', excluded: true, exclusionReason: 'USD-pegged (3.75:1 fixed). Shows near-zero independent variance — excluded from correlation analysis.' },
+    { symbol: 'AED=X', label: 'AED/USD', type: 'currency-excluded', excluded: true, exclusionReason: 'USD-pegged (3.6725:1 fixed). Shows near-zero independent variance — excluded from correlation analysis.' },
+  ]
+
+  // Fetch all data in parallel
+  const [meEvents, ...timeSeriesResults] = await Promise.allSettled([
+    fetchMEEvents(),
+    ...assets.filter(a => !a.excluded).map(a => fetchYahooTimeSeries(a.symbol)),
+  ])
+
+  const events = meEvents.status === 'fulfilled' ? meEvents.value : []
+
+  // Build ME event score time series (daily aggregated)
+  const eventScoreByDate = new Map<string, number>()
+  for (const event of events) {
+    const current = eventScoreByDate.get(event.date) ?? 0
+    eventScoreByDate.set(event.date, current + event.score)
+  }
+
+  // Normalize event scores to -1..1 range
+  const maxAbs = Math.max(1, ...Array.from(eventScoreByDate.values()).map(Math.abs))
+  for (const [date, score] of eventScoreByDate) {
+    eventScoreByDate.set(date, score / maxAbs)
+  }
+
+  // Build market data maps
+  const marketData = new Map<string, Map<string, number>>()
+  const latestPrices: Record<string, number> = {}
+  const activeAssets = assets.filter(a => !a.excluded)
+
+  for (let i = 0; i < timeSeriesResults.length; i++) {
+    const r = timeSeriesResults[i]
+    const asset = activeAssets[i]
+    if (r.status !== 'fulfilled' || !r.value) continue
+
+    const seriesMap = new Map<string, number>()
+    for (const point of r.value.data) {
+      seriesMap.set(point.date, point.value)
+    }
+    marketData.set(asset.symbol, seriesMap)
+    const lastPoint = r.value.data[r.value.data.length - 1]
+    if (lastPoint) latestPrices[asset.symbol] = lastPoint.value
+  }
+
+  // Compute correlations
+  const correlations = computeCorrelations(eventScoreByDate, marketData)
+
+  // Generate callouts
+  const callouts = generateCallouts(correlations)
+
+  const correlationData = {
+    assets: activeAssets.map(a => ({
+      ...a,
+      latest: latestPrices[a.symbol] ?? null,
+    })),
+    excludedAssets: assets.filter(a => a.excluded),
+    events: events.slice(0, 20),
+    eventCount: events.length,
+    correlations,
+    callouts,
+    meta: {
+      windowDays: [7, 30, 90],
+      eventWindowSize: `${events.length} ME events in 90d`,
+      methodology: 'Rolling Pearson correlation coefficients computed server-side. Correlation ≠ causation — values describe co-movement, not causal relationships.',
+    },
+  }
+
+  setCache('correlation', correlationData, 'api')
+  return c.json({ ...correlationData, lastUpdated: new Date().toISOString(), source: 'yahoo+gnews' })
+})
+
 export default app
 
 // Debug route — tells us which env vars are set (keys are masked)
