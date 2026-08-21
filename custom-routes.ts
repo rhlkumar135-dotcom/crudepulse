@@ -405,17 +405,24 @@ async function fetchGDELTInner(): Promise<unknown[] | null> {
 
     if (!data.articles?.length) return null
 
-    return data.articles.map((a, i) => ({
-      id: `gdelt-${i}`,
-      title: a.title,
-      source: a.domain || 'GDELT',
-      time: formatTimeAgo(a.seendate),
-      location: a.sourcecountry || 'Global',
-      sentiment: (a.tone ?? 0) > 0.5 ? 'positive' : (a.tone ?? 0) < -0.5 ? 'negative' : 'neutral',
-      score: +(a.tone ?? 0).toFixed(1),
-      category: inferCategory(a.title),
-      severity: Math.min(1, Math.abs(a.tone ?? 0) / 10),
-    }))
+    return data.articles
+      .map((a, i) => {
+        const parsedDate = parseGDELTD(a.seendate || '')
+        return {
+          id: `gdelt-${i}`,
+          title: a.title,
+          source: a.domain || 'GDELT',
+          time: formatTimeAgo(parsedDate),
+          rawDate: parsedDate,
+          location: a.sourcecountry || 'Global',
+          sentiment: (a.tone ?? 0) > 0.5 ? 'positive' : (a.tone ?? 0) < -0.5 ? 'negative' : 'neutral',
+          score: +(a.tone ?? 0).toFixed(1),
+          category: inferCategory(a.title),
+          severity: Math.min(1, Math.abs(a.tone ?? 0) / 10),
+        }
+      })
+      .filter((a) => isRecent(a.rawDate, 7))
+      .sort((a, b) => b.rawDate.localeCompare(a.rawDate))
   } catch (e) {
     console.error('GDELT fetch failed:', e)
     return null
@@ -672,13 +679,17 @@ async function fetchGDELTMultiQuery(): Promise<unknown[]> {
       const key = a.title.toLowerCase().slice(0, 60)
       if (seen.has(key)) continue
       seen.add(key)
+
+      const parsedDate = parseGDELTD(a.seendate || '')
+      if (!isRecent(parsedDate, 7)) continue
+
       const tone = a.tone ?? 0
       allArticles.push({
         id: `gdelt-${allArticles.length}`,
         title: a.title,
         source: a.domain || 'GDELT',
-        time: formatTimeAgo(a.seendate),
-        rawDate: a.seendate || '',
+        time: formatTimeAgo(parsedDate),
+        rawDate: parsedDate,
         location: a.sourcecountry || 'Global',
         sentiment: tone > 0.5 ? 'positive' : tone < -0.5 ? 'negative' : 'neutral',
         score: +tone.toFixed(1),
@@ -688,7 +699,7 @@ async function fetchGDELTMultiQuery(): Promise<unknown[]> {
     }
   }
 
-  return allArticles
+  return allArticles.sort((a, b) => b.rawDate.localeCompare(a.rawDate))
 }
 
 async function fetchDisruptionNews(): Promise<unknown[]> {
@@ -711,7 +722,7 @@ async function fetchDisruptionNews(): Promise<unknown[]> {
     const key = a.title.toLowerCase().slice(0, 50)
     if (seen.has(key)) return false
     seen.add(key)
-    return true
+    return isRecent(a.pubDate, 7)
   })
 }
 
@@ -731,28 +742,35 @@ app.get('/market/disruptions', async (c) => {
   const gnewsRaw = gnewsResults.status === 'fulfilled' ? gnewsResults.value : []
 
   // Build Google News events
-  const gnewsEvents = gnewsRaw.map((a: any, i: number) => ({
-    id: `gnews-disr-${i}`,
-    title: a.title,
-    source: a.source,
-    time: formatTimeAgo(a.pubDate),
-    rawDate: a.pubDate || '',
-    location: inferLocation(a.title),
-    sentiment: 'neutral' as const,
-    score: 0,
-    category: inferCategory(a.title),
-    severity: 0.3 + Math.abs(Math.sin(a.title.length)) * 0.5,
-  }))
+  const gnewsEvents = gnewsRaw.map((a: any, i: number) => {
+    const pubDate = a.pubDate || ''
+    const parsedDate = pubDate ? new Date(pubDate).toISOString() : new Date().toISOString()
+    return {
+      id: `gnews-disr-${i}`,
+      title: a.title,
+      source: a.source,
+      time: formatTimeAgo(parsedDate),
+      rawDate: parsedDate,
+      location: inferLocation(a.title),
+      sentiment: 'neutral' as const,
+      score: 0,
+      category: inferCategory(a.title),
+      severity: 0.3 + Math.abs(Math.sin(a.title.length)) * 0.5,
+    }
+  })
 
   // Merge: GDELT first (has tone scores), then Google News
   const seenTitles = new Set<string>()
-  const events: unknown[] = []
+  const events: any[] = []
   for (const e of [...gdeltEvents, ...gnewsEvents]) {
     const key = (e as any).title.toLowerCase().slice(0, 60)
     if (seenTitles.has(key)) continue
     seenTitles.add(key)
     events.push(e)
   }
+
+  // Sort by date (newest first) and only include recent events
+  events.sort((a, b) => (b.rawDate || '').localeCompare(a.rawDate || ''))
 
   if (events.length) {
     setCache('disruptions', { events }, 'api')
@@ -1349,10 +1367,34 @@ app.get('/market/fields', async (c) => {
 
 // ═══ Helper functions ════════════════════════════════════════════════════════
 
-function formatTimeAgo(dateStr: string): string {
+function parseGDELTD(seedate: string): string {
+  // GDELT seendate format: YYYYMMDDHHmmSS → parse to ISO date
+  if (!seedate || seedate.length < 8) return new Date().toISOString()
+  const y = seedate.slice(0, 4)
+  const m = seedate.slice(4, 6)
+  const d = seedate.slice(6, 8)
+  const h = seedate.slice(8, 10) || '00'
+  const min = seedate.slice(10, 12) || '00'
+  const s = seedate.slice(12, 14) || '00'
+  return `${y}-${m}-${d}T${h}:${min}:${s}Z`
+}
+
+function isRecent(dateStr: string, maxAgeDays: number): boolean {
+  if (!dateStr) return true
   const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return true
+  const ageMs = Date.now() - d.getTime()
+  return ageMs >= 0 && ageMs < maxAgeDays * 24 * 60 * 60 * 1000
+}
+
+function formatTimeAgo(dateStr: string): string {
+  if (!dateStr) return 'unknown'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return 'unknown'
   const diffMs = Date.now() - d.getTime()
+  if (diffMs < 0) return 'just now'
   const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return 'just now'
   if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h ago`

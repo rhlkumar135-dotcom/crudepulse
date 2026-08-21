@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react'
 import { useMarketData } from '@/lib/useMarketData'
 
-interface GeoEvent { id: string; title: string; location: string; severity: number; sentiment: string | number; score: number; source: string; time: string; category: string }
+interface GeoEvent { id: string; title: string; location: string; severity: number; sentiment: string | number; score: number; source: string; time: string; category: string; rawDate?: string }
 
 function sentimentToNum(s: string | number): number {
   if (typeof s === 'number') return s
@@ -17,40 +17,20 @@ const categoryColors: Record<string, string> = {
   Supply: '#2DD4BF', Weather: '#38BDF8', Production: '#22C55E', Shipping: '#6366F1',
 }
 
-// Group events by region/location to build the ranked bar chart
-function buildRegionData(events: GeoEvent[]) {
-  const regionMap = new Map<string, { count: number; avgSeverity: number; totalSeverity: number; events: GeoEvent[] }>()
+function buildHourlyFromEvents(events: GeoEvent[]) {
+  const hours = Array.from({ length: 24 }, (_, i) => ({ hour: `${String(i).padStart(2, '0')}:00`, volume: 0 }))
 
   for (const e of events) {
-    const region = e.category
-    if (!regionMap.has(region)) regionMap.set(region, { count: 0, avgSeverity: 0, totalSeverity: 0, events: [] })
-    const r = regionMap.get(region)!
-    r.count++
-    r.totalSeverity += e.severity
-    r.events.push(e)
+    if (e.rawDate) {
+      const d = new Date(e.rawDate)
+      if (!isNaN(d.getTime())) {
+        const h = d.getHours()
+        hours[h].volume++
+      }
+    }
   }
 
-  const result = Array.from(regionMap.entries()).map(([region, data]) => ({
-    region,
-    count: data.count,
-    avgSeverity: +(data.totalSeverity / data.count).toFixed(2),
-    events: data.events,
-    isSpike: data.count > (events.length / regionMap.size) * 1.5,
-  }))
-
-  return result.sort((a, b) => b.count - a.count)
-}
-
-function buildHourlyVolume() {
-  const hours = Array.from({ length: 24 }, (_, i) => {
-    const base = i >= 6 && i <= 18 ? 3 : 1
-    return {
-      hour: `${String(i).padStart(2, '0')}:00`,
-      volume: base + Math.floor(Math.random() * 3),
-    }
-  })
-  hours[14].volume = hours[14].volume * 3
-  hours[15].volume = hours[15].volume * 2.5
+  // If all zeros (no rawDate), just show zeros — no fake data
   return hours
 }
 
@@ -58,9 +38,9 @@ export function DisruptionRadar() {
   const { data } = useMarketData<{ events: GeoEvent[] }>('/api/market/disruptions', 'free', 30000)
   const geoEvents = data?.events || []
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const regionData = buildRegionData(geoEvents)
-  const hourlyVolume = buildHourlyVolume()
-  const spikeThreshold = Math.max(...hourlyVolume.map(h => h.volume)) * 0.6
+  const regionData = useMemo(() => buildRegionData(geoEvents), [geoEvents])
+  const hourlyVolume = useMemo(() => buildHourlyFromEvents(geoEvents), [geoEvents])
+  const spikeThreshold = useMemo(() => Math.max(...hourlyVolume.map(h => h.volume), 1) * 1.5, [hourlyVolume])
 
   const totalEvents = geoEvents.length
   const highSeverity = geoEvents.filter((e: GeoEvent) => e.severity >= 0.7).length
@@ -69,23 +49,39 @@ export function DisruptionRadar() {
   const filteredEvents = selectedCategory
     ? geoEvents.filter((e: GeoEvent) => e.category === selectedCategory)
     : geoEvents
-  const sorted = [...filteredEvents].sort((a: GeoEvent, b: GeoEvent) => b.severity - a.severity)
+  const sorted = [...filteredEvents].sort((a: GeoEvent, b: GeoEvent) => {
+    // Sort by recency first (newest first), then by severity
+    if (a.rawDate && b.rawDate) return b.rawDate.localeCompare(a.rawDate)
+    return b.severity - a.severity
+  })
+
+  const newestEvent = geoEvents[0]
+  const newestTime = newestEvent?.time || ''
 
   return (
     <div className="space-y-3">
       {/* Summary stats */}
       <div className="grid grid-cols-4 gap-2">
-        <StatCard label="TOTAL EVENTS" value={String(totalEvents)} sub="24h" color="text-text" />
+        <StatCard label="TOTAL EVENTS" value={String(totalEvents)} sub="last 7d" color="text-text" />
         <StatCard label="HIGH SEVERITY" value={String(highSeverity)} sub="≥ 7.0/10" color="text-red" />
         <StatCard label="AVG TONE" value={avgTone > 0 ? `+${avgTone}` : String(avgTone)} sub="GDELT" color={avgTone >= 0 ? 'text-teal' : 'text-red'} />
         <StatCard label="ACTIVE REGIONS" value={String(regionData.length)} sub="categories" color="text-amber" />
       </div>
 
-      {/* 24h volume bar chart with spike detection */}
+      {/* Live indicator */}
+      {newestTime && (
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-teal/[0.06] border border-teal/10 rounded-lg">
+          <Clock size={10} className="text-teal/60" />
+          <span className="text-[8px] font-mono text-teal/60 tracking-wider">LATEST EVENT</span>
+          <span className="text-[9px] font-mono text-teal font-medium">{newestTime}</span>
+        </div>
+      )}
+
+      {/* Real-time hourly volume bar chart */}
       <div>
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-[9px] font-mono text-muted tracking-wider">24H EVENT VOLUME</span>
-          <span className="text-[8px] font-mono text-amber bg-amber/10 px-1 py-0.5 rounded border border-amber/15">⚡ SPIKE DETECTION ACTIVE</span>
+          <span className="text-[8px] font-mono text-teal bg-teal/10 px-1 py-0.5 rounded border border-teal/15">⚡ LIVE FROM EVENTS</span>
         </div>
         <div className="h-[80px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -100,7 +96,7 @@ export function DisruptionRadar() {
                 {hourlyVolume.map((entry, i) => (
                   <Cell
                     key={i}
-                    fill={entry.volume >= spikeThreshold ? '#EF4444' : '#F5A623'}
+                    fill={entry.volume >= spikeThreshold ? '#EF4444' : '#2DD4BF'}
                     opacity={entry.volume >= spikeThreshold ? 0.9 : 0.5}
                   />
                 ))}
@@ -149,7 +145,7 @@ export function DisruptionRadar() {
         </div>
       </div>
 
-      {/* Event list */}
+      {/* Event list — sorted by recency (newest first) */}
       <div>
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-[9px] font-mono text-muted tracking-wider">EVENT FEED</span>
@@ -182,7 +178,7 @@ export function DisruptionRadar() {
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[8px] text-muted font-mono">{event.location}</span>
                     <span className="text-[7px] text-border">·</span>
-                    <span className="text-[8px] text-muted font-mono">{event.time}</span>
+                    <span className="text-[8px] text-teal/70 font-mono font-medium">{event.time}</span>
                     <span className="text-[8px] font-mono px-1 py-0.5 rounded" style={{ color, backgroundColor: color + '15' }}>
                       {event.category}
                     </span>
@@ -200,6 +196,29 @@ export function DisruptionRadar() {
       </div>
     </div>
   )
+}
+
+function buildRegionData(events: GeoEvent[]) {
+  const regionMap = new Map<string, { count: number; avgSeverity: number; totalSeverity: number; events: GeoEvent[] }>()
+
+  for (const e of events) {
+    const region = e.category
+    if (!regionMap.has(region)) regionMap.set(region, { count: 0, avgSeverity: 0, totalSeverity: 0, events: [] })
+    const r = regionMap.get(region)!
+    r.count++
+    r.totalSeverity += e.severity
+    r.events.push(e)
+  }
+
+  const result = Array.from(regionMap.entries()).map(([region, data]) => ({
+    region,
+    count: data.count,
+    avgSeverity: +(data.totalSeverity / data.count).toFixed(2),
+    events: data.events,
+    isSpike: data.count > (events.length / regionMap.size) * 1.5,
+  }))
+
+  return result.sort((a, b) => b.count - a.count)
 }
 
 function StatCard({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
