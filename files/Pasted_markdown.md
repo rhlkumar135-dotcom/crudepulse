@@ -1,199 +1,215 @@
-CrudePulse — V4: Satellite & Earth-Observation Intelligence Layer
-Detailed Requirements & Genuine Free, Fast Data Sources
-Versioning note: this document promotes the Satellite Intelligence Layer to V4. The previously-specced "creative/extraordinary" feature set (Scenario Simulator, Time Machine, Sonification, Flyover, Bull/Bear Debate, Market Moment Cards) should be treated as V5 going forward, since it was the prior V4 — flag this to whoever's tracking the roadmap so the two documents don't collide on the same version number.
-1. V4 Purpose & Positioning
-V4 is CrudePulse's fastest-refreshing, most genuinely "live" layer. Where V1–V3 top out at 30-minute (GDELT) or hourly cadence, V4 introduces sub-hourly and near-real-time signals for the first time — thermal incident detection, dark-vessel activity, and emissions readings — while explicitly documenting every source's true latency so nothing is oversold as faster than it is.
-2. Data Sources Ranked by Genuine Latency (fastest first)
-This ranking matters more here than in any prior version — V4's entire value proposition is speed, so sources must be evaluated honestly on actual refresh rate, not nominal "real-time" marketing language.
-Rank
+A new portal page: comprehensive, image-rich, interactive news displayed on a live world map
+1. Purpose
+A dedicated page (/news) presenting all recent oil-relevant news as an interactive, geotagged, image-rich experience — not a plain headline list. Users see a live world map with pins where news is happening, and can browse the same content as a rich scrollable feed. This is the most visually engaging "discovery" surface in the product — designed for browsing, not just monitoring.
+2. Core Design Concept
+Split view: interactive world map (left/top) + scrollable article feed (right/bottom), synced — hovering/clicking a map pin scrolls the feed to that article and vice versa.
+Map pins are geotagged automatically (see §4 — GDELT does this natively), clustered when zoomed out, colored by topic category (disruption = red, price/market = amber, policy/OPEC = blue, environmental = green, infrastructure = purple).
+Article cards show: image (when available), headline, one-line AI-generated summary (reuse the LLM pattern from the Daily Brief feature), source + timestamp, region tag, and a "read more" link out to the original source (never reproduce full article text — link out, consistent with copyright practice).
+Filters: by region, topic category, recency (last 24h/7d/30d), and source.
+Live updating: new pins/cards animate in as fresh data arrives, with a "X new stories" toast rather than jarring auto-scroll.
+3. Detailed Pin System
+3.1 Pin Anatomy & Sizing
+Pins are not uniform — size scales with a computed Importance Score, a transparent (non-ML) weighted formula: (mention_volume_last_1h × 0.4) + (|GDELT_tone_score| × 0.35) + (recency_decay_factor × 0.25). Higher score = larger pin. This means a minor regional mention renders small; a major disruption event renders large and impossible to miss — the map self-prioritizes without the user needing to filter.
+Pin shape: circular base with a colored ring (category color, §3.2) and a solid fill whose opacity reflects recency (fully opaque <1h old, fading to 60% opacity as it approaches 24h, further fading toward the 30-day retention edge).
+3.2 Pin Color Coding (category)
+Category
+Color
+Hex
+Example Events
+Disruption/Conflict
+Red
+#EF4444
+Attacks, strikes, chokepoint incidents, sanctions enforcement
+Price/Market Move
+Amber
+#F5A623
+Major price swings, trading news, futures activity
+Policy/OPEC
+Blue
+#3B82F6
+OPEC+ decisions, government policy, regulatory action
+Environmental/Spill
+Green
+#2DD4BF
+Spill candidates (linking to the Satellite layer's spill detection), emissions events, environmental policy
+Infrastructure
+Purple
+#A78BFA
+Pipeline/refinery construction, capacity changes, new discoveries
+This palette must remain colorblind-considerate: pair every color with a distinct pin icon/shape (not color alone) — e.g., a flame glyph for disruption, a dollar glyph for price, a gavel glyph for policy, a droplet glyph for environmental, a wrench glyph for infrastructure — so category is legible without relying on color perception alone.
+3.3 Pin Interaction States
+State
+Trigger
+Behavior
+Default
+Idle on map
+Static pin at computed size/color/opacity
+Hover
+Mouse hover (desktop)
+Lightweight preview tooltip: headline + thumbnail + timestamp, no full card
+Active/Selected
+Click/tap
+Map flies-to and centers on pin, full article card expands in the synced feed panel, pin gets a highlighted outline ring
+New-Arrival
+Story surfaced in the last 10 minutes
+Pulsing animation (expanding ring, 2–3 second loop) + a small "Breaking" badge; pulse automatically stops after 10 minutes, reverting to default state
+Clustered
+Multiple pins within proximity at current zoom level
+Renders as a single cluster bubble showing a count (e.g., "12"); cluster color reflects the dominant category among its members; clicking a cluster zooms in to break it apart, never opens a card directly
+Related/Threaded
+Multiple articles covering the same underlying story (see §3.5)
+Pin shows a small stacked-card icon indicator; clicking opens a threaded view showing all related sources under one story headline instead of duplicate pins
+3.4 Interactive Legend
+Persistent overlay panel (top-left or collapsible corner drawer) showing all 5 category swatches with icon + label + live count of currently-visible pins in that category.
+Legend is clickable/toggleable — clicking a category dims/hides that category's pins on both map and feed, letting users isolate (e.g.) only Disruption events. Multi-select (toggle several on/off independently), not radio-button single-select.
+A "reset filters" control restores all categories.
+Legend also displays the current view mode toggle (Pins vs. Heatmap, §3.6) and the active recency window (24h/7d/30d) as part of the same panel, so all view-state controls live in one predictable place rather than scattered across the UI.
+3.5 Story Threading & Deduplication
+Articles covering the same underlying event (common with wire-service stories picked up by many outlets) are grouped server-side into a single Story object with a story_id, using the lightweight similarity heuristic already specified (headline similarity + time window + topic tag — no heavyweight ML).
+The map shows one pin per story, not one per article. The expanded card shows the primary (first-published or highest-authority) source plus a "+N more sources" expandable list.
+This is what keeps the map readable during a major event that generates 30+ articles in an hour, rather than becoming an unreadable pile of duplicate pins.
+3.6 Alternate View: Density Heatmap Mode
+Toggle (in the legend panel) switches pin view to a smooth heatmap layer showing news density by region rather than individual pins — useful for spotting macro patterns ("a lot is happening in the Gulf right now") at a glance, especially at low zoom levels where individual pins would be too small to read.
+Heatmap intensity uses the same Importance Score aggregated by geographic cell, not raw article count alone (so one major story outweighs ten trivial mentions).
+3.7 Timeline Scrubber
+A horizontal scrubber below the map lets users drag back through the last 30 days (matching the product's existing rolling retention window) — dragging replays pins appearing in their original chronological sequence, turning the map into a rewindable news history rather than only a live snapshot.
+A "Live" toggle/button snaps back to real-time mode from any scrubbed position.
+This reuses the same underlying stored history that the Satellite layer and Time Machine concept already depend on — no new data pipeline, just a new UI over existing retained data.
+3.8 Region Quick-Jump & Search
+Preset chips (Middle East, North America, Europe, Asia-Pacific, Global) instantly fly the map camera to that region's bounding box.
+A search bar filters both map pins and the feed by keyword, company name, or country — matching against story headlines/summaries and region tags, live-updating results as the user types (debounced).
+3.9 Trending Ticker
+A slim horizontal ticker strip above or below the map surfaces the top 5 topics by mention-velocity (rate of increase in GDELT mentions over the last hour vs. the prior hour) — e.g., "▲ Hormuz mentions +340% this hour." Clicking a ticker item filters the map/feed to that topic.
+3.10 Bookmarking & Sharing
+Logged-in users (any tier) can bookmark individual stories to a personal reading list, accessible from their account area.
+Each story supports one-click shareable image card generation — this reuses the Market Moment card generator already specified elsewhere in the product, applied here to any individual news story rather than only auto-triggered digest moments.
+3.11 Optional Sound Cue
+An optional, off-by-default toggle plays a subtle audio "ping" when a new Breaking pin arrives — consistent with (and reusable from) the ambient sonification concept elsewhere in the product, but scoped here to a simple discrete notification sound rather than continuous generative audio.
+4. Data Sources
 Source
-True Latency
-What It Detects
-Coverage Limit
-1
-NOAA GOES-16/17/18
-5–15 min (new full-disk scan)
-Thermal hotspots (fires, explosions, major flares)
-Geostationary — Americas, Atlantic, Pacific only; does NOT cover Middle East/Asia (see §3 gap note)
-2
-NASA FIRMS (VIIRS/MODIS feed)
-~3 hours from satellite pass to public availability
-Global thermal anomaly detection
-Global, but polar-orbiting — several passes/day per location, not continuous
-3
-Global Fishing Watch
-Near-real-time (AIS-gap events surface within hours)
-Dark vessel activity, AIS gaps, ship-to-ship transfers
-Global, marine only
-4
-OpenAQ
-Real-time to ~1h (station-dependent)
-Ground-level NO2/SO2
-Only where physical ground stations exist — sparse in Gulf states, better in Europe/US
-5
-Copernicus Sentinel-5P
-Daily (1 pass/day per location)
-Methane, NO2, SO2 columns
-Global
-6
-VIIRS Nightfire
-Nightly
-Gas flare detection
-Global
-7
-Copernicus Marine Service / CAMS
-Daily/forecast cycles
-Ocean current, atmospheric dispersion
-Global
-8
-Copernicus Sentinel-1 (SAR)
-~6 days (variable, faster over priority areas)
-Oil spill dark-signature
-Global
-9
-Copernicus Sentinel-2 (Optical)
-~5 days, cloud-permitting
-Facility/storage visual reference
-Global
-10
-Landsat 8/9
-16 days
-Secondary optical pass
-Global
-Key honesty point for the UI: only ranks 1–3 qualify as genuinely "fast" in a way a user would recognize as near-real-time. Ranks 4–10 are valuable but must never be badged the same way as ranks 1–3 — this is the core of the data-honesty requirement below (§4, FR-72).
-3. Coverage Gap Note: GOES vs. Middle East
-GOES satellites are geostationary over the Americas/Atlantic/Pacific — they do not see the Middle East, which is the single most disruption-relevant oil region in the product. This is a genuine, unavoidable gap with free data:
-Partial mitigation: Japan's Himawari-8/9 (geostationary over Asia-Pacific) and EUMETSAT's Meteosat (geostationary over Europe/Africa/Middle East) are the equivalent free geostationary sources that do cover the Middle East and Indian Ocean. Both publish free, open data.
-Meteosat Second/Third Generation — EUMETSAT free data portal: https://www.eumetsat.int/eumetsat-data-centre (free registration) — 15-minute full-disk scans, covers the Middle East, Suez, and the Red Sea/Bab-el-Mandeb chokepoint directly.
-Himawari-8/9 — free via NOAA's public S3 mirror: https://registry.opendata.aws/noaa-himawari/ — 10-minute scans, covers Malacca Strait and East Asian refining hubs.
-Requirement: V4 must use Meteosat for Middle East/African facilities and chokepoints, Himawari for Asia-Pacific facilities, and GOES for Americas facilities — a three-satellite geostationary handoff, not GOES alone, to actually achieve near-real-time coverage of the regions that matter most to this product (Hormuz, Suez, Bab-el-Mandeb are Meteosat's territory, not GOES').
-This closes what would otherwise be the most damaging gap in a product whose whole premise is Middle East-inclusive oil intelligence.
-4. Detailed Functional Requirements
-4.1 Thermal Incident Detection
-ID
-Requirement
-FR-63
-System shall maintain a geofenced watchlist of major oil/gas facilities (refineries, export terminals, major fields, chokepoints), each tagged with the correct geostationary source (GOES / Meteosat / Himawari) based on longitude.
-FR-64
-System shall poll GOES, Meteosat, and Himawari public data feeds at their native scan interval (5–15 min) for thermal anomalies within a configurable radius (default 5km) of each watchlisted facility.
-FR-65
-System shall cross-check any GOES/Meteosat/Himawari thermal flag against NASA FIRMS' next available pass for the same location to reduce false positives (geostationary thermal sensors have coarser resolution and are prone to false triggers from sun glint, wildfires, or unrelated industrial heat).
-FR-66
-A thermal anomaly shall only surface as a user-facing "incident alert" after either (a) FIRMS cross-confirmation, or (b) the geostationary signal persists across 2+ consecutive scans (10–30 min) — single-scan geostationary flags alone are not sufficient confidence for an alert, only for an internal "candidate" state.
-FR-67
-Confirmed incident alerts shall support optional push/email notification for Pro-tier users who have the affected facility/region on a watchlist (reuses Phase 2's alerting infrastructure).
-4.2 Emissions & Flare Monitoring
-ID
-Requirement
-FR-68
-System shall pull daily Sentinel-5P methane/NO2/SO2 readings and nightly VIIRS Nightfire flare detections for the same facility watchlist, cross-referencing both for agreement/divergence (per the existing gap-analysis requirement).
-FR-69
-System shall pull OpenAQ ground-station readings within a configurable radius (default 25km, since ground stations are sparser than satellite grid) of each facility where a station exists, and explicitly mark facilities with no nearby ground station as "no ground-truth available" rather than omitting the field silently.
-FR-70
-System shall display a rolling 30-day trend chart per facility for methane/NO2/SO2, flare-detection frequency, and ground-station readings where available, on one combined view per facility.
-4.3 Dark Vessel & Chokepoint Activity
-ID
-Requirement
-FR-71
-System shall integrate Global Fishing Watch's AIS-gap and ship-to-ship transfer detection as a live overlay on the existing Chokepoint Monitor, refreshed at Global Fishing Watch's native update interval.
-FR-72
-Every displayed data point across all V4 sources shall carry an explicit, source-specific cadence badge reflecting its true latency per §2's ranking (e.g., "GOES · ~10min," "Sentinel-5P · daily," "OpenAQ · station-dependent") — no source may borrow another's badge or imply faster refresh than it delivers.
-4.4 Spill Detection & Drift
-ID
-Requirement
-FR-73
-Upon a Sentinel-1 spill candidate flag, system shall query Copernicus Marine Service current/wave data and CAMS (for any surface-level atmospheric transport relevant to volatile fractions) to render a projected drift path/timeframe overlay.
-FR-74
-Spill candidate flags shall remain labeled "candidate — unconfirmed" until either manual review or a corroborating signal (e.g., a nearby AIS gap from Global Fishing Watch coinciding with the spill window) raises confidence — the system shall never auto-upgrade a candidate to "confirmed" without a corroborating cross-source signal.
-4.5 Data Retention & Historical View
-ID
-Requirement
-FR-75
-All V4 source data shall be retained on a rolling 30-day window per facility/region, queryable as a trend view.
-FR-76
-Data older than 30 days shall be summarized (daily/weekly aggregates) rather than dropped entirely, preserving long-term trend capability without unbounded storage growth.
-5. Non-Functional Requirements
-ID
-Requirement
-NFR-15
-GOES/Meteosat/Himawari polling (5–15 min cadence) shall run as dedicated, independent cron jobs per satellite — a failure or rate-limit issue on one geostationary source shall not block the others.
-NFR-16
-System shall respect each source's actual rate/usage limits: EUMETSAT and NOAA's public S3 buckets have no hard key-based rate limit but do have fair-use expectations — implement client-side request throttling and caching regardless, since polling every facility every scan cycle across 3 satellites at scale is nontrivial data volume.
-NFR-17
-False-positive handling (FR-65/66) shall be logged and periodically reviewed — if a given facility location generates a high false-positive rate (e.g., due to a nearby non-oil heat source), the system shall support an admin-adjustable geofence/sensitivity override for that location.
-NFR-18
-System shall clearly distinguish, in both API responses and UI, between "confirmed," "candidate/unconfirmed," and "no data available" states for every incident-type signal — these three states must never be visually or textually conflated.
-NFR-19
-Given the genuinely higher data volume of V4 (5–15 min polling across 3 geostationary sources × a facility watchlist), storage and query design shall be load-tested before production rollout — this is a materially different data scale than V1–V3's hourly-or-slower cadences.
-6. Complete Data Source Reference (V4 only)
-Source
-Latency
-What It Adds
+What It Provides
+Cadence
 Access
 Key Required
-NOAA GOES-16/17/18
-5–15 min
-Thermal hotspots, Americas/Atlantic/Pacific
-registry.opendata.aws/noaa-goes
-Free, no key, public S3
-EUMETSAT Meteosat
+GDELT GEO 2.0 API
+Automatically geotagged news events (lat/lon per article) — this is what makes the map genuinely interactive without you building your own geocoding pipeline
 ~15 min
-Thermal hotspots, Europe/Africa/Middle East
-eumetsat.int/eumetsat-data-centre
-Free registration
-NOAA/JMA Himawari-8/9
-~10 min
-Thermal hotspots, Asia-Pacific
-registry.opendata.aws/noaa-himawari
-Free, no key, public S3
-NASA FIRMS
-~3h
-Global thermal anomaly cross-confirmation
-firms.modaps.eosdis.nasa.gov/api
-Free, no key for basic use
-Global Fishing Watch
+https://blog.gdeltproject.org/gdelt-geo-2-0-api-debuts/
+Free, no key
+GDELT DOC 2.0 API
+Article metadata including a sharingimage field (article's associated image URL where available), tone score, topic
+~15 min
+https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/
+Free, no key
+NewsAPI (already integrated)
+Higher-quality headline/image pairs (urlToImage field) for top-volume stories
+Cached, 2–4h per existing rate-limit design
+https://newsapi.org/
+Free tier, 100 req/day
+Google News RSS
+Free supplementary feed diversity beyond NewsAPI's daily cap, no key needed — query via https://news.google.com/rss/search?q=<query>
 Near-real-time
-Dark vessel/AIS-gap/ship-to-ship transfer detection
-globalfishingwatch.org/our-apis
-Free API key
-OpenAQ
-Real-time to ~1h
-Ground-truth NO2/SO2
-openaq.org
-Free, no key for basic tier
-Copernicus Sentinel-5P
-Daily
-Methane/NO2/SO2 columns
-dataspace.copernicus.eu
-Free registration
-NOAA/NASA VIIRS Nightfire
-Nightly
-Gas flare detection
-eogdata.mines.edu/products/vnf
-Free
-Copernicus Marine Service
-Daily/forecast
-Ocean current/drift modeling
-marine.copernicus.eu
-Free registration
-Copernicus Atmosphere Monitoring Service (CAMS)
-Multiple/day
-Atmospheric dispersion forecast
-atmosphere.copernicus.eu
-Free registration
-Copernicus Sentinel-1 (SAR)
-~6 days
-Oil spill dark-signature detection
-dataspace.copernicus.eu, sentinel-hub.com
-Free registration
-Copernicus Sentinel-2 (Optical)
-~5 days, cloud-permitting
-Facility/storage visual reference
-dataspace.copernicus.eu, sentinel-hub.com
-Free registration
-NASA/USGS Landsat 8/9
-16 days
-Secondary optical pass, cloud-gap fill
-earthexplorer.usgs.gov
-Free registration
-13 sources total, zero paid tiers required, genuine latency honestly documented for each — including the one unavoidable structural gap (GOES not covering the Middle East) and its actual fix (Meteosat), rather than leaving that gap unaddressed.
+Public RSS, no signup
+None
+Reuters Energy RSS / oilprice.com RSS / EIA blog RSS
+Curated, oil-industry-specific feeds as a higher-signal supplementary source
+Varies, several/day
+Public RSS endpoints (verify current URLs at each publisher, subject to change)
+None
+Wikimedia Commons
+Free, appropriately-licensed fallback imagery for topic categories when no article image exists (e.g., a generic labeled "refinery," "tanker," "OPEC meeting" stock image)
+N/A (static library)
+https://commons.wikimedia.org/
+None, but must respect individual image licenses (most CC-BY/CC-BY-SA — attribution required)
+Image-handling requirement (important): when an article has no native image, the system may show a topic-appropriate stock image from Wikimedia Commons only if clearly labeled as generic/illustrative ("Representative image" badge) — never presented as if it depicts the actual event. This avoids misleading users into thinking a stock photo is real footage of a specific incident.
+5. Functional Requirements
+5.1 Core Map & Feed
+ID
+Requirement
+FR-77
+System shall display a world map with pins for all oil-relevant news events geotagged via GDELT GEO 2.0, refreshed every 15 minutes.
+FR-78
+Map pins shall be color-coded and icon-coded by topic category (§3.2) and clustered at low zoom levels to avoid visual overload.
+FR-79
+System shall display a synchronized scrollable article feed alongside the map; selecting a pin or feed item highlights/scrolls the corresponding counterpart.
+FR-80
+Each article card shall display an image where available (via GDELT sharingimage or NewsAPI urlToImage), a one-line AI-generated summary, source, timestamp, and region tag.
+FR-81
+System shall never reproduce full article text — cards link out to the original source for full reading.
+FR-82
+When no native article image exists, system shall optionally display a clearly-labeled generic/illustrative stock image (Wikimedia Commons, properly attributed) rather than a blank card — labeling must make clear the image is representative, not the actual event.
+FR-83
+System shall support filtering by region, topic category, recency window (24h/7d/30d), and source.
+FR-84
+New stories arriving after initial page load shall be indicated via a non-disruptive "X new stories" toast/badge rather than automatically re-sorting or scrolling the user's current view.
+FR-85
+System shall deduplicate near-identical stories covered by multiple outlets into a single Story object per §3.5, rather than showing duplicate pins/cards.
+5.2 Pin Behavior & Sizing
+ID
+Requirement
+FR-86
+System shall compute an Importance Score per story using the formula in §3.1 and scale pin size accordingly; the formula and its weights shall be documented/visible to the user (e.g., via an info tooltip) rather than presented as an opaque black-box ranking.
+FR-87
+Pin fill opacity shall decay with story age per §3.1's schedule, giving the map a visual "freshness" gradient without requiring the user to check timestamps individually.
+FR-88
+New-arrival pins shall pulse for exactly 10 minutes from first surfacing, then revert permanently to default state — pulsing shall not re-trigger on subsequent unrelated updates to the same story.
+FR-89
+Cluster bubbles shall display an accurate live count and shall recompute/redraw as the user zooms, never showing a stale count from a previous zoom level.
+5.3 Legend & View Controls
+ID
+Requirement
+FR-90
+The legend panel shall show all 5 categories with icon, color swatch, label, and a live count of currently-visible pins in that category, updating as filters/zoom change.
+FR-91
+Clicking a legend category shall toggle (not replace) that category's visibility on both map and feed simultaneously — multiple categories may be independently toggled off at once.
+FR-92
+A single "reset filters" control shall restore all categories and the default recency window in one action.
+FR-93
+The Pins/Heatmap view toggle (§3.6) shall live within the same legend panel as category filters, not as a separate disconnected control.
+FR-94
+Heatmap mode intensity shall be computed from aggregated Importance Score per geographic cell, not raw pin count, consistent with §3.6.
+5.4 Timeline, Search & Navigation
+ID
+Requirement
+FR-95
+The timeline scrubber shall allow dragging across the full 30-day retention window, replaying pin arrivals in true chronological sequence at the scrubbed position.
+FR-96
+A "Live" control shall be persistently visible while scrubbed to a past position, allowing one-click return to real-time mode.
+FR-97
+Region quick-jump chips shall animate the map camera (smooth fly-to, not an instant jump cut) to each preset region's bounding box.
+FR-98
+The search bar shall filter map and feed simultaneously against story headlines, summaries, and region/entity tags, with debounced live results as the user types.
+5.5 Trending, Bookmarking & Sharing
+ID
+Requirement
+FR-99
+The trending ticker shall rank topics by mention-velocity (current-hour vs. prior-hour GDELT mention rate), refreshed every 15 minutes alongside the core pin data.
+FR-100
+Clicking a trending ticker item shall apply it as a live filter to both map and feed, consistent with the search/filter behavior in §5.4.
+FR-101
+Logged-in users on any tier shall be able to bookmark a story to a personal reading list, persisted to their account.
+FR-102
+Each story shall support one-click shareable image card generation, reusing the existing Market Moment card generator rather than a separate rendering pipeline.
+FR-103
+The optional Breaking-pin sound cue shall default to off and persist the user's on/off preference across sessions.
+6. Non-Functional Requirements
+ID
+Requirement
+NFR-20
+GDELT GEO/DOC polling shall run as a shared cron job (15 min) feeding both the existing Disruption Radar module and this new News Atlas page — avoid duplicate GDELT integrations.
+NFR-21
+AI-generated summaries (FR-80) shall be cached per-story (generate once, reuse), not regenerated per page view, to control LLM API cost.
+NFR-22
+Map rendering shall lazy-load/code-split independently (per the existing multi-page architecture pattern) so this page's map tooling doesn't affect load time elsewhere in the product.
+NFR-23
+Deduplication (FR-85) shall use a simple similarity heuristic (headline text similarity + same time window + same topic tag) — not a heavyweight ML dedup system, consistent with the product's general no-unnecessary-ML principle.
+NFR-24
+Pin clustering and rendering shall remain performant with at least several hundred concurrent story pins on screen — use viewport-based rendering/virtualization for the feed list and standard map-library clustering (not custom-built) for the map layer.
+NFR-25
+The category color palette shall be paired with distinct icons/shapes (§3.2) so the map remains legible for colorblind users without relying on color alone.
+NFR-26
+Map and legend controls shall be keyboard-navigable and screen-reader labeled (pin categories, counts, and selected-story state announced), consistent with general accessibility practice.
+NFR-27
+On mobile viewports, the split map/feed view shall stack (map on top, feed below, or a swipeable toggle) rather than compressing both into an unusably small side-by-side layout.
+NFR-28
+Timeline scrubbing (FR-95) shall query pre-aggregated/cached historical data rather than re-querying GDELT live for past windows, since GDELT's live endpoint is not intended for this access pattern.

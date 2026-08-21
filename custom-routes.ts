@@ -2411,6 +2411,305 @@ app.get('/v4/satellite/intel', async (c) => {
   return c.json({ ...v4Data, lastUpdated: new Date().toISOString(), source: 'firms+meteosat+goes+himawari+gnews' })
 })
 
+// ═══ Module K: News Atlas — Interactive Geotagged News Map ═════════════════
+// GDELT GEO 2.0 (geotagged articles) + GDELT DOC 2.0 (metadata) + Google News RSS
+// Story deduplication, importance scoring, trending topics
+// TTL: 15 minutes
+
+const NEWS_CATEGORIES: Record<string, { color: string; icon: string }> = {
+  disruption: { color: '#EF4444', icon: 'flame' },
+  price: { color: '#F5A623', icon: 'dollar' },
+  policy: { color: '#3B82F6', icon: 'gavel' },
+  environmental: { color: '#2DD4BF', icon: 'droplet' },
+  infrastructure: { color: '#A78BFA', icon: 'wrench' },
+}
+
+function classifyNewsCategory(title: string): string {
+  const t = title.toLowerCase()
+  if (t.includes('attack') || t.includes('strike') || t.includes('missile') || t.includes('drone') || t.includes('conflict') || t.includes('sanction') || t.includes('embargo') || t.includes('disruption') || t.includes('blockade') || t.includes('war') || t.includes('houthi') || t.includes('military')) return 'disruption'
+  if (t.includes('price') || t.includes('surge') || t.includes('rally') || t.includes('crash') || t.includes('trading') || t.includes('futures') || t.includes('market') || t.includes('barrel') || t.includes('brent') || t.includes('wti')) return 'price'
+  if (t.includes('opec') || t.includes('policy') || t.includes('regulation') || t.includes('government') || t.includes('law') || t.includes('tariff') || t.includes('trade deal') || t.includes('summit') || t.includes('minister') || t.includes('quota')) return 'policy'
+  if (t.includes('spill') || t.includes('leak') || t.includes('emission') || t.includes('pollution') || t.includes('environment') || t.includes('climate') || t.includes('methane') || t.includes('flare') || t.includes('clean') || t.includes('green')) return 'environmental'
+  if (t.includes('pipeline') || t.includes('refinery') || t.includes('terminal') || t.includes('port') || t.includes('infrastructure') || t.includes('construction') || t.includes('expansion') || t.includes('capacity') || t.includes('field') || t.includes('drilling')) return 'infrastructure'
+  return 'price'
+}
+
+function inferNewsLocation(title: string, sourceCountry?: string): { name: string; lat: number; lng: number } {
+  const t = title.toLowerCase()
+  if (t.includes('hormuz') || t.includes('persian gulf')) return { name: 'Strait of Hormuz', lat: 26.5, lng: 56.3 }
+  if (t.includes('suez') || t.includes('red sea') || t.includes('houthi') || t.includes('yemen')) return { name: 'Red Sea / Suez', lat: 20.0, lng: 38.0 }
+  if (t.includes('saudi') || t.includes('aramco')) return { name: 'Saudi Arabia', lat: 24.7, lng: 46.7 }
+  if (t.includes('iran') || t.includes('tehran')) return { name: 'Iran', lat: 32.4, lng: 53.7 }
+  if (t.includes('iraq') || t.includes('basra') || t.includes('baghdad')) return { name: 'Iraq', lat: 33.3, lng: 44.4 }
+  if (t.includes('russia') || t.includes('moscow') || t.includes('putin')) return { name: 'Russia', lat: 55.7, lng: 37.6 }
+  if (t.includes('china') || t.includes('beijing') || t.includes('shanghai')) return { name: 'China', lat: 31.2, lng: 121.5 }
+  if (t.includes('india') || t.includes('mumbai') || t.includes('delhi')) return { name: 'India', lat: 19.1, lng: 72.9 }
+  if (t.includes('nigeria') || t.includes('lagos')) return { name: 'Nigeria', lat: 6.5, lng: 3.4 }
+  if (t.includes('libya') || t.includes('tripoli')) return { name: 'Libya', lat: 32.9, lng: 13.1 }
+  if (t.includes('venezuela') || t.includes('caracas')) return { name: 'Venezuela', lat: 10.5, lng: -66.9 }
+  if (t.includes('united states') || t.includes('texas') || t.includes('houston') || t.includes('permian') || t.includes('gulf of mexico') || t.includes('u.s.')) return { name: 'United States', lat: 29.8, lng: -95.4 }
+  if (t.includes('europe') || t.includes('eu ') || t.includes('brussels')) return { name: 'Europe', lat: 50.8, lng: 4.4 }
+  if (t.includes('japan') || t.includes('tokyo')) return { name: 'Japan', lat: 35.7, lng: 139.7 }
+  if (t.includes('korea')) return { name: 'South Korea', lat: 37.6, lng: 127.0 }
+  if (t.includes('uae') || t.includes('dubai') || t.includes('abu dhabi')) return { name: 'UAE', lat: 24.5, lng: 54.7 }
+  if (t.includes('kuwait')) return { name: 'Kuwait', lat: 29.4, lng: 47.9 }
+  if (t.includes('qatar')) return { name: 'Qatar', lat: 25.3, lng: 51.2 }
+  if (t.includes('oman')) return { name: 'Oman', lat: 21.5, lng: 55.9 }
+  if (t.includes('opec') || t.includes('vienna')) return { name: 'Vienna, Austria', lat: 48.2, lng: 16.4 }
+  if (t.includes('north sea') || t.includes('brent') && t.includes('uk')) return { name: 'North Sea', lat: 60.0, lng: 2.0 }
+
+  // Fallback by source country
+  const countryCoords: Record<string, { name: string; lat: number; lng: number }> = {
+    'US': { name: 'United States', lat: 38.9, lng: -77.0 },
+    'SA': { name: 'Saudi Arabia', lat: 24.7, lng: 46.7 },
+    'IR': { name: 'Iran', lat: 32.4, lng: 53.7 },
+    'RU': { name: 'Russia', lat: 55.7, lng: 37.6 },
+    'CN': { name: 'China', lat: 31.2, lng: 121.5 },
+    'IN': { name: 'India', lat: 19.1, lng: 72.9 },
+    'GB': { name: 'United Kingdom', lat: 51.5, lng: -0.1 },
+    'DE': { name: 'Germany', lat: 52.5, lng: 13.4 },
+    'JP': { name: 'Japan', lat: 35.7, lng: 139.7 },
+    'NG': { name: 'Nigeria', lat: 6.5, lng: 3.4 },
+    'IQ': { name: 'Iraq', lat: 33.3, lng: 44.4 },
+    'AE': { name: 'UAE', lat: 24.5, lng: 54.7 },
+    'AU': { name: 'Australia', lat: -33.9, lng: 151.2 },
+    'CA': { name: 'Canada', lat: 45.4, lng: -75.7 },
+    'BR': { name: 'Brazil', lat: -22.9, lng: -43.2 },
+    'FR': { name: 'France', lat: 48.9, lng: 2.3 },
+  }
+  if (sourceCountry && countryCoords[sourceCountry]) return countryCoords[sourceCountry]
+
+  // Scatter globally with slight randomization to avoid exact overlaps
+  return { name: 'Global', lat: 15 + Math.random() * 40, lng: -30 + Math.random() * 90 }
+}
+
+// Simple title similarity for dedup (Jaccard on word sets)
+function titleSimilarity(a: string, b: string): number {
+  const wordsA = new Set(a.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3))
+  const wordsB = new Set(b.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3))
+  if (wordsA.size === 0 || wordsB.size === 0) return 0
+  let intersection = 0
+  for (const w of wordsA) if (wordsB.has(w)) intersection++
+  return intersection / (wordsA.size + wordsB.size - intersection)
+}
+
+function computeImportanceScore(article: { tone?: number; ageMs: number; mentionVolume: number }): number {
+  const mentionPart = Math.min(1, article.mentionVolume / 20) * 0.4
+  const tonePart = Math.min(1, Math.abs(article.tone ?? 0) / 8) * 0.35
+  const ageHours = article.ageMs / (3600_000)
+  const recencyPart = Math.max(0, 1 - ageHours / 72) * 0.25
+  return +(mentionPart + tonePart + recencyPart).toFixed(3)
+}
+
+// Fetch GDELT GEO 2.0 — returns GeoJSON features with lat/lng per article
+async function fetchGDELTGeo(query: string, timespan = '1440'): Promise<Array<{
+  title: string; url: string; seendate: string; domain: string;
+  lat: number; lng: number; tone: number; sourcecountry: string
+}>> {
+  try {
+    const url = `https://api.gdeltproject.org/api/v2/geo/geo?query=${encodeURIComponent(query)}&format=GeoJSON&timespan=${timespan}&maxpoints=50`
+    const res = await fetch(url, { signal: AbortSignal.timeout(12000) })
+    if (!res.ok) return []
+    const text = await res.text()
+    // GDELT GEO returns GeoJSON — features have article metadata + geometry
+    if (!text.startsWith('{') && !text.startsWith('[')) return []
+    const data = JSON.parse(text)
+    const features = data.features || data.articles || []
+    return features.map((f: any) => {
+      const props = f.properties || f
+      const coords = f.geometry?.coordinates || [0, 0]
+      return {
+        title: props.title || props.name || '',
+        url: props.url || props.domain || '',
+        seendate: props.seendate || props.date || '',
+        domain: props.domain || props.sourcename || '',
+        lat: Array.isArray(coords[1]) ? coords[1][1] : (coords[1] || 0),
+        lng: Array.isArray(coords[0]) ? coords[0][0] : (coords[0] || 0),
+        tone: parseFloat(props.tone || props.Tone || 0),
+        sourcecountry: props.sourcecountry || props.SOURCECOMMONNAME || '',
+      }
+    }).filter((a: any) => a.title && a.lat !== 0 && a.lng !== 0)
+  } catch { return [] }
+}
+
+// Fetch trending topics by mention velocity
+async function fetchTrendingTopics(): Promise<Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>> {
+  const queries = ['crude oil', 'OPEC', 'Brent', 'WTI', 'Hormuz', 'sanctions oil', 'oil price', 'production cut']
+  const results = await Promise.allSettled(queries.map(async q => {
+    try {
+      const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=5&format=json&sort=DateDesc&startdatetime=${new Date(Date.now() - 3600_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
+      const urlPrev = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=5&format=json&sort=DateDesc&startdatetime=${new Date(Date.now() - 7200_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}&enddatetime=${new Date(Date.now() - 3600_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
+      const [cur, prev] = await Promise.all([
+        fetch(url, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(urlPrev, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+      ])
+      const curCount = cur?.articles?.length || 0
+      const prevCount = prev?.articles?.length || 0
+      const velocity = prevCount > 0 ? Math.round(((curCount - prevCount) / Math.max(prevCount, 1)) * 100) : curCount * 50
+      return { topic: q, velocity, direction: velocity >= 0 ? 'up' as const : 'down' as const }
+    } catch { return { topic: q, velocity: 0, direction: 'up' as const } }
+  }))
+  return results.map(r => r.status === 'fulfilled' ? r.value : { topic: '', velocity: 0, direction: 'up' as const })
+    .filter(t => t.topic)
+    .sort((a, b) => Math.abs(b.velocity) - Math.abs(a.velocity))
+}
+
+app.get('/news/atlas', async (c) => {
+  const cacheKey = 'news-atlas'
+  const cached = getCache(cacheKey)
+  if (cached && isCacheFresh(cacheKey, 15 * MINUTE)) {
+    return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
+  }
+
+  // Fetch GDELT GEO 2.0 + Google News RSS in parallel
+  const [geoResults, gnewsResults, trending] = await Promise.allSettled([
+    Promise.allSettled([
+      fetchGDELTGeo('crude oil OR OPEC OR energy', '1440'),
+      fetchGDELTGeo('oil disruption attack sanctions', '1440'),
+      fetchGDELTGeo('oil pipeline refinery infrastructure', '1440'),
+    ]),
+    Promise.allSettled([
+      fetchGoogleNewsRSS('crude oil price OPEC', 30),
+      fetchGoogleNewsRSS('oil disruption attack sanctions', 20),
+      fetchGoogleNewsRSS('oil pipeline refinery infrastructure', 15),
+      fetchGoogleNewsRSS('oil spill environmental emissions', 10),
+      fetchGoogleNewsRSS('oil tanker shipping strait', 10),
+    ]),
+    fetchTrendingTopics(),
+  ])
+
+  // Merge GDELT GEO results
+  const allGeoArticles: Array<{
+    title: string; url: string; seendate: string; domain: string;
+    lat: number; lng: number; tone: number; sourcecountry: string
+  }> = []
+  if (geoResults.status === 'fulfilled') {
+    for (const r of geoResults.value) {
+      if (r.status === 'fulfilled') allGeoArticles.push(...r.value)
+    }
+  }
+
+  // Merge Google News results
+  const allGnewsArticles: Array<{ title: string; source: string; pubDate: string }> = []
+  if (gnewsResults.status === 'fulfilled') {
+    for (const r of gnewsResults.value) {
+      if (r.status === 'fulfilled') allGnewsArticles.push(...r.value)
+    }
+  }
+
+  // Build stories with deduplication
+  const stories: Array<{
+    id: string; title: string; source: string; url: string;
+    lat: number; lng: number; location: string;
+    category: string; tone: number;
+    importanceScore: number; ageMs: number;
+    rawDate: string; timeAgo: string;
+    imageUrl: string | null; topicCount: number;
+  }> = []
+
+  const seenTitles: string[] = []
+
+  // Process GDELT GEO articles (they have lat/lng + tone)
+  for (const a of allGeoArticles) {
+    if (!a.title) continue
+    const key = a.title.toLowerCase().slice(0, 50)
+    if (seenTitles.some(s => titleSimilarity(s, a.title) > 0.6)) continue
+    seenTitles.push(a.title)
+
+    const rawDate = parseGDELTD(a.seendate)
+    const ageMs = Date.now() - new Date(rawDate).getTime()
+    if (ageMs > 30 * 24 * 3600_000) continue // 30 day retention
+
+    const loc = inferNewsLocation(a.title, a.sourcecountry)
+    const storyLat = a.lat || loc.lat
+    const storyLng = a.lng || loc.lng
+
+    stories.push({
+      id: `geo-${stories.length}`,
+      title: a.title,
+      source: a.domain || 'GDELT',
+      url: a.url,
+      lat: storyLat,
+      lng: storyLng,
+      location: loc.name,
+      category: classifyNewsCategory(a.title),
+      tone: a.tone || 0,
+      importanceScore: computeImportanceScore({ tone: a.tone, ageMs, mentionVolume: allGeoArticles.filter(g => titleSimilarity(g.title, a.title) > 0.3).length }),
+      ageMs,
+      rawDate,
+      timeAgo: formatTimeAgo(rawDate),
+      imageUrl: null,
+      topicCount: 1,
+    })
+  }
+
+  // Process Google News articles (no lat/lng, infer from title)
+  for (const a of allGnewsArticles) {
+    if (!a.title) continue
+    const key = a.title.toLowerCase().slice(0, 50)
+    if (seenTitles.some(s => titleSimilarity(s, a.title) > 0.6)) continue
+    seenTitles.push(a.title)
+
+    const rawDate = a.pubDate || new Date().toISOString()
+    const ageMs = Date.now() - new Date(rawDate).getTime()
+    if (ageMs > 30 * 24 * 3600_000) continue
+
+    const loc = inferNewsLocation(a.title)
+
+    stories.push({
+      id: `gnews-${stories.length}`,
+      title: a.title,
+      source: a.source || 'Google News',
+      url: '',
+      lat: loc.lat + (Math.random() - 0.5) * 2, // slight scatter to avoid exact overlap
+      lng: loc.lng + (Math.random() - 0.5) * 2,
+      location: loc.name,
+      category: classifyNewsCategory(a.title),
+      tone: 0,
+      importanceScore: computeImportanceScore({ tone: 0, ageMs, mentionVolume: allGnewsArticles.filter(g => titleSimilarity(g.title, a.title) > 0.3).length }),
+      ageMs,
+      rawDate,
+      timeAgo: formatTimeAgo(rawDate),
+      imageUrl: null,
+      topicCount: 1,
+    })
+  }
+
+  // Sort by importance score (most important first)
+  stories.sort((a, b) => b.importanceScore - a.importanceScore)
+
+  // Category counts for legend
+  const categoryCounts: Record<string, number> = {}
+  for (const s of stories) {
+    categoryCounts[s.category] = (categoryCounts[s.category] || 0) + 1
+  }
+
+  const trendingData = trending.status === 'fulfilled' ? trending.value : []
+
+  const atlasData = {
+    stories: stories.slice(0, 200),
+    totalStories: stories.length,
+    categoryCounts,
+    trending: trendingData,
+    regions: [
+      { name: 'Middle East', lat: 28, lng: 45, zoom: 4 },
+      { name: 'North America', lat: 35, lng: -100, zoom: 4 },
+      { name: 'Europe', lat: 50, lng: 10, zoom: 4 },
+      { name: 'Asia Pacific', lat: 25, lng: 110, zoom: 3 },
+      { name: 'Global', lat: 20, lng: 0, zoom: 2 },
+    ],
+    sources: ['GDELT GEO 2.0', 'GDELT DOC 2.0', 'Google News RSS'],
+    meta: {
+      methodology: 'Stories geotagged via GDELT GEO 2.0 (primary) or inferred from headline analysis. Deduplicated via Jaccard similarity > 0.6. Importance score = (mention_volume × 0.4) + (tone_magnitude × 0.35) + (recency × 0.25).',
+      retention: '30-day rolling window',
+      refreshRate: '15 minutes',
+    },
+  }
+
+  setCache(cacheKey, atlasData, 'api')
+  return c.json({ ...atlasData, lastUpdated: new Date().toISOString(), source: 'gdelt-geo+gnews' })
+})
+
 // ═══ Helper: Asset label mapping ══════════════════════════════════════════
 
 export default app

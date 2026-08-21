@@ -1,6 +1,6 @@
 import { useState, useEffect, Component, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { BarChart3, User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite } from 'lucide-react'
+import { BarChart3, User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
 import { LandingPage } from '@/components/LandingPage'
@@ -11,6 +11,7 @@ import { AnalysisPage } from '@/components/pages/AnalysisPage'
 import { GlobalPage } from '@/components/pages/GlobalPage'
 import { ReservesPage } from '@/components/pages/ReservesPage'
 import { SatelliteIntelPage } from '@/components/pages/SatelliteIntelPage'
+import { NewsAtlasPage } from '@/components/pages/NewsAtlasPage'
 
 type Role = 'user' | 'admin'
 
@@ -50,6 +51,7 @@ const NAV_ITEMS = [
   { to: '/analysis', label: 'Analysis', icon: Activity, color: '#00d4ff' },
   { to: '/global', label: 'Global', icon: Globe, color: '#F5A623' },
   { to: '/satellite-intel', label: 'Satellite', icon: Satellite, color: '#00d4ff' },
+  { to: '/news', label: 'News', icon: Newspaper, color: '#FFC107' },
 ]
 
 function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => void }) {
@@ -181,6 +183,7 @@ function AppRoutes({ auth, setAuth }: {
             <Route path="/global" element={<AuthGate auth={auth}><GlobalPage /></AuthGate>} />
             <Route path="/reserves" element={<AuthGate auth={auth}><ReservesPage /></AuthGate>} />
             <Route path="/satellite-intel" element={<AuthGate auth={auth}><SatelliteIntelPage /></AuthGate>} />
+            <Route path="/news" element={<AuthGate auth={auth}><NewsAtlasPage /></AuthGate>} />
           </Routes>
         </main>
       </div>
