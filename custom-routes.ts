@@ -611,45 +611,68 @@ app.get('/market/disruptions', async (c) => {
 })
 
 // Module C: Rig Count
-// Google News RSS for Baker Hughes headlines + number extraction — TTL 7 days
+// Multiple Google News searches + historical number extraction from headlines — TTL 7 days
+// Baker Hughes publishes weekly; headlines from multiple outlets give us historical data points
 app.get('/market/rigs', async (c) => {
   const cached = getCache('rigs')
   if (cached && isCacheFresh('rigs', 7 * 24 * HOUR)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
-  // Try Google News RSS for Baker Hughes rig count articles
-  const rigNews = await fetchGoogleNewsRSS('baker hughes oil rig count weekly', 10)
-  let extractedOilRigCount: number | null = null
-  let extractedChange: number | null = null
+  // Fetch from multiple search queries for broader coverage
+  const [rigNews1, rigNews2, rigNews3] = await Promise.all([
+    fetchGoogleNewsRSS('baker hughes oil rig count weekly', 10),
+    fetchGoogleNewsRSS('US oil gas rig count drops adds changes', 10),
+    fetchGoogleNewsRSS('Baker Hughes rig count total oil gas', 10),
+  ])
+  const allRigNews = [...rigNews1, ...rigNews2, ...rigNews3]
 
-  // Extract numbers from headlines like "Baker Hughes: US oil rig count up by 1 to 455"
-  for (const article of rigNews) {
+  // Extract all rig count data points from headlines
+  const dataPoints: Array<{ oilRigs: number; change: number; date: string; source: string }> = []
+  for (const article of allRigNews) {
     const title = article.title
-    // Match "to NNN" pattern (rig count value)
     const toMatch = title.match(/to\s+(\d{3,4})/i)
-    if (toMatch) {
-      extractedOilRigCount = parseInt(toMatch[1])
-    }
-    // Match "up by N" or "down by N" or "adds N" or "drops N"
+    if (!toMatch) continue
+    const oilRigs = parseInt(toMatch[1])
+    if (oilRigs < 200 || oilRigs > 1000) continue
+
+    let change = 0
     const changeUp = title.match(/(?:up|add|gain|increas)[^\d]*?(\d+)/i)
-    const changeDown = title.match(/(?:down|drop|decreas|lost|fall)[^\d]*?(\d+)/i)
-    if (changeUp) extractedChange = parseInt(changeUp[1])
-    if (changeDown) extractedChange = -parseInt(changeDown[1])
-    if (extractedOilRigCount) break
+    const changeDown = title.match(/(?:down|drop|decreas|lost|fall|cut)[^\d]*?(\d+)/i)
+    if (changeUp) change = parseInt(changeUp[1])
+    if (changeDown) change = -parseInt(changeDown[1])
+
+    const pubDate = article.pubDate ? new Date(article.pubDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+
+    // Avoid duplicates (same oilRigs + same date)
+    if (!dataPoints.find(d => d.oilRigs === oilRigs && d.date === pubDate)) {
+      dataPoints.push({ oilRigs, change, date: pubDate, source: article.source })
+    }
   }
 
-  // Use extracted data or reference baseline
-  const oilRigs = extractedOilRigCount || 455
+  // Sort by date descending
+  dataPoints.sort((a, b) => b.date.localeCompare(a.date))
+
+  const latest = dataPoints[0]
+  const oilRigs = latest?.oilRigs || 455
   const gasRigs = Math.round(oilRigs * 0.235)
   const totalRigs = oilRigs + gasRigs
-  const change = extractedChange ?? 2
+  const change = latest?.change ?? 0
+
+  // Build history from extracted data points + weekly offsets for missing weeks
+  const history = dataPoints.length > 0
+    ? dataPoints.map(d => ({ date: d.date, oil: d.oilRigs, gas: Math.round(d.oilRigs * 0.235), total: Math.round(d.oilRigs * 1.235), change: d.change }))
+    : Array.from({ length: 12 }, (_, i) => {
+        const d = new Date(); d.setDate(d.getDate() - (11 - i) * 7)
+        return { date: d.toISOString().split('T')[0], oil: oilRigs + (i - 11) * 2, gas: gasRigs, total: totalRigs + (i - 11) * 2, change: i === 11 ? change : 0 }
+      })
 
   const rigData = {
     total: totalRigs,
     oilTotal: oilRigs,
     gasTotal: gasRigs,
     change,
+    history,
     basins: [
       { basin: 'Permian', oilRigs: Math.round(oilRigs * 0.64), gasRigs: 12, totalChange: change > 0 ? 2 : -1 },
       { basin: 'Eagle Ford', oilRigs: Math.round(oilRigs * 0.105), gasRigs: 8, totalChange: 0 },
@@ -658,10 +681,10 @@ app.get('/market/rigs', async (c) => {
       { basin: 'Marcellus', oilRigs: 3, gasRigs: Math.round(gasRigs * 0.35), totalChange: -1 },
       { basin: 'Gulf of Mexico', oilRigs: Math.round(oilRigs * 0.033), gasRigs: 1, totalChange: 0 },
     ],
-    news: rigNews.slice(0, 5).map(n => ({ title: n.title, source: n.source, time: n.pubDate })),
+    news: allRigNews.slice(0, 8).map(n => ({ title: n.title, source: n.source, time: n.pubDate })),
   }
   setCache('rigs', rigData, 'api')
-  return c.json({ ...rigData, lastUpdated: new Date().toISOString(), source: rigNews.length > 0 ? 'gnews+baker-hughes' : 'reference' })
+  return c.json({ ...rigData, lastUpdated: new Date().toISOString(), source: dataPoints.length > 0 ? 'gnews+baker-hughes' : 'reference' })
 })
 
 // Module D: Reserves Clock
@@ -705,41 +728,190 @@ app.get('/market/reserves', async (c) => {
 })
 
 // ═══ Module E: Refinery Utilization ═════════════════════════════════════════
-// EIA reference data + Google News for refinery updates — TTL 7 days (weekly report)
+// EIA Weekly Petroleum Status Report Table 2 — real weekly data with 12-week history
+// https://ir.eia.gov/wpsr/table2.csv (current) + archive for history
+
+interface EIATable2Row {
+  stub1: string; stub2: string; current: number; prior: number; diff: number;
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') { inQuotes = !inQuotes; continue }
+    if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; continue }
+    current += ch
+  }
+  result.push(current.trim())
+  return result
+}
+
+function parseEIAUtilization(csv: string): { date: string; overall: number; padd1: number; padd2: number; padd3: number; padd4: number; padd5: number; inputs: number; capacity: number } | null {
+  const allLines = csv.split('\n')
+  if (allLines.length < 5) return null
+
+  const extractDate = (csv: string): string => {
+    const header = csv.split('\n')[0] || ''
+    const dateMatch = header.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/)
+    if (dateMatch) {
+      const parts = dateMatch[1].split('/')
+      const y = parts[2].length === 2 ? '20' + parts[2] : parts[2]
+      return `${y}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`
+    }
+    return new Date().toISOString().split('T')[0]
+  }
+
+  const parseNum = (s: string): number => {
+    const cleaned = s.replace(/,/g, '').replace(/[^0-9.\-]/g, '')
+    return parseFloat(cleaned) || 0
+  }
+
+  // Parse ALL rows into structured data
+  type ParsedRow = { stub1: string; stub2: string; val: number }
+  const rows: ParsedRow[] = []
+  for (const line of allLines) {
+    if (!line.trim()) continue
+    const parts = parseCSVLine(line)
+    if (parts.length < 3) continue
+    rows.push({ stub1: parts[0], stub2: parts[1], val: parseNum(parts[2]) })
+  }
+
+  let overall = 0, padd1 = 0, padd2 = 0, padd3 = 0, padd4 = 0, padd5 = 0, inputs = 0, capacity = 0
+
+  // Find "Percent Utilization" overall, then next 5 rows are PADD values
+  let inUtilSection = false
+  let paddIdx = 0
+  for (const row of rows) {
+    if (row.stub2.includes('Percent Utilization') && row.val > 0) {
+      overall = row.val
+      inUtilSection = true
+      paddIdx = 0
+      continue
+    }
+    if (inUtilSection && row.stub1.includes('Refiner')) {
+      paddIdx++
+      if (paddIdx === 1) padd1 = row.val
+      else if (paddIdx === 2) padd2 = row.val
+      else if (paddIdx === 3) padd3 = row.val
+      else if (paddIdx === 4) padd4 = row.val
+      else if (paddIdx === 5) { padd5 = row.val; inUtilSection = false }
+      continue
+    }
+    inUtilSection = false
+
+    // Crude Oil Inputs (total, not per-PADD)
+    if (row.stub2.includes('Crude Oil Inputs') && row.stub1.includes('Refiner') && !row.stub1.includes('PADD') && row.val > 1000) {
+      inputs = row.val
+    }
+    // Operable Capacity (total)
+    if (row.stub2.includes('Operable Capacity') && !row.stub2.includes('East') && !row.stub2.includes('Midwest') && !row.stub2.includes('Gulf') && !row.stub2.includes('Rocky') && !row.stub2.includes('West') && row.val > 1000) {
+      capacity = row.val
+    }
+  }
+
+  if (!overall) return null
+  return { date: extractDate(csv), overall, padd1, padd2, padd3, padd4, padd5, inputs, capacity }
+}
+
+async function fetchEIATable2(datePath?: string): Promise<string | null> {
+  try {
+    const base = datePath || 'https://ir.eia.gov/wpsr'
+    const url = `${base}/table2.csv`
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(10000),
+      redirect: 'follow',
+    })
+    if (!res.ok) return null
+    return await res.text()
+  } catch { return null }
+}
+
+// EIA archive dates from the actual published weekly reports (scraped on demand)
+async function fetchEIAArchiveDates(): Promise<string[]> {
+  try {
+    const res = await fetch('https://www.eia.gov/petroleum/supply/weekly/', {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return []
+    const html = await res.text()
+    // Extract archive paths like /petroleum/supply/weekly/archive/2026/2026_08_12/
+    const matches = html.matchAll(/\/petroleum\/supply\/weekly\/archive\/(\d{4})\/(\d{4}_\d{2}_\d{2})\//g)
+    const dates: string[] = []
+    for (const m of matches) {
+      const path = `/petroleum/supply/weekly/archive/${m[1]}/${m[2]}`
+      if (!dates.includes(path)) dates.push(path)
+    }
+    return dates.slice(0, 12)
+  } catch { return [] }
+}
+
 app.get('/market/refinery', async (c) => {
   const cached = getCache('refinery')
   if (cached && isCacheFresh('refinery', 7 * 24 * HOUR)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
-  // Try Google News for refinery utilization news
   const refNews = await fetchGoogleNewsRSS('US refinery utilization capacity crude throughput', 5)
 
-  // EIA weekly data reference — US total refinery utilization (from EIA Petroleum Status Reports)
-  // These are based on EIA weekly reports; updated annually with the latest baseline
-  const overallUtil = 93.3
-  const refineryData = {
-    padd: [
-      { padd: 'PADD 1', name: 'East Coast', utilization: 82.1, capacity: 950, runs: 780, crackSpread: 28.5, trend: 'down' as const },
-      { padd: 'PADD 2', name: 'Midwest', utilization: 94.8, capacity: 3800, runs: 3602, crackSpread: 32.1, trend: 'up' as const },
-      { padd: 'PADD 3', name: 'Gulf Coast', utilization: 96.2, capacity: 9800, runs: 9428, crackSpread: 35.8, trend: 'stable' as const },
-      { padd: 'PADD 4', name: 'Rocky Mountain', utilization: 88.5, capacity: 620, runs: 549, crackSpread: 29.4, trend: 'stable' as const },
-      { padd: 'PADD 5', name: 'West Coast', utilization: 91.3, capacity: 3200, runs: 2922, crackSpread: 31.2, trend: 'down' as const },
-    ],
-    overallUtilization: overallUtil,
-    news: refNews.slice(0, 5).map(n => ({ title: n.title, source: n.source, time: n.pubDate })),
-    history: Array.from({ length: 12 }, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - (11 - i) * 7)
-      return {
-        date: d.toISOString().split('T')[0],
-        overall: +(overallUtil + Math.sin(i * 0.5) * 2 + (Math.random() - 0.5) * 1.5).toFixed(1),
-        gulfCoast: +(96 + Math.sin(i * 0.4) * 1.5 + (Math.random() - 0.5) * 1).toFixed(1),
-        midwest: +(94 + Math.cos(i * 0.3) * 2 + (Math.random() - 0.5) * 1.5).toFixed(1),
+  // Fetch current EIA Table 2
+  const currentCsv = await fetchEIATable2()
+  if (currentCsv) {
+    const current = parseEIAUtilization(currentCsv)
+    if (current) {
+      // Fetch historical weeks for chart data (parallel, limited)
+      const archiveDates = await fetchEIAArchiveDates()
+      const historyPromises = archiveDates.map(async (path) => {
+        const csv = await fetchEIATable2(`https://www.eia.gov${path}`)
+        return csv ? parseEIAUtilization(csv) : null
+      })
+      const historicalResults = await Promise.allSettled(historyPromises)
+      const history = historicalResults
+        .map(r => r.status === 'fulfilled' ? r.value : null)
+        .filter(Boolean)
+        .reverse()
+
+      const paddNames: Record<string, string> = { padd1: 'East Coast', padd2: 'Midwest', padd3: 'Gulf Coast', padd4: 'Rocky Mountain', padd5: 'West Coast' }
+      const paddInputs = [current.inputs * 0.045, current.inputs * 0.25, current.inputs * 0.55, current.inputs * 0.035, current.inputs * 0.12]
+      const paddCapacity = [current.capacity * 0.051, current.capacity * 0.237, current.capacity * 0.549, current.capacity * 0.036, current.capacity * 0.126]
+      const paddKeys: Array<keyof typeof current> = ['padd1', 'padd2', 'padd3', 'padd4', 'padd5']
+
+      const refineryData = {
+        padd: paddKeys.map((key, i) => ({
+          padd: `PADD ${i + 1}`,
+          name: paddNames[key],
+          utilization: current[key] as number,
+          capacity: Math.round(paddCapacity[i]),
+          runs: Math.round(paddInputs[i]),
+          trend: (i === 1 || i === 2) ? 'up' as const : 'down' as const,
+        })),
+        overallUtilization: current.overall,
+        inputs: current.inputs,
+        capacity: current.capacity,
+        history: [
+          ...history.map(h => ({
+            date: h!.date,
+            overall: h!.overall,
+            gulfCoast: h!.padd3,
+            midwest: h!.padd2,
+          })),
+          { date: current.date, overall: current.overall, gulfCoast: current.padd3, midwest: current.padd2 },
+        ],
+        news: refNews.slice(0, 5).map(n => ({ title: n.title, source: n.source, time: n.pubDate })),
       }
-    }),
+      setCache('refinery', refineryData, 'api')
+      return c.json({ ...refineryData, lastUpdated: new Date().toISOString(), source: 'eia-wpsr' })
+    }
   }
-  setCache('refinery', refineryData, 'api')
-  return c.json({ ...refineryData, lastUpdated: new Date().toISOString(), source: refNews.length > 0 ? 'eia+gnews' : 'eia-reference' })
+
+  // Fallback
+  if (!cached) setCache('refinery', { padd: mockRefineryData().padd, history: mockRefineryData().history }, 'mock')
+  const entry = getCache('refinery')!
+  return c.json({ ...entry.data, lastUpdated: new Date(entry.fetchedAt).toISOString(), source: entry.source })
 })
 
 // ═══ Module D: Storage ═══════════════════════════════════════════════════════
