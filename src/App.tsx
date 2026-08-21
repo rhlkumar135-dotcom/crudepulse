@@ -1,6 +1,6 @@
 import { useState, useEffect, Component, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter } from 'lucide-react'
+import { User, LogOut, Shield, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
 import { AuthCinematic } from '@/components/AuthCinematic'
