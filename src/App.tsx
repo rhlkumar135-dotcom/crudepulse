@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, Component, type ReactNode } from 'react'
+import { useState, useEffect, Component, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, ChevronDown, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter, TrendingDown } from 'lucide-react'
+import { User, LogOut, Shield, Eye, EyeOff, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
 import { LandingPage } from '@/components/LandingPage'
@@ -55,192 +55,149 @@ class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { h
 // ═══ Cyberpunk Nav Shell ═══════════════════════════════════════════════════
 
 interface NavItem { to: string; label: string; icon: any; color: string }
-interface NavCategory { label: string; items: NavItem[] }
 
-const NAV_CATEGORIES: NavCategory[] = [
-  { label: 'Core', items: [
-    { to: '/markets', label: 'Markets', icon: TrendingUp, color: '#00ff88' },
-    { to: '/disruptions', label: 'Disruptions', icon: Radar, color: '#ff3366' },
-    { to: '/operations', label: 'Operations', icon: Wrench, color: '#ff00ff' },
-    { to: '/analysis', label: 'Analysis', icon: Activity, color: '#00d4ff' },
-    { to: '/global', label: 'Global', icon: Globe, color: '#F5A623' },
-    { to: '/satellite-intel', label: 'Satellite', icon: Satellite, color: '#00d4ff' },
-    { to: '/news', label: 'News', icon: Newspaper, color: '#FFC107' },
-  ]},
-  { label: 'Markets', items: [
-    { to: '/futures', label: 'Futures Curve', icon: BarChart3, color: '#00ff88' },
-    { to: '/majors', label: 'Oil Majors', icon: Building2, color: '#00d4ff' },
-    { to: '/freight', label: 'Freight', icon: Ship, color: '#ff9500' },
-    { to: '/downstream', label: 'Downstream', icon: Droplets, color: '#ff3366' },
-    { to: '/grades', label: 'Crude Grades', icon: Filter, color: '#2DD4BF' },
-  ]},
-  { label: 'Supply', items: [
-    { to: '/spr', label: 'SPR Tracker', icon: Shield, color: '#00d4ff' },
-    { to: '/refineries', label: 'Refineries', icon: Factory, color: '#94A3B8' },
-    { to: '/pipelines', label: 'Pipelines', icon: RouteIcon, color: '#F5A623' },
-  ]},
-  { label: 'Policy', items: [
-    { to: '/opec-compliance', label: 'OPEC+ Compliance', icon: ShieldAlert, color: '#ff00ff' },
-    { to: '/sanctions', label: 'Sanctions', icon: ShieldAlert, color: '#ff3366' },
-  ]},
+const ALL_TABS: NavItem[] = [
+  // Core
+  { to: '/markets', label: 'Markets', icon: TrendingUp, color: '#00ff88' },
+  { to: '/disruptions', label: 'Disruptions', icon: Radar, color: '#ff3366' },
+  { to: '/operations', label: 'Operations', icon: Wrench, color: '#ff00ff' },
+  { to: '/analysis', label: 'Analysis', icon: Activity, color: '#00d4ff' },
+  { to: '/global', label: 'Global', icon: Globe, color: '#F5A623' },
+  { to: '/satellite-intel', label: 'Satellite', icon: Satellite, color: '#00d4ff' },
+  { to: '/news', label: 'News', icon: Newspaper, color: '#FFC107' },
+  // Markets
+  { to: '/futures', label: 'Futures', icon: BarChart3, color: '#00ff88' },
+  { to: '/majors', label: 'Majors', icon: Building2, color: '#00d4ff' },
+  { to: '/freight', label: 'Freight', icon: Ship, color: '#ff9500' },
+  { to: '/downstream', label: 'Downstream', icon: Droplets, color: '#ff3366' },
+  { to: '/grades', label: 'Grades', icon: Filter, color: '#2DD4BF' },
+  // Supply
+  { to: '/spr', label: 'SPR', icon: Shield, color: '#00d4ff' },
+  { to: '/refineries', label: 'Refineries', icon: Factory, color: '#94A3B8' },
+  { to: '/pipelines', label: 'Pipelines', icon: RouteIcon, color: '#F5A623' },
+  // Policy
+  { to: '/opec-compliance', label: 'OPEC+', icon: ShieldAlert, color: '#ff00ff' },
+  { to: '/sanctions', label: 'Sanctions', icon: ShieldAlert, color: '#ff3366' },
 ]
 
 function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => void }) {
   const location = useLocation()
   const path = location.pathname
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  const dropdownTimeout = useRef<ReturnType<typeof setTimeout>>()
 
   const isActive = (item: NavItem) => path === item.to || (item.to !== '/' && path.startsWith(item.to))
-
-  const handleDropdownEnter = (label: string) => {
-    clearTimeout(dropdownTimeout.current)
-    setOpenDropdown(label)
-  }
-  const handleDropdownLeave = () => {
-    dropdownTimeout.current = setTimeout(() => setOpenDropdown(null), 200)
-  }
 
   return (
     <>
       <TickerBar />
-      <header className="h-14 border-b border-[#2a2a3a] flex items-center px-5 gap-3 bg-[#0a0a0f]/90 backdrop-blur-md">
-        {/* Brand */}
-        <Link to="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
-          <span className="text-sm font-black tracking-[0.1em] text-white"
-            style={{ fontFamily: 'Orbitron, monospace' }}>
-            CRUDE<span className="text-[#00ff88]">PULSES</span>
-          </span>
-        </Link>
+      <header className="border-b border-[#2a2a3a] bg-[#0a0a0f]/90 backdrop-blur-md">
+        {/* Top row: brand + auth */}
+        <div className="flex items-center px-5 h-10 gap-3">
+          <Link to="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
+            <span className="text-sm font-black tracking-[0.1em] text-white"
+              style={{ fontFamily: 'Orbitron, monospace' }}>
+              CRUDE<span className="text-[#00ff88]">PULSES</span>
+            </span>
+          </Link>
 
-        <div className="w-px h-6 bg-[#2a2a3a] shrink-0" />
+          <div className="w-px h-5 bg-[#2a2a3a] shrink-0" />
 
-        {/* Desktop Nav — Category Dropdowns */}
-        <nav className="hidden md:flex items-center gap-0.5 flex-1 min-w-0">
-          {NAV_CATEGORIES.map(cat => {
-            const anyActive = cat.items.some(isActive)
+          {/* Live indicator */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="live-dot" />
+            <span className="text-[10px] font-bold text-[#00ff88] tracking-[0.12em]"
+              style={{ fontFamily: 'Share Tech Mono, monospace' }}>LIVE</span>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Auth */}
+          {auth && (
+            <>
+              {auth.role === 'admin' && (
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[10px] font-bold tracking-wider rounded-sm"
+                  style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+                  <Shield size={10} /> ADMIN
+                </div>
+              )}
+              <div className="w-px h-5 bg-[#2a2a3a] hidden sm:block" />
+              <div className="hidden sm:flex items-center gap-2.5">
+                <div className="w-6 h-6 flex items-center justify-center border rounded-sm"
+                  style={{
+                    borderColor: auth.role === 'admin' ? '#F5A62340' : '#2a2a3a',
+                    backgroundColor: auth.role === 'admin' ? '#F5A62315' : '#ffffff08'
+                  }}>
+                  {auth.role === 'admin' ? <Shield size={11} className="text-[#F5A623]" /> : <User size={11} className="text-[#94A3B8]" />}
+                </div>
+                <span className="text-xs font-medium text-[#e0e0e0]">{auth.name}</span>
+              </div>
+              <button onClick={onLogout}
+                className="p-1.5 hover:bg-[#ff3366]/10 text-[#94A3B8] hover:text-[#ff3366] transition-colors rounded-sm"
+                title="Sign out">
+                <LogOut size={14} />
+              </button>
+            </>
+          )}
+          {!auth && (
+            <Link to="/" className="px-4 py-1.5 border border-[#00ff88]/30 text-[#00ff88] text-[10px] font-bold tracking-wider hover:bg-[#00ff88]/10 transition-all rounded-sm"
+              style={{ fontFamily: 'Orbitron, monospace' }}>
+              SIGN IN
+            </Link>
+          )}
+
+          {/* Mobile hamburger */}
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-1.5 text-[#94A3B8] hover:text-white">
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+
+        {/* Tab bar — all 17 tabs, wrapping to multiline */}
+        <nav className="hidden md:flex flex-wrap items-center gap-0.5 px-3 pb-1.5 pt-0">
+          {ALL_TABS.map(item => {
+            const Icon = item.icon
+            const active = isActive(item)
             return (
-              <div key={cat.label} className="relative"
-                onMouseEnter={() => handleDropdownEnter(cat.label)}
-                onMouseLeave={handleDropdownLeave}>
-                <button className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold tracking-wide transition-all border rounded-sm',
-                  anyActive
+              <Link key={item.to} to={item.to}
+                className={cn(
+                  'flex items-center gap-1 px-2 py-1 text-[9px] font-semibold tracking-wide transition-all border rounded-sm whitespace-nowrap',
+                  active
                     ? 'border-[#00ff88]/30 bg-[#00ff88]/[0.08] text-white'
                     : 'border-transparent text-[#94A3B8] hover:text-[#e0e0e0] hover:bg-white/[0.04]'
                 )}
-                  style={{ fontFamily: 'Orbitron, monospace' }}>
-                  <span>{cat.label}</span>
-                  <ChevronDown size={10} className={cn('transition-transform', openDropdown === cat.label && 'rotate-180')} />
-                </button>
-                {openDropdown === cat.label && (
-                  <div className="absolute top-full left-0 mt-1 bg-[#0d1117] border border-[#2a2a3a] rounded-md shadow-2xl shadow-black/50 py-1 min-w-[180px] z-50"
-                    onMouseEnter={() => handleDropdownEnter(cat.label)}
-                    onMouseLeave={handleDropdownLeave}>
-                    {cat.items.map(item => {
-                      const Icon = item.icon
-                      const active = isActive(item)
-                      return (
-                        <Link key={item.to} to={item.to}
-                          onClick={() => setOpenDropdown(null)}
-                          className={cn(
-                            'flex items-center gap-2.5 px-3 py-2 text-[11px] font-semibold transition-all',
-                            active ? 'text-white bg-white/[0.05]' : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
-                          )}
-                          style={{ fontFamily: 'Orbitron, monospace' }}>
-                          <Icon size={12} style={{ color: active ? item.color : undefined }} />
-                          <span>{item.label}</span>
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+                style={{ fontFamily: 'Orbitron, monospace' }}>
+                <Icon size={9} style={{ color: active ? item.color : undefined }} />
+                <span>{item.label}</span>
+              </Link>
             )
           })}
         </nav>
-
-        {/* Mobile hamburger */}
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-[#94A3B8] hover:text-white">
-          {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-        </button>
-
-        <div className="w-px h-6 bg-[#2a2a3a] shrink-0 hidden md:block" />
-
-        {/* Live indicator */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="live-dot" />
-          <span className="text-[10px] font-bold text-[#00ff88] tracking-[0.12em]"
-            style={{ fontFamily: 'Share Tech Mono, monospace' }}>LIVE</span>
-        </div>
-
-        <div className="flex-1" />
-
-        {/* Auth */}
-        {auth && (
-          <>
-            {auth.role === 'admin' && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[10px] font-bold tracking-wider rounded-sm"
-                style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                <Shield size={10} /> ADMIN
-              </div>
-            )}
-            <div className="w-px h-6 bg-[#2a2a3a] hidden sm:block" />
-            <div className="hidden sm:flex items-center gap-2.5">
-              <div className="w-7 h-7 flex items-center justify-center border rounded-sm"
-                style={{
-                  borderColor: auth.role === 'admin' ? '#F5A62340' : '#2a2a3a',
-                  backgroundColor: auth.role === 'admin' ? '#F5A62315' : '#ffffff08'
-                }}>
-                {auth.role === 'admin' ? <Shield size={12} className="text-[#F5A623]" /> : <User size={12} className="text-[#94A3B8]" />}
-              </div>
-              <span className="text-xs font-medium text-[#e0e0e0]">{auth.name}</span>
-            </div>
-            <button onClick={onLogout}
-              className="p-2 hover:bg-[#ff3366]/10 text-[#94A3B8] hover:text-[#ff3366] transition-colors rounded-sm"
-              title="Sign out">
-              <LogOut size={15} />
-            </button>
-          </>
-        )}
-        {!auth && (
-          <Link to="/" className="px-4 py-1.5 border border-[#00ff88]/30 text-[#00ff88] text-[10px] font-bold tracking-wider hover:bg-[#00ff88]/10 transition-all rounded-sm"
-            style={{ fontFamily: 'Orbitron, monospace' }}>
-            SIGN IN
-          </Link>
-        )}
       </header>
 
       {/* Mobile Drawer */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-black/80" onClick={() => setMobileOpen(false)}>
-          <div className="absolute top-[96px] left-0 right-0 bg-[#0d1117] border-b border-[#2a2a3a] max-h-[80vh] overflow-y-auto p-4 space-y-4"
+          <div className="absolute top-[96px] left-0 right-0 bg-[#0d1117] border-b border-[#2a2a3a] max-h-[80vh] overflow-y-auto p-3"
             onClick={e => e.stopPropagation()}>
-            {NAV_CATEGORIES.map(cat => (
-              <div key={cat.label}>
-                <div className="text-[9px] text-[#4a4a5a] uppercase tracking-wider mb-2 px-2"
-                  style={{ fontFamily: 'Share Tech Mono, monospace' }}>{cat.label}</div>
-                <div className="space-y-0.5">
-                  {cat.items.map(item => {
-                    const Icon = item.icon
-                    const active = isActive(item)
-                    return (
-                      <Link key={item.to} to={item.to}
-                        onClick={() => setMobileOpen(false)}
-                        className={cn(
-                          'flex items-center gap-3 px-3 py-2.5 rounded text-[12px] font-semibold transition-all',
-                          active ? 'bg-white/[0.06] text-white' : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
-                        )}
-                        style={{ fontFamily: 'Orbitron, monospace' }}>
-                        <Icon size={14} style={{ color: active ? item.color : undefined }} />
-                        <span>{item.label}</span>
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
+            <div className="flex flex-wrap gap-1">
+              {ALL_TABS.map(item => {
+                const Icon = item.icon
+                const active = isActive(item)
+                return (
+                  <Link key={item.to} to={item.to}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-semibold rounded border transition-all',
+                      active
+                        ? 'bg-[#00ff88]/[0.08] border-[#00ff88]/30 text-white'
+                        : 'border-transparent text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
+                    )}
+                    style={{ fontFamily: 'Orbitron, monospace' }}>
+                    <Icon size={11} style={{ color: active ? item.color : undefined }} />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
