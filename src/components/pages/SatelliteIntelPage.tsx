@@ -468,16 +468,58 @@ function toSVG(lat: number, lng: number): [number, number] {
   return [((lng + 180) / 360) * MAP_W, ((90 - lat) / 180) * MAP_H]
 }
 
-interface FacilityMapProps {
-  facilities: Facility[]
-  darkVessels: IntelResponse['darkVessels']
-  spills: IntelResponse['spills']
-  emissions: IntelResponse['emissions']
+// Map location names from news events to real coordinates
+const LOCATION_COORDS: Record<string, { lat: number; lng: number }> = {
+  'strait of hormuz': { lat: 26.5, lng: 56.3 },
+  'hormuz': { lat: 26.5, lng: 56.3 },
+  'persian gulf': { lat: 27.0, lng: 51.0 },
+  'red sea': { lat: 18.0, lng: 39.0 },
+  'suez': { lat: 30.0, lng: 32.5 },
+  'suez canal': { lat: 30.6, lng: 32.3 },
+  'bab el-mandeb': { lat: 12.6, lng: 43.3 },
+  'malacca strait': { lat: 2.5, lng: 101.5 },
+  'malacca': { lat: 2.5, lng: 101.5 },
+  'gulf of oman': { lat: 24.5, lng: 58.5 },
+  'oman': { lat: 21.5, lng: 57.0 },
+  'nigeria': { lat: 4.5, lng: 6.5 },
+  'niger delta': { lat: 4.5, lng: 6.5 },
+  'russia': { lat: 45.0, lng: 38.0 },
+  'permian': { lat: 31.7, lng: -103.2 },
+  'permian basin': { lat: 31.7, lng: -103.2 },
+  'gulf of mexico': { lat: 28.0, lng: -90.0 },
+  'north sea': { lat: 57.0, lng: 2.0 },
+  'libya': { lat: 30.0, lng: 18.0 },
+  'iran': { lat: 32.0, lng: 53.0 },
+  'iraq': { lat: 33.0, lng: 44.0 },
+  'saudi': { lat: 24.7, lng: 46.7 },
+  'china': { lat: 35.0, lng: 115.0 },
+  'india': { lat: 20.0, lng: 78.0 },
+  'japan': { lat: 36.0, lng: 140.0 },
+  'korea': { lat: 36.0, lng: 127.0 },
+  'global': { lat: 0, lng: 0 },
 }
 
-function FacilityMap({ facilities, darkVessels, spills, emissions }: FacilityMapProps) {
+function geolocate(title: string, fallbackLocation?: string): { lat: number; lng: number } | null {
+  const text = `${title} ${fallbackLocation || ''}`.toLowerCase()
+  // Match longest key first for accuracy
+  const sortedKeys = Object.keys(LOCATION_COORDS).sort((a, b) => b.length - a.length)
+  for (const key of sortedKeys) {
+    if (text.includes(key)) return LOCATION_COORDS[key]
+  }
+  return null
+}
+
+interface FacilityMapProps {
+  facilities: Facility[]
+  darkVesselEvents: Array<{ title: string; source: string; time: string; location: string }>
+  spillEvents: Array<{ title: string; source: string; severity: string; location: string }>
+  emissionEvents: Array<{ title: string; source: string; metric: string; time: string }>
+}
+
+function FacilityMap({ facilities, darkVesselEvents, spillEvents, emissionEvents }: FacilityMapProps) {
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null)
   const [hoveredFacility, setHoveredFacility] = useState<string | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<{ type: string; data: any } | null>(null)
 
   const threatColor = (level: string) => {
     if (level === 'critical') return '#EF4444'
@@ -486,30 +528,33 @@ function FacilityMap({ facilities, darkVessels, spills, emissions }: FacilityMap
     return '#22C55E'
   }
 
-  // Synthetic dark vessel positions (based on known shipping lanes)
-  const darkVesselPositions = [
-    { lat: 26.5, lng: 56.3, label: 'Hormuz AIS Gap', color: '#EF4444' },
-    { lat: 24.5, lng: 58.5, label: 'Gulf of Oman', color: '#F59E0B' },
-    { lat: 12.6, lng: 43.3, label: 'Bab el-Mandeb', color: '#EF4444' },
-    { lat: 30.0, lng: 32.5, label: 'Suez Corridor', color: '#F59E0B' },
-    { lat: 2.5, lng: 101.5, label: 'Malacca Strait', color: '#8B5CF6' },
-  ]
+  // Derive map positions from real API events
+  const darkVesselPositions = darkVesselEvents
+    .map(e => {
+      const pos = geolocate(e.title, e.location)
+      if (!pos || pos.lat === 0) return null
+      return { ...pos, label: e.title.slice(0, 40), color: '#EF4444', time: e.time, source: e.source }
+    })
+    .filter(Boolean)
+    .slice(0, 8)
 
-  // Synthetic spill positions
-  const spillPositions = [
-    { lat: 27.0, lng: 51.5, label: 'Persian Gulf Slick', color: '#6366F1', severity: 'High' },
-    { lat: 4.5, lng: 6.5, label: 'Niger Delta', color: '#F59E0B', severity: 'Moderate' },
-    { lat: 28.0, lng: -89.5, label: 'Gulf of Mexico', color: '#38BDF8', severity: 'Low' },
-    { lat: 57.0, lng: 2.0, label: 'North Sea', color: '#22C55E', severity: 'Low' },
-  ]
+  const spillPositions = spillEvents
+    .map(e => {
+      const pos = geolocate(e.title, e.location)
+      if (!pos || pos.lat === 0) return null
+      return { ...pos, label: e.title.slice(0, 40), color: '#6366F1', severity: e.severity, source: e.source }
+    })
+    .filter(Boolean)
+    .slice(0, 8)
 
-  // Emission hotspots
-  const emissionPositions = [
-    { lat: 31.7, lng: -103.2, label: 'Permian CH₄', color: '#F59E0B', metric: 'CH₄' },
-    { lat: 27.0, lng: 51.0, label: 'Persian Gulf NO₂', color: '#EF4444', metric: 'NO₂' },
-    { lat: 28.0, lng: -90.0, label: 'Gulf Flaring', color: '#F97316', metric: 'Flare' },
-    { lat: 4.5, lng: 6.5, label: 'Niger Delta SO₂', color: '#8B5CF6', metric: 'SO₂' },
-  ]
+  const emissionPositions = emissionEvents
+    .map(e => {
+      const pos = geolocate(e.title)
+      if (!pos || pos.lat === 0) return null
+      return { ...pos, label: e.title.slice(0, 40), color: e.metric === 'CH₄' ? '#F59E0B' : e.metric === 'NO₂' ? '#EF4444' : e.metric === 'SO₂' ? '#8B5CF6' : '#F97316', metric: e.metric, source: e.source }
+    })
+    .filter(Boolean)
+    .slice(0, 8)
 
   return (
     <div className="relative bg-card rounded-lg border border-border overflow-hidden" style={{ height: 500 }}>
@@ -550,7 +595,7 @@ function FacilityMap({ facilities, darkVessels, spills, emissions }: FacilityMap
         {darkVesselPositions.map((v, i) => {
           const [vx, vy] = toSVG(v.lat, v.lng)
           return (
-            <g key={`dv-${i}`}>
+            <g key={`dv-${i}`} onClick={() => setSelectedEvent({ type: 'darkVessel', data: v })} className="cursor-pointer">
               <circle cx={vx} cy={vy} r="12" fill={v.color} opacity="0.15" filter="url(#vessel-glow)">
                 <animate attributeName="r" values="8;14;8" dur="3s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0.15;0.05;0.15" dur="3s" repeatCount="indefinite" />
@@ -569,7 +614,7 @@ function FacilityMap({ facilities, darkVessels, spills, emissions }: FacilityMap
         {spillPositions.map((s, i) => {
           const [sx, sy] = toSVG(s.lat, s.lng)
           return (
-            <g key={`sp-${i}`}>
+            <g key={`sp-${i}`} onClick={() => setSelectedEvent({ type: 'spill', data: s })} className="cursor-pointer">
               <ellipse cx={sx} cy={sy} rx="15" ry="8" fill={s.color} opacity="0.12" filter="url(#vessel-glow)">
                 <animate attributeName="rx" values="12;18;12" dur="4s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0.12;0.04;0.12" dur="4s" repeatCount="indefinite" />
@@ -586,7 +631,7 @@ function FacilityMap({ facilities, darkVessels, spills, emissions }: FacilityMap
         {emissionPositions.map((e, i) => {
           const [ex, ey] = toSVG(e.lat, e.lng)
           return (
-            <g key={`em-${i}`}>
+            <g key={`em-${i}`} onClick={() => setSelectedEvent({ type: 'emission', data: e })} className="cursor-pointer">
               <circle cx={ex} cy={ey} r="10" fill={e.color} opacity="0.1" filter="url(#vessel-glow)">
                 <animate attributeName="r" values="7;12;7" dur="3.5s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0.1;0.03;0.1" dur="3.5s" repeatCount="indefinite" />
@@ -689,6 +734,41 @@ function FacilityMap({ facilities, darkVessels, spills, emissions }: FacilityMap
               <div className="flex items-center gap-1 text-[9px] text-purple font-mono">
                 <Droplets size={8} /> {selectedFacility.spillFlags} spill flags
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Event detail popup (dark vessel / spill / emission) */}
+      {selectedEvent && (
+        <div className="absolute top-2 right-2 bg-[#0a0e14]/95 border border-white/15 rounded-lg shadow-2xl p-3 max-w-[260px] backdrop-blur-sm z-10">
+          <div className="flex items-start justify-between mb-2">
+            <div className="text-[9px] font-mono font-bold uppercase tracking-wider" style={{ color: selectedEvent.data.color }}>
+              {selectedEvent.type === 'darkVessel' ? '⚓ DARK VESSEL EVENT' :
+               selectedEvent.type === 'spill' ? '🛢️ OIL SPILL DETECTION' :
+               '💨 EMISSION EVENT'}
+            </div>
+            <button onClick={() => setSelectedEvent(null)} className="text-gray-500 hover:text-white">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div className="text-[10px] text-white/80 font-mono leading-snug mb-2">
+            {selectedEvent.data.label}
+          </div>
+          <div className="space-y-1">
+            {selectedEvent.data.source && (
+              <div className="text-[9px] text-gray-400 font-mono">Source: {selectedEvent.data.source}</div>
+            )}
+            {selectedEvent.data.time && (
+              <div className="text-[9px] text-gray-400 font-mono">Detected: {selectedEvent.data.time}</div>
+            )}
+            {selectedEvent.data.severity && (
+              <div className="text-[9px] font-mono" style={{ color: selectedEvent.data.severity === 'High' ? '#EF4444' : '#F59E0B' }}>
+                Severity: {selectedEvent.data.severity}
+              </div>
+            )}
+            {selectedEvent.data.metric && (
+              <div className="text-[9px] text-gray-400 font-mono">Metric: {selectedEvent.data.metric}</div>
             )}
           </div>
         </div>
@@ -800,7 +880,12 @@ export function SatelliteIntelPage() {
         {/* Facility Watchlist Map */}
         <ModuleCard icon={MapPin} color="#00ff88" title="Facility Watchlist — Global View" cadence="LIVE"
           tag={`${d.meta.facilityCount} facilities · Dark vessels · Spills · Emissions`}>
-          <FacilityMap facilities={d.facilities} darkVessels={d.darkVessels} spills={d.spills} emissions={d.emissions} />
+          <FacilityMap
+            facilities={d.facilities}
+            darkVesselEvents={d.darkVessels.recentEvents}
+            spillEvents={d.spills.recentEvents}
+            emissionEvents={d.emissions.recentEvents}
+          />
         </ModuleCard>
 
         {/* Facility Watchlist (detailed list) */}

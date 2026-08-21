@@ -3362,3 +3362,44 @@ app.get('/debug/routes', (c) => {
     ]
   })
 })
+
+// ═══ Health Check Endpoint ═══════════════════════════════════════════════════
+app.get('/health', (c) => {
+  const sources = [
+    { key: 'prices', name: 'Yahoo Finance', refreshRate: '10s' },
+    { key: 'news', name: 'Google News RSS', refreshRate: '1m' },
+    { key: 'disruptions', name: 'GDELT + GNews', refreshRate: '30s' },
+    { key: 'refinery', name: 'EIA + GDELT', refreshRate: '30m' },
+    { key: 'rigs', name: 'Baker Hughes + GDELT', refreshRate: '30m' },
+    { key: 'storage', name: 'EIA Weekly', refreshRate: '24h' },
+    { key: 'flows', name: 'EIA + Trade Data', refreshRate: '24h' },
+    { key: 'chokepoints', name: 'GDELT + AIS', refreshRate: '30s' },
+    { key: 'v4-satellite-intel', name: 'NASA FIRMS + Open-Meteo', refreshRate: '30s' },
+    { key: 'news-atlas', name: 'GDELT GEO + GNews', refreshRate: '1m' },
+    { key: 'correlation', name: 'Yahoo + GDELT', refreshRate: '15s' },
+    { key: 'freight', name: 'GDELT + Trade', refreshRate: '30s' },
+  ]
+
+  const now = Date.now()
+  const statusList = sources.map(s => {
+    const entry = cache.get(s.key)
+    if (!entry) return { ...s, status: 'cold' as const, lastUpdate: null, age: null }
+    const ageSec = Math.round((now - entry.fetchedAt) / 1000)
+    const ageMin = Math.round(ageSec / 60)
+    const refreshSec = parseRefreshRate(s.refreshRate)
+    const status = ageSec < refreshSec * 2 ? 'live' as const :
+      ageSec < refreshSec * 4 ? 'cached' as const : 'stale' as const
+    return { ...s, status, lastUpdate: entry.fetchedAt, age: ageMin > 0 ? `${ageMin}m ago` : `${ageSec}s ago` }
+  })
+
+  const liveCount = statusList.filter(s => s.status === 'live').length
+  return c.json({ sources: statusList, liveCount, total: statusList.length })
+})
+
+function parseRefreshRate(rate: string): number {
+  const num = parseInt(rate)
+  if (rate.includes('s')) return num
+  if (rate.includes('m')) return num * 60
+  if (rate.includes('h')) return num * 3600
+  return 3600
+}

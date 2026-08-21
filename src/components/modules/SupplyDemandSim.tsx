@@ -1,28 +1,31 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { RotateCcw } from 'lucide-react'
+import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
 
 interface Scenario {
   opecCut: number; demandGrowth: number; usProduction: number; chinaDemand: number; weatherRisk: number
 }
 
-const baseline = {
-  worldSupply: 102.8, worldDemand: 103.2,
-  months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-}
+interface StoragePoint { date: string; cushing: number; spRoc: number; totalUs: number }
+interface StorageResponse { history: StoragePoint[]; latest: StoragePoint }
 
-function generateBalance(scenario: Scenario) {
-  return baseline.months.map((month, i) => {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const FALLBACK_SUPPLY = 102.8
+const FALLBACK_DEMAND = 103.2
+
+function generateBalance(scenario: Scenario, supply: number, demand: number) {
+  return MONTHS.map((month, i) => {
     const seasonal = Math.sin((i / 12) * Math.PI * 2) * 0.8
     const opecEffect = -scenario.opecCut * (i > 2 ? 1 : i / 3)
     const demandEffect = scenario.demandGrowth * (i / 12) * 2
     const usEffect = scenario.usProduction
     const chinaEffect = scenario.chinaDemand * (i / 12)
     const weatherEffect = scenario.weatherRisk * 0.15
-    const supply = baseline.worldSupply + opecEffect + usEffect - weatherEffect + seasonal * 0.2
-    const demand = baseline.worldDemand + demandEffect + chinaEffect + seasonal * 0.15
-    return { month, supply: +supply.toFixed(1), demand: +demand.toFixed(1), balance: +(supply - demand).toFixed(2) }
+    const s = supply + opecEffect + usEffect - weatherEffect + seasonal * 0.2
+    const d = demand + demandEffect + chinaEffect + seasonal * 0.15
+    return { month, supply: +s.toFixed(1), demand: +d.toFixed(1), balance: +(s - d).toFixed(2) }
   })
 }
 
@@ -55,7 +58,21 @@ export function SupplyDemandSim() {
     opecCut: 0, demandGrowth: 0, usProduction: 0, chinaDemand: 0, weatherRisk: 0,
   })
 
-  const data = useMemo(() => generateBalance(scenario), [scenario])
+  // Fetch real storage data to derive baseline supply/demand
+  const { data: storageData } = useMarketData<StorageResponse>('/api/market/storage', 'free', 300_000)
+
+  // Derive baseline from real US storage + EIA estimates
+  const { worldSupply, worldDemand } = useMemo(() => {
+    if (!storageData?.latest) return { worldSupply: FALLBACK_SUPPLY, worldDemand: FALLBACK_DEMAND }
+    // US total product supplied ≈ totalUs in kb/d, convert to M bbl/d
+    // US is ~12% of world supply, extrapolate
+    const usProd = (storageData.latest.totalUs || 19500) / 1000
+    const estimatedWorldSupply = usProd / 0.12
+    const estimatedWorldDemand = estimatedWorldSupply + 0.4
+    return { worldSupply: +estimatedWorldSupply.toFixed(1), worldDemand: +estimatedWorldDemand.toFixed(1) }
+  }, [storageData])
+
+  const data = useMemo(() => generateBalance(scenario, worldSupply, worldDemand), [scenario, worldSupply, worldDemand])
   const avgBalance = data.reduce((s, d) => s + d.balance, 0) / data.length
   const yearEnd = data[11].balance
 
@@ -66,6 +83,12 @@ export function SupplyDemandSim() {
 
   return (
     <div className="space-y-3">
+      {/* Baseline indicator */}
+      <div className="flex items-center gap-2 text-[9px] text-text-dim/40 font-mono">
+        <span>Baseline: Supply {worldSupply}M bbl/d · Demand {worldDemand}M bbl/d</span>
+        <span>· {storageData?.latest ? 'from EIA storage data' : 'fallback (EIA STEO)'}</span>
+      </div>
+
       {/* KPI row */}
       <div className="flex items-center gap-3">
         <div className={`p-2 rounded-lg flex-1 ${avgBalance >= 0 ? 'bg-teal/[0.04] border border-teal/10' : 'bg-red/[0.04] border border-red/10'}`}>
@@ -122,8 +145,8 @@ export function SupplyDemandSim() {
             <XAxis dataKey="month" tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} tickLine={false} axisLine={false} stroke="#141A22" />
             <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} domain={['auto', 'auto']} width={30} stroke="#141A22" />
             <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine y={baseline.worldSupply} stroke="#2DD4BF30" strokeDasharray="2 2" />
-            <ReferenceLine y={baseline.worldDemand} stroke="#EF444430" strokeDasharray="2 2" />
+            <ReferenceLine y={worldSupply} stroke="#2DD4BF30" strokeDasharray="2 2" />
+            <ReferenceLine y={worldDemand} stroke="#EF444430" strokeDasharray="2 2" />
             <Area type="monotone" dataKey="supply" stroke="#2DD4BF" fill="url(#simSupply)" strokeWidth={1.5} dot={false} name="Supply" />
             <Area type="monotone" dataKey="demand" stroke="#EF4444" fill="url(#simDemand)" strokeWidth={1.5} dot={false} name="Demand" />
           </AreaChart>

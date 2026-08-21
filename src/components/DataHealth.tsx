@@ -1,33 +1,40 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface DataSource {
   name: string
-  status: 'live' | 'cached' | 'stale'
-  lastUpdate: string
+  status: 'live' | 'cached' | 'stale' | 'cold'
   refreshRate: string
+  age: string | null
 }
 
-const initialSources: DataSource[] = [
-  { name: 'GDELT', status: 'live', lastUpdate: '2m ago', refreshRate: '15 min' },
-  { name: 'EIA', status: 'cached', lastUpdate: '6h ago', refreshRate: '24 h' },
-  { name: 'FRED', status: 'cached', lastUpdate: '4h ago', refreshRate: '4 h' },
-  { name: 'Baker Hughes', status: 'cached', lastUpdate: '3d ago', refreshRate: 'Weekly' },
-  { name: 'NewsAPI', status: 'cached', lastUpdate: '1h ago', refreshRate: '1 h' },
-  { name: 'Alpha Vantage', status: 'stale', lastUpdate: '12h ago', refreshRate: '4 h' },
-]
-
-const statusConfig = {
+const statusConfig: Record<string, { color: string; text: string; label: string; glow: string }> = {
   live: { color: 'bg-green-500', text: 'text-green-400', label: 'LIVE', glow: 'shadow-[0_0_4px] shadow-green-500/30' },
   cached: { color: 'bg-amber', text: 'text-amber', label: 'CACHED', glow: '' },
   stale: { color: 'bg-red', text: 'text-red', label: 'STALE', glow: 'shadow-[0_0_4px] shadow-red/30' },
+  cold: { color: 'bg-gray-500', text: 'text-gray-400', label: 'COLD', glow: '' },
 }
 
 export function DataHealth() {
-  const [sources] = useState(initialSources)
+  const [sources, setSources] = useState<DataSource[]>([])
   const [open, setOpen] = useState(false)
 
+  useEffect(() => {
+    async function fetchHealth() {
+      try {
+        const res = await fetch('/api/health')
+        if (res.ok) {
+          const data = await res.json()
+          setSources(data.sources || [])
+        }
+      } catch {}
+    }
+    fetchHealth()
+    const iv = setInterval(fetchHealth, 30_000)
+    return () => clearInterval(iv)
+  }, [])
+
   const liveCount = sources.filter(s => s.status === 'live').length
-  const okCount = sources.filter(s => s.status !== 'stale').length
+  const okCount = sources.filter(s => s.status !== 'stale' && s.status !== 'cold').length
 
   return (
     <div className="relative">
@@ -55,7 +62,7 @@ export function DataHealth() {
               </div>
               <div className="space-y-0">
                 {sources.map((s, i) => {
-                  const cfg = statusConfig[s.status]
+                  const cfg = statusConfig[s.status] || statusConfig.cold
                   return (
                     <div key={s.name} className="data-grid-line">
                       <div className="flex items-center justify-between py-1.5">
@@ -64,8 +71,8 @@ export function DataHealth() {
                           <span className="text-[11px] font-mono text-text">{s.name}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-[11px] text-text-dim font-mono tabular-nums">{s.lastUpdate}</span>
-                          <span className="text-[10px] font-mono text-text-dim/60 w-12 text-right">cron {s.refreshRate}</span>
+                          <span className="text-[11px] text-text-dim font-mono tabular-nums">{s.age || '—'}</span>
+                          <span className="text-[10px] font-mono text-text-dim/60 w-12 text-right">{s.refreshRate}</span>
                           <span className={`text-[10px] font-mono font-medium ${cfg.text}`}>{cfg.label}</span>
                         </div>
                       </div>
