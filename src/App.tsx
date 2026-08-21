@@ -165,12 +165,14 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
+  const [confirmSent, setConfirmSent] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) { setError('Please fill in all fields'); return }
     setLoading(true)
     setError('')
+    setConfirmSent(false)
 
     try {
       const endpoint = isSignUp ? '/api/auth/signup' : '/api/auth/login'
@@ -183,6 +185,13 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
 
       if (!res.ok) {
         setError(data.error || 'Authentication failed')
+        setLoading(false)
+        return
+      }
+
+      if (data.message && isSignUp) {
+        // Signup successful — show "check your email" state
+        setConfirmSent(true)
         setLoading(false)
         return
       }
@@ -221,6 +230,38 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
 
         <div className="glass-card overflow-hidden">
           <div className="p-5 pb-4">
+            {confirmSent ? (
+              <div className="text-center py-4">
+                <div className="text-4xl mb-3">📧</div>
+                <h2 className="text-sm font-semibold text-text-bright mb-2">Check Your Email</h2>
+                <p className="text-[11px] text-muted mb-1">We sent a confirmation link to:</p>
+                <p className="text-[12px] text-amber font-mono font-medium mb-3">{email}</p>
+                <p className="text-[10px] text-muted/60 mb-4">
+                  Click the link in the email to activate your account. The link expires in 24 hours.
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <button onClick={() => { setConfirmSent(false); setIsSignUp(false); setError('') }}
+                    className="px-3 py-1.5 rounded-lg bg-white/5 text-text text-[11px] font-mono hover:bg-white/10 transition-all border border-border">
+                    Back to Sign In
+                  </button>
+                  <button onClick={async () => {
+                    try {
+                      const res = await fetch('/api/auth/signup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password, name: name || undefined }),
+                      })
+                      const data = await res.json()
+                      setError(data.message || 'Confirmation resent')
+                    } catch { setError('Failed to resend') }
+                  }}
+                    className="px-3 py-1.5 rounded-lg bg-amber/10 text-amber text-[11px] font-mono hover:bg-amber/20 transition-all border border-amber/20">
+                    Resend Email
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-text-bright">{isSignUp ? 'Create Account' : 'Sign In'}</h2>
               <span className="text-[8px] font-mono text-muted/40 tracking-wider">SECURE</span>
@@ -257,11 +298,13 @@ function AuthScreen({ onLogin }: { onLogin: (a: AuthState) => void }) {
                 {loading ? '...' : isSignUp ? 'Create Free Account' : 'Sign In'}
               </button>
             </form>
+              </>
+            )}
           </div>
           <div className="border-t border-white/[0.04] px-5 py-3 flex items-center justify-center">
             <span className="text-[10px] text-muted">
               {isSignUp ? 'Have an account?' : "New here?"}
-              <button onClick={() => { setIsSignUp(!isSignUp); setError('') }} className="ml-1 text-amber hover:text-amber/80 font-medium">
+              <button onClick={() => { setIsSignUp(!isSignUp); setError(''); setConfirmSent(false) }} className="ml-1 text-amber hover:text-amber/80 font-medium">
                 {isSignUp ? 'Sign In' : 'Sign Up Free'}
               </button>
             </span>

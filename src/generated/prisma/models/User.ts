@@ -28,8 +28,12 @@ export type UserMinAggregateOutputType = {
   id: string | null
   email: string | null
   name: string | null
-  tier: string | null
+  passwordHash: string | null
   role: string | null
+  tier: string | null
+  emailConfirmed: boolean | null
+  confirmationToken: string | null
+  tokenExpiry: Date | null
   stripeCustomerId: string | null
   stripeSubId: string | null
   createdAt: Date | null
@@ -40,8 +44,12 @@ export type UserMaxAggregateOutputType = {
   id: string | null
   email: string | null
   name: string | null
-  tier: string | null
+  passwordHash: string | null
   role: string | null
+  tier: string | null
+  emailConfirmed: boolean | null
+  confirmationToken: string | null
+  tokenExpiry: Date | null
   stripeCustomerId: string | null
   stripeSubId: string | null
   createdAt: Date | null
@@ -52,8 +60,12 @@ export type UserCountAggregateOutputType = {
   id: number
   email: number
   name: number
-  tier: number
+  passwordHash: number
   role: number
+  tier: number
+  emailConfirmed: number
+  confirmationToken: number
+  tokenExpiry: number
   stripeCustomerId: number
   stripeSubId: number
   createdAt: number
@@ -66,8 +78,12 @@ export type UserMinAggregateInputType = {
   id?: true
   email?: true
   name?: true
-  tier?: true
+  passwordHash?: true
   role?: true
+  tier?: true
+  emailConfirmed?: true
+  confirmationToken?: true
+  tokenExpiry?: true
   stripeCustomerId?: true
   stripeSubId?: true
   createdAt?: true
@@ -78,8 +94,12 @@ export type UserMaxAggregateInputType = {
   id?: true
   email?: true
   name?: true
-  tier?: true
+  passwordHash?: true
   role?: true
+  tier?: true
+  emailConfirmed?: true
+  confirmationToken?: true
+  tokenExpiry?: true
   stripeCustomerId?: true
   stripeSubId?: true
   createdAt?: true
@@ -90,8 +110,12 @@ export type UserCountAggregateInputType = {
   id?: true
   email?: true
   name?: true
-  tier?: true
+  passwordHash?: true
   role?: true
+  tier?: true
+  emailConfirmed?: true
+  confirmationToken?: true
+  tokenExpiry?: true
   stripeCustomerId?: true
   stripeSubId?: true
   createdAt?: true
@@ -175,8 +199,12 @@ export type UserGroupByOutputType = {
   id: string
   email: string
   name: string | null
-  tier: string
+  passwordHash: string | null
   role: string
+  tier: string
+  emailConfirmed: boolean
+  confirmationToken: string | null
+  tokenExpiry: Date | null
   stripeCustomerId: string | null
   stripeSubId: string | null
   createdAt: Date
@@ -208,8 +236,12 @@ export type UserWhereInput = {
   id?: Prisma.StringFilter<"User"> | string
   email?: Prisma.StringFilter<"User"> | string
   name?: Prisma.StringNullableFilter<"User"> | string | null
-  tier?: Prisma.StringFilter<"User"> | string
+  passwordHash?: Prisma.StringNullableFilter<"User"> | string | null
   role?: Prisma.StringFilter<"User"> | string
+  tier?: Prisma.StringFilter<"User"> | string
+  emailConfirmed?: Prisma.BoolFilter<"User"> | boolean
+  confirmationToken?: Prisma.StringNullableFilter<"User"> | string | null
+  tokenExpiry?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   stripeCustomerId?: Prisma.StringNullableFilter<"User"> | string | null
   stripeSubId?: Prisma.StringNullableFilter<"User"> | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
@@ -220,8 +252,12 @@ export type UserOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   email?: Prisma.SortOrder
   name?: Prisma.SortOrderInput | Prisma.SortOrder
-  tier?: Prisma.SortOrder
+  passwordHash?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
+  tier?: Prisma.SortOrder
+  emailConfirmed?: Prisma.SortOrder
+  confirmationToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  tokenExpiry?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeCustomerId?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeSubId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -231,24 +267,32 @@ export type UserOrderByWithRelationInput = {
 export type UserWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   email?: string
+  confirmationToken?: string
   AND?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   OR?: Prisma.UserWhereInput[]
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   name?: Prisma.StringNullableFilter<"User"> | string | null
-  tier?: Prisma.StringFilter<"User"> | string
+  passwordHash?: Prisma.StringNullableFilter<"User"> | string | null
   role?: Prisma.StringFilter<"User"> | string
+  tier?: Prisma.StringFilter<"User"> | string
+  emailConfirmed?: Prisma.BoolFilter<"User"> | boolean
+  tokenExpiry?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   stripeCustomerId?: Prisma.StringNullableFilter<"User"> | string | null
   stripeSubId?: Prisma.StringNullableFilter<"User"> | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
-}, "id" | "email">
+}, "id" | "email" | "confirmationToken">
 
 export type UserOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   email?: Prisma.SortOrder
   name?: Prisma.SortOrderInput | Prisma.SortOrder
-  tier?: Prisma.SortOrder
+  passwordHash?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
+  tier?: Prisma.SortOrder
+  emailConfirmed?: Prisma.SortOrder
+  confirmationToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  tokenExpiry?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeCustomerId?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeSubId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -265,8 +309,12 @@ export type UserScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"User"> | string
   email?: Prisma.StringWithAggregatesFilter<"User"> | string
   name?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
-  tier?: Prisma.StringWithAggregatesFilter<"User"> | string
+  passwordHash?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   role?: Prisma.StringWithAggregatesFilter<"User"> | string
+  tier?: Prisma.StringWithAggregatesFilter<"User"> | string
+  emailConfirmed?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
+  confirmationToken?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  tokenExpiry?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   stripeCustomerId?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   stripeSubId?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
@@ -277,8 +325,12 @@ export type UserCreateInput = {
   id?: string
   email: string
   name?: string | null
-  tier?: string
+  passwordHash?: string | null
   role?: string
+  tier?: string
+  emailConfirmed?: boolean
+  confirmationToken?: string | null
+  tokenExpiry?: Date | string | null
   stripeCustomerId?: string | null
   stripeSubId?: string | null
   createdAt?: Date | string
@@ -289,8 +341,12 @@ export type UserUncheckedCreateInput = {
   id?: string
   email: string
   name?: string | null
-  tier?: string
+  passwordHash?: string | null
   role?: string
+  tier?: string
+  emailConfirmed?: boolean
+  confirmationToken?: string | null
+  tokenExpiry?: Date | string | null
   stripeCustomerId?: string | null
   stripeSubId?: string | null
   createdAt?: Date | string
@@ -301,8 +357,12 @@ export type UserUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tier?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tier?: Prisma.StringFieldUpdateOperationsInput | string
+  emailConfirmed?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  confirmationToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tokenExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSubId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -313,8 +373,12 @@ export type UserUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tier?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tier?: Prisma.StringFieldUpdateOperationsInput | string
+  emailConfirmed?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  confirmationToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tokenExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSubId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -325,8 +389,12 @@ export type UserCreateManyInput = {
   id?: string
   email: string
   name?: string | null
-  tier?: string
+  passwordHash?: string | null
   role?: string
+  tier?: string
+  emailConfirmed?: boolean
+  confirmationToken?: string | null
+  tokenExpiry?: Date | string | null
   stripeCustomerId?: string | null
   stripeSubId?: string | null
   createdAt?: Date | string
@@ -337,8 +405,12 @@ export type UserUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tier?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tier?: Prisma.StringFieldUpdateOperationsInput | string
+  emailConfirmed?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  confirmationToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tokenExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSubId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -349,8 +421,12 @@ export type UserUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tier?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tier?: Prisma.StringFieldUpdateOperationsInput | string
+  emailConfirmed?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  confirmationToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tokenExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSubId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -361,8 +437,12 @@ export type UserCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   email?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  tier?: Prisma.SortOrder
+  passwordHash?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  tier?: Prisma.SortOrder
+  emailConfirmed?: Prisma.SortOrder
+  confirmationToken?: Prisma.SortOrder
+  tokenExpiry?: Prisma.SortOrder
   stripeCustomerId?: Prisma.SortOrder
   stripeSubId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -373,8 +453,12 @@ export type UserMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   email?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  tier?: Prisma.SortOrder
+  passwordHash?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  tier?: Prisma.SortOrder
+  emailConfirmed?: Prisma.SortOrder
+  confirmationToken?: Prisma.SortOrder
+  tokenExpiry?: Prisma.SortOrder
   stripeCustomerId?: Prisma.SortOrder
   stripeSubId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -385,8 +469,12 @@ export type UserMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   email?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  tier?: Prisma.SortOrder
+  passwordHash?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  tier?: Prisma.SortOrder
+  emailConfirmed?: Prisma.SortOrder
+  confirmationToken?: Prisma.SortOrder
+  tokenExpiry?: Prisma.SortOrder
   stripeCustomerId?: Prisma.SortOrder
   stripeSubId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -401,6 +489,14 @@ export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
 }
 
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
+}
+
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
 }
@@ -411,8 +507,12 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   id?: boolean
   email?: boolean
   name?: boolean
-  tier?: boolean
+  passwordHash?: boolean
   role?: boolean
+  tier?: boolean
+  emailConfirmed?: boolean
+  confirmationToken?: boolean
+  tokenExpiry?: boolean
   stripeCustomerId?: boolean
   stripeSubId?: boolean
   createdAt?: boolean
@@ -423,8 +523,12 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   email?: boolean
   name?: boolean
-  tier?: boolean
+  passwordHash?: boolean
   role?: boolean
+  tier?: boolean
+  emailConfirmed?: boolean
+  confirmationToken?: boolean
+  tokenExpiry?: boolean
   stripeCustomerId?: boolean
   stripeSubId?: boolean
   createdAt?: boolean
@@ -435,8 +539,12 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   email?: boolean
   name?: boolean
-  tier?: boolean
+  passwordHash?: boolean
   role?: boolean
+  tier?: boolean
+  emailConfirmed?: boolean
+  confirmationToken?: boolean
+  tokenExpiry?: boolean
   stripeCustomerId?: boolean
   stripeSubId?: boolean
   createdAt?: boolean
@@ -447,15 +555,19 @@ export type UserSelectScalar = {
   id?: boolean
   email?: boolean
   name?: boolean
-  tier?: boolean
+  passwordHash?: boolean
   role?: boolean
+  tier?: boolean
+  emailConfirmed?: boolean
+  confirmationToken?: boolean
+  tokenExpiry?: boolean
   stripeCustomerId?: boolean
   stripeSubId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "name" | "tier" | "role" | "stripeCustomerId" | "stripeSubId" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "name" | "passwordHash" | "role" | "tier" | "emailConfirmed" | "confirmationToken" | "tokenExpiry" | "stripeCustomerId" | "stripeSubId" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 
 export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "User"
@@ -464,8 +576,12 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     id: string
     email: string
     name: string | null
-    tier: string
+    passwordHash: string | null
     role: string
+    tier: string
+    emailConfirmed: boolean
+    confirmationToken: string | null
+    tokenExpiry: Date | null
     stripeCustomerId: string | null
     stripeSubId: string | null
     createdAt: Date
@@ -896,8 +1012,12 @@ export interface UserFieldRefs {
   readonly id: Prisma.FieldRef<"User", 'String'>
   readonly email: Prisma.FieldRef<"User", 'String'>
   readonly name: Prisma.FieldRef<"User", 'String'>
-  readonly tier: Prisma.FieldRef<"User", 'String'>
+  readonly passwordHash: Prisma.FieldRef<"User", 'String'>
   readonly role: Prisma.FieldRef<"User", 'String'>
+  readonly tier: Prisma.FieldRef<"User", 'String'>
+  readonly emailConfirmed: Prisma.FieldRef<"User", 'Boolean'>
+  readonly confirmationToken: Prisma.FieldRef<"User", 'String'>
+  readonly tokenExpiry: Prisma.FieldRef<"User", 'DateTime'>
   readonly stripeCustomerId: Prisma.FieldRef<"User", 'String'>
   readonly stripeSubId: Prisma.FieldRef<"User", 'String'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>

@@ -11,15 +11,19 @@ datasource db {
 // SHOGO:CUSTOM-END
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  tier      String   @default("free")
-  role      String   @default("user")
-  stripeCustomerId String? @map("stripe_customer_id")
-  stripeSubId      String? @map("stripe_sub_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String?
+  passwordHash       String?   @map("password_hash")
+  role               String    @default("user")
+  tier               String    @default("free")
+  emailConfirmed     Boolean   @default(false) @map("email_confirmed")
+  confirmationToken  String?   @unique @map("confirmation_token")
+  tokenExpiry        DateTime? @map("token_expiry")
+  stripeCustomerId   String?   @map("stripe_customer_id")
+  stripeSubId        String?   @map("stripe_sub_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
 
   @@map("users")
 }

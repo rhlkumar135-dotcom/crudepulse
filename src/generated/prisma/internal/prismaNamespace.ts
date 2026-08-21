@@ -596,8 +596,12 @@ export const UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
   name: 'name',
-  tier: 'tier',
+  passwordHash: 'passwordHash',
   role: 'role',
+  tier: 'tier',
+  emailConfirmed: 'emailConfirmed',
+  confirmationToken: 'confirmationToken',
+  tokenExpiry: 'tokenExpiry',
   stripeCustomerId: 'stripeCustomerId',
   stripeSubId: 'stripeSubId',
   createdAt: 'createdAt',
@@ -660,6 +664,13 @@ export type StringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 
  * Reference to a field of type 'String[]'
  */
 export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 

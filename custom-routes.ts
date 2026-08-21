@@ -11,8 +11,26 @@ function getPool() {
   return pool
 }
 
+import { createHash, randomBytes } from 'crypto'
+
 let tableReady = false
 let adminSeeded = false
+
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex')
+  const hash = createHash('sha256').update(salt + password).digest('hex')
+  return `${salt}:${hash}`
+}
+
+function verifyPassword(password: string, stored: string): boolean {
+  const [salt, hash] = stored.split(':')
+  const computed = createHash('sha256').update(salt + password).digest('hex')
+  return computed === hash
+}
+
+function generateToken(): string {
+  return randomBytes(32).toString('hex')
+}
 
 async function ensureAdmin() {
   if (adminSeeded) return
@@ -25,17 +43,30 @@ async function ensureAdmin() {
           id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
           email TEXT UNIQUE NOT NULL,
           name TEXT,
+          password_hash TEXT,
           tier TEXT DEFAULT 'free',
           role TEXT DEFAULT 'user',
-          password TEXT,
+          email_confirmed BOOLEAN DEFAULT false,
+          confirmation_token TEXT,
+          token_expiry TIMESTAMP,
           "createdAt" TIMESTAMP DEFAULT NOW()
         )
       `)
+      // Add columns if table already existed without them
+      const cols = await p.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'users'`)
+      const existing = new Set(cols.rows.map((r: any) => r.column_name))
+      if (!existing.has('password_hash')) await p.query(`ALTER TABLE users ADD COLUMN password_hash TEXT`)
+      if (!existing.has('email_confirmed')) await p.query(`ALTER TABLE users ADD COLUMN email_confirmed BOOLEAN DEFAULT false`)
+      if (!existing.has('confirmation_token')) await p.query(`ALTER TABLE users ADD COLUMN confirmation_token TEXT`)
+      if (!existing.has('token_expiry')) await p.query(`ALTER TABLE users ADD COLUMN token_expiry TIMESTAMP`)
       tableReady = true
     }
+    // Seed admin with confirmed email
+    const adminHash = hashPassword('CrudePulse@2026!')
     await p.query(
-      `INSERT INTO users (email, name, role, tier) VALUES ('rhlkumar135@gmail.com', 'RHL Kumar', 'admin', 'pro')
-       ON CONFLICT (email) DO UPDATE SET role = 'admin', tier = 'pro'`
+      `INSERT INTO users (email, name, role, tier, email_confirmed, password_hash) VALUES ('rhlkumar135@gmail.com', 'RHL Kumar', 'admin', 'pro', true, $1)
+       ON CONFLICT (email) DO UPDATE SET role = 'admin', tier = 'pro', email_confirmed = true, password_hash = $1`,
+      [adminHash]
     )
     adminSeeded = true
   } catch (e) { console.error('Admin seed failed:', e); adminSeeded = true }
@@ -44,38 +75,134 @@ async function ensureAdmin() {
 ensureAdmin().catch(() => {})
 
 // ═══ Auth Routes ═════════════════════════════════════════════════════════════
+// Signup → hash password → generate confirmation token → send email → store in DB
+// Confirm → set email_confirmed = true
+// Login → verify password → check email_confirmed → return user
+
+async function sendConfirmationEmail(email: string, name: string, token: string): Promise<boolean> {
+  // Try SMTP if configured, otherwise log the confirmation URL for manual testing
+  const smtpHost = process.env.SMTP_HOST
+  const smtpPort = process.env.SMTP_PORT
+  const smtpUser = process.env.SMTP_USER
+  const smtpPass = process.env.SMTP_PASS
+  const baseUrl = process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'www.crudepulses.com'
+  const confirmUrl = `https://${baseUrl}/api/auth/confirm/${token}`
+
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      // Dynamic import for nodemailer (optional dependency)
+      const nodemailer = await import('nodemailer').catch(() => null)
+      if (nodemailer) {
+        const transporter = nodemailer.default.createTransport({
+          host: smtpHost,
+          port: parseInt(smtpPort || '587'),
+          secure: parseInt(smtpPort || '587') === 465,
+          auth: { user: smtpUser, pass: smtpPass },
+        })
+        await transporter.sendMail({
+          from: smtpUser,
+          to: email,
+          subject: 'Confirm your CrudePulse account',
+          html: `
+            <div style="font-family: 'IBM Plex Mono', monospace; background: #0A0E14; color: #E8ECF0; padding: 40px; max-width: 500px; margin: 0 auto;">
+              <h1 style="color: #FFC107; font-size: 20px;">⚡ CrudePulse</h1>
+              <p style="color: #8892A0; font-size: 14px;">Hi ${name},</p>
+              <p style="color: #E8ECF0; font-size: 14px;">Thanks for signing up. Please confirm your email address to activate your account.</p>
+              <a href="${confirmUrl}" style="display: inline-block; background: #FFC107; color: #0A0E14; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 20px 0;">Confirm Email</a>
+              <p style="color: #8892A0; font-size: 11px;">If the button doesn't work, copy and paste this URL:<br/><a href="${confirmUrl}" style="color: #FFC107;">${confirmUrl}</a></p>
+              <p style="color: #8892A0; font-size: 11px;">If you didn't create this account, you can ignore this email.</p>
+            </div>
+          `,
+        })
+        console.log(`✅ Confirmation email sent to ${email}`)
+        return true
+      }
+    } catch (e) {
+      console.error('Email send failed:', e)
+    }
+  }
+
+  // Fallback: log the URL so it can be used manually
+  console.log(`📧 CONFIRMATION URL for ${email}: ${confirmUrl}`)
+  return false
+}
 
 app.post('/auth/signup', async (c) => {
   const body = await c.req.json() as { email: string; password: string; name?: string }
   if (!body.email || !body.password) return c.json({ error: 'Email and password required' }, 400)
+  if (body.password.length < 6) return c.json({ error: 'Password must be at least 6 characters' }, 400)
+
+  await ensureAdmin()
+  const p = getPool()
+  if (!p) return c.json({ error: 'Database not configured' }, 503)
+
+  const existing = await p.query('SELECT id, email_confirmed FROM users WHERE email = $1', [body.email])
+  if (existing.rows.length) {
+    const user = existing.rows[0]
+    if (!user.email_confirmed) {
+      // Resend confirmation
+      const token = generateToken()
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      await p.query('UPDATE users SET confirmation_token = $1, token_expiry = $2 WHERE email = $3', [token, expiry, body.email])
+      await sendConfirmationEmail(body.email, body.name || body.email.split('@')[0], token)
+      return c.json({ message: 'Account exists but email not confirmed. A new confirmation email has been sent.' })
+    }
+    return c.json({ error: 'An account with this email already exists' }, 409)
+  }
+
+  const name = body.name || body.email.split('@')[0]
+  const passwordHashed = hashPassword(body.password)
+  const token = generateToken()
+  const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+  const result = await p.query(
+    `INSERT INTO users (email, name, password_hash, tier, role, email_confirmed, confirmation_token, token_expiry)
+     VALUES ($1, $2, $3, 'free', 'user', false, $4, $5)
+     RETURNING id, email, name, tier, role, email_confirmed`,
+    [body.email, name, passwordHashed, token, tokenExpiry]
+  )
+
+  const emailSent = await sendConfirmationEmail(body.email, name, token)
+  return c.json({
+    message: 'Account created. Please check your email to confirm your account.',
+    emailSent,
+    user: result.rows[0],
+  })
+})
+
+app.get('/auth/confirm/:token', async (c) => {
+  const token = c.req.param('token')
+  if (!token) return c.json({ error: 'Token required' }, 400)
 
   const p = getPool()
   if (!p) return c.json({ error: 'Database not configured' }, 503)
 
-  if (!tableReady) {
-    await p.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-        email TEXT UNIQUE NOT NULL,
-        name TEXT,
-        tier TEXT DEFAULT 'free',
-        role TEXT DEFAULT 'user',
-        password TEXT,
-        "createdAt" TIMESTAMP DEFAULT NOW()
-      )
-    `)
-    tableReady = true
+  const result = await p.query(
+    'SELECT id, email, name FROM users WHERE confirmation_token = $1 AND token_expiry > NOW()',
+    [token]
+  )
+  if (!result.rows.length) {
+    return c.json({ error: 'Invalid or expired confirmation link' }, 400)
   }
 
-  const existing = await p.query('SELECT id FROM users WHERE email = $1', [body.email])
-  if (existing.rows.length) return c.json({ error: 'Account already exists' }, 409)
-
-  const name = body.name || body.email.split('@')[0]
-  const result = await p.query(
-    'INSERT INTO users (email, name, tier, role) VALUES ($1, $2, $3, $4) RETURNING id, email, name, tier, role',
-    [body.email, name, 'free', 'user']
+  await p.query(
+    'UPDATE users SET email_confirmed = true, confirmation_token = NULL, token_expiry = NULL WHERE confirmation_token = $1',
+    [token]
   )
-  return c.json({ user: result.rows[0] })
+
+  const baseUrl = process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'www.crudepulses.com'
+  // Return HTML redirect to login page with success message
+  return c.html(`
+    <!DOCTYPE html>
+    <html><head><meta http-equiv="refresh" content="3;url=https://${baseUrl}/v2"></head>
+    <body style="background:#0A0E14;color:#E8ECF0;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+      <div style="text-align:center">
+        <h1 style="color:#2DD4BF">✅ Email Confirmed!</h1>
+        <p style="color:#8892A0">Welcome to CrudePulse, ${result.rows[0].name || 'trader'}.</p>
+        <p style="color:#8892A0">Redirecting in 3 seconds...</p>
+      </div>
+    </body></html>
+  `)
 })
 
 app.post('/auth/login', async (c) => {
@@ -83,13 +210,34 @@ app.post('/auth/login', async (c) => {
   if (!body.email || !body.password) return c.json({ error: 'Email and password required' }, 400)
 
   await ensureAdmin()
-
   const p = getPool()
   if (!p) return c.json({ error: 'Database not configured' }, 503)
 
-  const result = await p.query('SELECT id, email, name, tier, role FROM users WHERE email = $1', [body.email])
-  if (!result.rows.length) return c.json({ error: 'Account not found' }, 404)
-  return c.json({ user: result.rows[0] })
+  const result = await p.query(
+    'SELECT id, email, name, tier, role, password_hash, email_confirmed FROM users WHERE email = $1',
+    [body.email]
+  )
+  if (!result.rows.length) return c.json({ error: 'Invalid email or password' }, 401)
+
+  const user = result.rows[0]
+
+  // Check password
+  if (!user.password_hash) {
+    // Legacy user without password — force reset
+    return c.json({ error: 'Account needs password setup. Please sign up again.' }, 400)
+  }
+  if (!verifyPassword(body.password, user.password_hash)) {
+    return c.json({ error: 'Invalid email or password' }, 401)
+  }
+
+  // Check email confirmation
+  if (!user.email_confirmed) {
+    return c.json({ error: 'Please confirm your email before logging in. Check your inbox.' }, 403)
+  }
+
+  return c.json({
+    user: { id: user.id, email: user.email, name: user.name, tier: user.tier, role: user.role },
+  })
 })
 
 app.get('/auth/me', async (c) => {
@@ -97,23 +245,10 @@ app.get('/auth/me', async (c) => {
   if (!email) return c.json({ error: 'email query param required' }, 400)
 
   await ensureAdmin()
-
   const p = getPool()
   if (!p) return c.json({ error: 'Database not configured' }, 503)
 
-  const result = await p.query('SELECT id, email, name, tier, role FROM users WHERE email = $1', [email])
-  if (!result.rows.length) return c.json({ error: 'User not found' }, 404)
-  return c.json({ user: result.rows[0] })
-})
-
-app.post('/auth/upgrade', async (c) => {
-  const body = await c.req.json() as { email: string }
-  if (!body.email) return c.json({ error: 'Email required' }, 400)
-
-  const p = getPool()
-  if (!p) return c.json({ error: 'Database not configured' }, 503)
-
-  const result = await p.query('UPDATE users SET tier = $1 WHERE email = $2 RETURNING id, email, name, tier, role', ['pro', body.email])
+  const result = await p.query('SELECT id, email, name, tier, role FROM users WHERE email = $1 AND email_confirmed = true', [email])
   if (!result.rows.length) return c.json({ error: 'User not found' }, 404)
   return c.json({ user: result.rows[0] })
 })

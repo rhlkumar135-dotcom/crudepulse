@@ -15,8 +15,12 @@ export interface UserType {
   id: string
   email: string
   name?: string
-  tier: string
+  passwordHash?: string
   role: string
+  tier: string
+  emailConfirmed: boolean
+  confirmationToken?: string
+  tokenExpiry?: Date
   stripeCustomerId?: string
   stripeSubId?: string
   createdAt: Date
@@ -39,8 +43,12 @@ export interface CachedDataType {
 export interface UserCreateInput {
   email: string
   name?: string
-  tier?: string
+  passwordHash?: string
   role?: string
+  tier?: string
+  emailConfirmed?: boolean
+  confirmationToken?: string
+  tokenExpiry?: Date
   stripeCustomerId?: string
   stripeSubId?: string
 }
@@ -48,8 +56,12 @@ export interface UserCreateInput {
 export interface UserUpdateInput {
   email?: string
   name?: string
-  tier?: string
+  passwordHash?: string
   role?: string
+  tier?: string
+  emailConfirmed?: boolean
+  confirmationToken?: string
+  tokenExpiry?: Date
   stripeCustomerId?: string
   stripeSubId?: string
 }
