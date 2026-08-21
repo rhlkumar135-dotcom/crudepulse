@@ -915,40 +915,115 @@ app.get('/market/refinery', async (c) => {
 })
 
 // ═══ Module D: Storage ═══════════════════════════════════════════════════════
-// EIA HTML scraping + FRED CSV — TTL 7 days (weekly report)
+// EIA Weekly Petroleum Status Report Table 1 (crude stocks) + Table 4 (Cushing) — TTL 7 days
 app.get('/market/storage', async (c) => {
   const cached = getCache('storage')
   if (cached && isCacheFresh('storage', 7 * 24 * HOUR)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
-  // Try EIA HTML scraping for crude stocks
-  const eiaStocks = await fetchEIAHTML('https://www.eia.gov/dnav/pet/pet_stoc_wstk_dcu_nus_w.htm')
-  if (eiaStocks.length > 10) {
-    // EIA returns weekly data — last value is total US crude stocks in thousand barrels
-    const latestTotal = eiaStocks[eiaStocks.length - 1]
-    const latestSPR = eiaStocks[eiaStocks.length - 5] || 390
-    const latestCushing = eiaStocks[eiaStocks.length - 3] || 25
+  const storageNews = await fetchGoogleNewsRSS('US crude oil inventories stocks storage EIA', 5)
 
-    // Generate history from available data points
-    const historyLen = Math.min(52, Math.floor(eiaStocks.length / 4))
-    const history = Array.from({ length: historyLen }, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - (historyLen - 1 - i) * 7)
-      const idx = i * 4
-      return {
-        date: d.toISOString().split('T')[0],
-        totalUs: eiaStocks[idx] || latestTotal + (Math.random() - 0.5) * 20,
-        spRoc: eiaStocks[idx + 1] || latestSPR + (Math.random() - 0.5) * 10,
-        cushing: eiaStocks[idx + 2] || latestCushing + (Math.random() - 0.5) * 5,
+  // Fetch EIA Table 1 (crude oil stocks) + Table 4 (Cushing)
+  async function fetchEIACsv(path: string): Promise<string | null> {
+    try {
+      const res = await fetch(path, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        signal: AbortSignal.timeout(10000),
+        redirect: 'follow',
+      })
+      if (!res.ok) return null
+      return await res.text()
+    } catch { return null }
+  }
+  const [table1Csv, table4Csv] = await Promise.all([
+    fetchEIACsv('https://ir.eia.gov/wpsr/table1.csv'),
+    fetchEIACsv('https://ir.eia.gov/wpsr/table4.csv'),
+  ])
+
+  // Parse Table 1 for crude stocks
+  function parseStorageTable1(csv: string): { totalCrude: number; commercial: number; spr: number; date: string } | null {
+    const lines = csv.replace(/\r/g, '').split('\n')
+    const dateMatch = lines[0]?.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/)
+    const date = dateMatch ? (() => {
+      const p = dateMatch[1].split('/')
+      const y = p[2].length === 2 ? '20' + p[2] : p[2]
+      return `${y}-${p[0].padStart(2, '0')}-${p[1].padStart(2, '0')}`
+    })() : new Date().toISOString().split('T')[0]
+
+    let totalCrude = 0, commercial = 0, spr = 0
+    for (const line of lines) {
+      if (line.includes('Crude Oil') && !line.includes('Commercial') && !line.includes('SPR') && !line.includes('Motor') && !line.includes('Production')) {
+        const parts = line.split(',')
+        const val = parseFloat(parts[1]?.replace(/"/g, '')?.replace(/,/g, '') || '0')
+        if (val > 100) totalCrude = val
       }
-    })
-
-    const storageData = {
-      history,
-      latest: { totalUs: latestTotal, spRoc: latestSPR, cushing: latestCushing },
+      if (line.includes('Commercial (Excluding SPR)')) {
+        const parts = line.split(',')
+        const val = parseFloat(parts[1]?.replace(/"/g, '')?.replace(/,/g, '') || '0')
+        if (val > 100) commercial = val
+      }
+      if (line.includes('Strategic Petroleum Reserve')) {
+        const parts = line.split(',')
+        const val = parseFloat(parts[1]?.replace(/"/g, '')?.replace(/,/g, '') || '0')
+        if (val > 100) spr = val
+      }
     }
-    setCache('storage', storageData, 'api')
-    return c.json({ ...storageData, lastUpdated: new Date().toISOString(), source: 'eia' })
+    if (!totalCrude) return null
+    return { totalCrude, commercial, spr, date }
+  }
+
+  // Parse Table 4 for Cushing
+  function parseCushingFromTable4(csv: string): number | null {
+    const lines = csv.replace(/\r/g, '').split('\n')
+    for (const line of lines) {
+      if (line.includes('Cushing') && !line.includes('Domestic')) {
+        const parts = line.split(',')
+        const val = parseFloat(parts[2]?.replace(/"/g, '')?.replace(/,/g, '') || '0')
+        if (val > 0 && val < 100) return val
+      }
+    }
+    return null
+  }
+
+  if (table1Csv) {
+    const parsed = parseStorageTable1(table1Csv)
+    if (parsed) {
+      const cushing = table4Csv ? parseCushingFromTable4(table4Csv) : null
+
+      // Try to get historical data from archive
+      const archiveDates = await fetchEIAArchiveDates()
+      const histResults = await Promise.allSettled(
+        archiveDates.slice(0, 12).map(async (path) => {
+          const csv = await fetchEIACsv(`https://www.eia.gov${path}/table1.csv`)
+          if (!csv) return null
+          const p = parseStorageTable1(csv)
+          const c4 = await fetchEIACsv(`https://www.eia.gov${path}/table4.csv`)
+          const ch = c4 ? parseCushingFromTable4(c4) : null
+          return p ? { ...p, cushing: ch } : null
+        })
+      )
+      const history = histResults
+        .map(r => r.status === 'fulfilled' ? r.value : null)
+        .filter(Boolean)
+        .reverse()
+
+      const storageData = {
+        history: [
+          ...history.map(h => ({
+            date: h!.date,
+            totalUs: h!.totalCrude,
+            spRoc: h!.spr,
+            cushing: h!.cushing ?? 25,
+          })),
+          { date: parsed.date, totalUs: parsed.totalCrude, spRoc: parsed.spr, cushing: cushing ?? 25 },
+        ],
+        latest: { totalUs: parsed.totalCrude, spRoc: parsed.spr, cushing: cushing ?? 25, commercial: parsed.commercial },
+        news: storageNews.slice(0, 5).map(n => ({ title: n.title, source: n.source, time: n.pubDate })),
+      }
+      setCache('storage', storageData, 'api')
+      return c.json({ ...storageData, lastUpdated: new Date().toISOString(), source: 'eia-wpsr' })
+    }
   }
 
   if (!cached) setCache('storage', { history: mockStorageData().history, latest: mockStorageData().latest }, 'mock')
