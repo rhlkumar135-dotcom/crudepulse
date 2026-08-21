@@ -12,6 +12,8 @@ import { RefineryHeatmap } from '@/components/modules/RefineryHeatmap'
 import { StorageSatellite } from '@/components/modules/StorageSatellite'
 import { FieldScorecard } from '@/components/modules/FieldScorecard'
 import { MiddleEastCorrelation } from '@/components/modules/MiddleEastCorrelation'
+import MultiAssetChart from '@/components/modules/MultiAssetChart'
+import CopernicusMap from '@/components/modules/CopernicusMap'
 import { CadenceBadge } from '@/components/CadenceBadge'
 
 export function V2Page() {
@@ -139,6 +141,32 @@ export function V2Page() {
             <CadenceBadge cadence="periodic" />
           </div>
           <div className="px-5 pb-4"><FieldScorecard /></div>
+        </div>
+      </section>
+
+      {/* Multi-Asset Comparison Chart */}
+      <section className="mb-3">
+        <div className="glass-card overflow-hidden">
+          <div className="flex items-center gap-3 px-5 pt-4 pb-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan to-cyan/70 flex items-center justify-center"><Activity size={14} className="text-bg" /></div>
+            <h2 className="text-sm font-semibold text-text-bright">Multi-Asset Comparison</h2>
+            <CadenceBadge cadence="live" />
+            <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">BTC · Gold · Silver · Crude · Top 5 Indices</span>
+          </div>
+          <div className="px-5 pb-4" style={{ height: 380 }}><MultiAssetChart /></div>
+        </div>
+      </section>
+
+      {/* Copernicus / Satellite Feed */}
+      <section className="mb-3">
+        <div className="glass-card overflow-hidden">
+          <div className="flex items-center gap-3 px-5 pt-4 pb-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple to-purple/70 flex items-center justify-center"><Globe size={14} className="text-white" /></div>
+            <h2 className="text-sm font-semibold text-text-bright">Copernicus / Satellite Feed</h2>
+            <CadenceBadge cadence="live" />
+            <span className="text-[8px] font-mono text-muted/60 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.04]">NASA EONET · NOAA Coral Reef Watch</span>
+          </div>
+          <div className="px-5 pb-4" style={{ height: 300 }}><CopernicusMap /></div>
         </div>
       </section>
 
