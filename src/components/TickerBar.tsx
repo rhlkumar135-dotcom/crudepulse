@@ -22,7 +22,7 @@ export function TickerBar() {
 
   const fetchPrices = useCallback(async () => {
     try {
-      const res = await fetch('/api/market/prices?tier=pro')
+      const res = await fetch('/api/market/prices')
       if (!res.ok) return
       const data: PriceResponse = await res.json()
       if (data.wti?.current && data.brent?.current) {
@@ -34,7 +34,7 @@ export function TickerBar() {
         brentRef.current = data.brent.current
         setSource(data.source || '')
       }
-    } catch {}
+    } catch { /* ignore */ }
     setTime(new Date())
   }, [])
 
@@ -49,55 +49,56 @@ export function TickerBar() {
   const spread = wti && brent ? +(brent - wti).toFixed(2) : null
 
   return (
-    <div className="h-9 bg-bg-card/80 backdrop-blur-sm border-b border-border flex items-center px-4 gap-5 text-sm font-mono overflow-hidden">
+    <div className="h-8 bg-[#0a0a0f]/90 backdrop-blur-sm border-b border-[#2a2a3a] flex items-center px-4 gap-4 overflow-hidden"
+      style={{ fontFamily: 'Share Tech Mono, monospace' }}>
       <div className="flex items-center gap-1.5 shrink-0">
-        <Wifi size={10} className="text-green-500" />
-        <span className="text-[9px] text-green-400 tracking-wider font-semibold">LIVE</span>
+        <Wifi size={9} className="text-[#00ff88]" />
+        <span className="text-[8px] text-[#00ff88] tracking-[0.15em] font-bold">LIVE</span>
       </div>
 
-      <div className="w-px h-4 bg-border shrink-0" />
+      <div className="w-px h-4 bg-[#2a2a3a] shrink-0" />
 
       <div className="flex items-center gap-2">
-        <span className="text-[9px] text-muted tracking-wider">WTI</span>
-        <span className="text-amber font-semibold text-sm">
-          {wti != null ? <CountUp value={wti} decimals={2} prefix="$" /> : <span className="text-muted">--</span>}
+        <span className="text-[8px] text-[#6b7280] tracking-[0.15em]">WTI</span>
+        <span className="text-[#00ff88] font-bold text-[11px]">
+          {wti != null ? <CountUp value={wti} decimals={2} prefix="$" /> : <span className="text-[#6b7280]">--</span>}
         </span>
         {wChg !== 0 && (
-          <span className={`flex items-center gap-0.5 text-[9px] font-semibold ${wChg > 0.005 ? 'text-teal' : wChg < -0.005 ? 'text-red' : 'text-muted'}`}>
-            {wChg > 0.005 ? <TrendingUp size={9} /> : wChg < -0.005 ? <TrendingDown size={9} /> : <Minus size={9} />}
+          <span className={`flex items-center gap-0.5 text-[8px] font-bold ${wChg > 0.005 ? 'text-[#00ff88]' : wChg < -0.005 ? 'text-[#ff3366]' : 'text-[#6b7280]'}`}>
+            {wChg > 0.005 ? <TrendingUp size={8} /> : wChg < -0.005 ? <TrendingDown size={8} /> : <Minus size={8} />}
             {wChg > 0 ? '+' : ''}{wChg.toFixed(2)}
           </span>
         )}
       </div>
 
-      <div className="w-px h-4 bg-border shrink-0" />
+      <div className="w-px h-4 bg-[#2a2a3a] shrink-0" />
 
       <div className="flex items-center gap-2">
-        <span className="text-[9px] text-muted tracking-wider">BRENT</span>
-        <span className="text-teal font-semibold text-sm">
-          {brent != null ? <CountUp value={brent} decimals={2} prefix="$" /> : <span className="text-muted">--</span>}
+        <span className="text-[8px] text-[#6b7280] tracking-[0.15em]">BRENT</span>
+        <span className="text-[#00d4ff] font-bold text-[11px]">
+          {brent != null ? <CountUp value={brent} decimals={2} prefix="$" /> : <span className="text-[#6b7280]">--</span>}
         </span>
         {bChg !== 0 && (
-          <span className={`flex items-center gap-0.5 text-[9px] font-semibold ${bChg > 0.005 ? 'text-teal' : bChg < -0.005 ? 'text-red' : 'text-muted'}`}>
-            {bChg > 0.005 ? <TrendingUp size={9} /> : bChg < -0.005 ? <TrendingDown size={9} /> : <Minus size={9} />}
+          <span className={`flex items-center gap-0.5 text-[8px] font-bold ${bChg > 0.005 ? 'text-[#00ff88]' : bChg < -0.005 ? 'text-[#ff3366]' : 'text-[#6b7280]'}`}>
+            {bChg > 0.005 ? <TrendingUp size={8} /> : bChg < -0.005 ? <TrendingDown size={8} /> : <Minus size={8} />}
             {bChg > 0 ? '+' : ''}{bChg.toFixed(2)}
           </span>
         )}
       </div>
 
-      <div className="w-px h-4 bg-border shrink-0" />
+      <div className="w-px h-4 bg-[#2a2a3a] shrink-0" />
 
       <div className="flex items-center gap-1.5">
-        <span className="text-[9px] text-muted tracking-wider">SPREAD</span>
-        <span className="text-[11px] font-semibold">{spread != null ? `$${spread}` : '--'}</span>
+        <span className="text-[8px] text-[#6b7280] tracking-[0.15em]">SPREAD</span>
+        <span className="text-[10px] font-bold text-[#e0e0e0]">{spread != null ? `$${spread}` : '--'}</span>
       </div>
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-2 text-[9px] text-muted shrink-0">
-        <span className="live-dot" />
+      <div className="flex items-center gap-2 text-[8px] text-[#6b7280] shrink-0">
+        <span className="live-dot" style={{ width: 5, height: 5 }} />
         <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
-        {source && <span className="text-[7px] text-muted/40 uppercase">{source}</span>}
+        {source && <span className="text-[7px] text-[#6b7280]/40 uppercase">{source}</span>}
       </div>
     </div>
   )
