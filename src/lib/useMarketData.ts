@@ -4,13 +4,14 @@ export interface MarketState<T> {
   data: T | null
   loading: boolean
   error: string | null
-  source: 'api' | 'mock' | null
+  source: string | null
   lastUpdated: string | null
 }
 
-export function useMarketData<T>(endpoint: string, tier: string = 'free', refreshInterval: number = 300000) {
+export function useMarketData<T>(endpoint: string, tier: string = 'free', refreshInterval: number = 1000) {
   const [state, setState] = useState<MarketState<T>>({ data: null, loading: true, error: null, source: null, lastUpdated: null })
   const mountedRef = useRef(true)
+  const dataRef = useRef<T | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
@@ -19,11 +20,12 @@ export function useMarketData<T>(endpoint: string, tier: string = 'free', refres
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const body = await res.json()
       if (mountedRef.current) {
+        dataRef.current = body as T
         setState({ data: body as T, loading: false, error: null, source: body.source || 'api', lastUpdated: body.lastUpdated || null })
       }
     } catch (err: any) {
       if (mountedRef.current) {
-        setState(prev => ({ ...prev, loading: false, error: err.message || 'Failed to load' }))
+        setState(prev => ({ ...prev, loading: false, error: err.message || 'Failed to load', data: prev.data ?? dataRef.current }))
       }
     }
   }, [endpoint, tier])

@@ -49,7 +49,7 @@ function buildHourlyVolume() {
 }
 
 export function DisruptionRadar() {
-  const { data } = useMarketData<{ events: GeoEvent[] }>('/api/market/disruptions')
+  const { data } = useMarketData<{ events: GeoEvent[] }>('/api/market/disruptions', 'free', 60000)
   const geoEvents = data?.events || []
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const regionData = buildRegionData(geoEvents)

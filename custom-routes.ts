@@ -203,6 +203,7 @@ async function fetchGoogleNewsRSS(query: string, maxRecords = 25): Promise<Array
   } catch { return [] }
 }
 
+const SECOND = 1_000
 const MINUTE = 60_000
 const HOUR = 3600_000
 
@@ -429,7 +430,7 @@ async function fetchNewsAPI(): Promise<unknown[] | null> {
 // TTL: 4h for Pro, 8h for Free (simulates one extra stale cycle)
 app.get('/market/prices', async (c) => {
   const tier = c.req.query('tier') || 'free'
-  const priceTtl = tier === 'pro' ? 4 * HOUR : 8 * HOUR
+  const priceTtl = tier === 'pro' ? 30 * SECOND : 30 * SECOND
 
   // Try to serve from cache if fresh
   const cached = getCache<{ wti: { current: number; history: Array<{ date: string; close: number }> }; brent: { current: number; history: Array<{ date: string; close: number }> }; spread: number }>('prices')
@@ -471,7 +472,7 @@ app.get('/market/prices', async (c) => {
 
 app.get('/market/news', async (c) => {
   const tier = c.req.query('tier') || 'free'
-  const newsTtl = tier === 'pro' ? 2 * HOUR : 4 * HOUR
+  const newsTtl = 60 * SECOND
 
   const cached = getCache<{ items: unknown[] }>('news')
   if (cached && isCacheFresh('news', newsTtl)) {
@@ -506,7 +507,7 @@ app.get('/market/news', async (c) => {
 // GDELT: 30min TTL, no key needed — this is the most genuinely real-time module
 app.get('/market/disruptions', async (c) => {
   const cached = getCache<{ events: unknown[] }>('disruptions')
-  if (cached && isCacheFresh('disruptions', 30 * MINUTE)) {
+  if (cached && isCacheFresh('disruptions', 60 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -563,7 +564,7 @@ app.get('/market/disruptions', async (c) => {
 // Baker Hughes publishes weekly; headlines from multiple outlets give us historical data points
 app.get('/market/rigs', async (c) => {
   const cached = getCache('rigs')
-  if (cached && isCacheFresh('rigs', 7 * 24 * HOUR)) {
+  if (cached && isCacheFresh('rigs', 60 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -639,7 +640,7 @@ app.get('/market/rigs', async (c) => {
 // Wikipedia/USGS public data + FRED — TTL 30 days
 app.get('/market/reserves', async (c) => {
   const cached = getCache('reserves')
-  if (cached && isCacheFresh('reserves', 30 * 24 * HOUR)) {
+  if (cached && isCacheFresh('reserves', 60 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -804,7 +805,7 @@ async function fetchEIAArchiveDates(): Promise<string[]> {
 
 app.get('/market/refinery', async (c) => {
   const cached = getCache('refinery')
-  if (cached && isCacheFresh('refinery', 7 * 24 * HOUR)) {
+  if (cached && isCacheFresh('refinery', 60 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -899,7 +900,7 @@ app.get('/market/refinery', async (c) => {
 // EIA Weekly Petroleum Status Report Table 1 (crude stocks) + Table 4 (Cushing) — TTL 7 days
 app.get('/market/storage', async (c) => {
   const cached = getCache('storage')
-  if (cached && isCacheFresh('storage', 7 * 24 * HOUR)) {
+  if (cached && isCacheFresh('storage', 60 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -1038,7 +1039,7 @@ app.get('/market/storage', async (c) => {
 // Verified trade flow data from IEA/OPEC public reports + Google News — TTL 30 days
 app.get('/market/flows', async (c) => {
   const cached = getCache('flows')
-  if (cached && isCacheFresh('flows', 30 * 24 * HOUR)) {
+  if (cached && isCacheFresh('flows', 60 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -1069,7 +1070,7 @@ app.get('/market/flows', async (c) => {
 // Google News RSS for disruption overlay + static reference data — TTL 24h
 app.get('/market/chokepoints', async (c) => {
   const cached = getCache('chokepoints')
-  if (cached && isCacheFresh('chokepoints', 24 * HOUR)) {
+  if (cached && isCacheFresh('chokepoints', 60 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -1108,7 +1109,7 @@ app.get('/market/chokepoints', async (c) => {
 // Verified from OPEC ASB + USGS (public reference) + Google News — TTL 30 days
 app.get('/market/fields', async (c) => {
   const cached = getCache('fields')
-  if (cached && isCacheFresh('fields', 30 * 24 * HOUR)) {
+  if (cached && isCacheFresh('fields', 60 * SECOND)) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 

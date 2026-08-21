@@ -26,13 +26,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function PriceNewsChart() {
-  const { data: priceData } = useMarketData<PriceResponse>('/api/market/prices')
-  const { data: newsData } = useMarketData<NewsResponse>('/api/market/news')
+  const { data: priceData } = useMarketData<PriceResponse>('/api/market/prices', 'free', 1000)
+  const { data: newsData } = useMarketData<NewsResponse>('/api/market/news', 'free', 60000)
   const [hoveredPrice, setHoveredPrice] = useState<number | null>(null)
 
   const wtiHistory = (priceData?.wti?.history || []).filter((p: any) => p && typeof p.close === 'number')
   const brentHistory = (priceData?.brent?.history || []).filter((p: any) => p && typeof p.close === 'number')
-  const mockNews = newsData?.items || []
+  const newsItems = newsData?.items || []
 
   if (wtiHistory.length < 2 || brentHistory.length < 2) {
     return (
@@ -53,8 +53,8 @@ export function PriceNewsChart() {
   }))
 
   const relatedNews = hoveredPrice !== null
-    ? mockNews.filter((n: NewsItem) => Math.abs(72 - hoveredPrice) < 3).slice(0, 4)
-    : mockNews.slice(0, 4)
+    ? newsItems.filter((n: NewsItem) => Math.abs(72 - hoveredPrice) < 3).slice(0, 4)
+    : newsItems.slice(0, 4)
 
   return (
     <div className="space-y-3">
