@@ -34,7 +34,7 @@ export default function MultiAssetChart() {
       } catch (e) { if (alive) setError(String(e)) }
     }
     load()
-    const iv = setInterval(load, 30_000)
+    const iv = setInterval(load, 1_000)
     return () => { alive = false; clearInterval(iv) }
   }, [])
 

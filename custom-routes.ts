@@ -1838,7 +1838,7 @@ async function fetchDustAerosol(): Promise<Array<{ date: string; aod: number; re
 
 app.get('/market/satellite', async (c) => {
   const cached = getCache('satellite')
-  if (cached && isCacheFresh('satellite', 5 * MINUTE)) {
+  if (cached && isCacheFresh('satellite', 60 * SECOND)) {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 
