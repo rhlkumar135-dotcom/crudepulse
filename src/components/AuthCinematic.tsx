@@ -460,7 +460,6 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
                           placeholder="••••••••"
                           className="w-full pr-10"
                           style={{
-                            background: 'rgba(255,255,255,0.03)',
                             border: `1px solid ${pwFocused ? '#3EE07A' : 'rgba(62,224,122,0.18)'}`,
                             borderRadius: 10,
                             padding: '12px 14px',

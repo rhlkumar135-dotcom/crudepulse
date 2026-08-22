@@ -529,31 +529,31 @@ function FacilityMap({ facilities, darkVesselEvents, spillEvents, emissionEvents
   }
 
   // Derive map positions from real API events
-  const darkVesselPositions: Array<{ lat: number; lng: number; label: string; color: string; time: string; source: string }> = darkVesselEvents
+  const darkVesselPositions: Array<{ lat: number; lng: number; label: string; color: string; time: string; source: string }> = (darkVesselEvents
     .map(e => {
       const pos = geolocate(e.title, e.location)
       if (!pos || pos.lat === 0) return null
       return { ...pos, label: e.title.slice(0, 40), color: '#EF4444', time: e.time, source: e.source }
     })
-    .filter(Boolean) as any
+    .filter(Boolean) as any)
     .slice(0, 8)
 
-  const spillPositions: Array<{ lat: number; lng: number; label: string; color: string; severity: string; source: string }> = spillEvents
+  const spillPositions: Array<{ lat: number; lng: number; label: string; color: string; severity: string; source: string }> = (spillEvents
     .map(e => {
       const pos = geolocate(e.title, e.location)
       if (!pos || pos.lat === 0) return null
       return { ...pos, label: e.title.slice(0, 40), color: '#6366F1', severity: e.severity, source: e.source }
     })
-    .filter(Boolean) as any
+    .filter(Boolean) as any)
     .slice(0, 8)
 
-  const emissionPositions: Array<{ lat: number; lng: number; label: string; color: string; metric: string; source: string }> = emissionEvents
+  const emissionPositions: Array<{ lat: number; lng: number; label: string; color: string; metric: string; source: string }> = (emissionEvents
     .map(e => {
       const pos = geolocate(e.title)
       if (!pos || pos.lat === 0) return null
       return { ...pos, label: e.title.slice(0, 40), color: e.metric === 'CH₄' ? '#F59E0B' : e.metric === 'NO₂' ? '#EF4444' : e.metric === 'SO₂' ? '#8B5CF6' : '#F97316', metric: e.metric, source: e.source }
     })
-    .filter(Boolean) as any
+    .filter(Boolean) as any)
     .slice(0, 8)
 
   return (
