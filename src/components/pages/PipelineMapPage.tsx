@@ -78,8 +78,8 @@ export function PipelineMapPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: STATUS_COLOR[p.status] }} />
-                    <span className="text-[10px] font-bold" style={{ color: STATUS_COLOR[p.status], fontFamily: 'Share Tech Mono, monospace' }}>
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: STATUS_COLOR[p.status as keyof typeof STATUS_COLOR] ?? '#94A3B8' }} />
+                    <span className="text-[10px] font-bold" style={{ color: STATUS_COLOR[p.status as keyof typeof STATUS_COLOR] ?? '#94A3B8', fontFamily: 'Share Tech Mono, monospace' }}>
                       {p.status}
                     </span>
                   </div>
