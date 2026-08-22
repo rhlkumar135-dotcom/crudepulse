@@ -70,7 +70,7 @@ export function NewsAtlasPage() {
         return s.title.toLowerCase().includes(q) || s.location.toLowerCase().includes(q) || s.source.toLowerCase().includes(q)
       }
       return true
-    })
+    }).sort((a, b) => a.ageMs - b.ageMs)
   }, [stories, activeCategories, searchQuery, recencyFilter])
 
   const toggleCategory = useCallback((cat: string) => {

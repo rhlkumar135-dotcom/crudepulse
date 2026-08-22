@@ -39,16 +39,36 @@ function LiveTicker() {
     return () => clearInterval(interval)
   }, [])
 
+  const COLORS: Record<string, { color: string; glow: string }> = {
+    WTI: { color: '#3EE07A', glow: 'rgba(62,224,122,0.4)' },
+    BRENT: { color: '#00d4ff', glow: 'rgba(0,212,255,0.4)' },
+    SPREAD: { color: '#F5A623', glow: 'rgba(245,166,35,0.4)' },
+  }
+
   return (
-    <div className="flex gap-7 mb-2 justify-center" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5 }}>
-      {prices.map((item, i) => (
-        <div key={i} className="flex items-center gap-1.5" style={{ color: '#a9c2b0' }}>
-          {item.label}
-          <b className="text-white font-semibold px-1 py-0.5 rounded" style={{ position: 'relative' }}>
-            ${item.value.toFixed(2)}
-          </b>
-        </div>
-      ))}
+    <div className="flex gap-8 mb-3 justify-center" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+      {prices.map((item, i) => {
+        const c = COLORS[item.label] || { color: '#a9c2b0', glow: 'transparent' }
+        return (
+          <div key={i} className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold tracking-wider uppercase" style={{ color: '#7a9484' }}>
+              {item.label}
+            </span>
+            <span
+              className="text-xl font-black px-2 py-1 rounded-md"
+              style={{
+                color: c.color,
+                textShadow: `0 0 20px ${c.glow}, 0 0 40px ${c.glow}`,
+                background: `${c.color}10`,
+                border: `1px solid ${c.color}25`,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              ${item.value.toFixed(2)}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -593,22 +613,6 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
               )}
             </div>
           </div>
-        </div>
-
-        {/* Sources */}
-        <div
-          className="mt-5 text-center"
-          style={{
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: 9.5,
-            letterSpacing: '0.09em',
-            color: '#5f7a68',
-            textTransform: 'uppercase',
-            animation: 'fadeUp 0.8s ease forwards 0.85s',
-            opacity: 0,
-          }}
-        >
-          EIA · GDELT · SENTINEL-5P · NASA FIRMS · ALPHA VANTAGE
         </div>
       </div>
     </div>

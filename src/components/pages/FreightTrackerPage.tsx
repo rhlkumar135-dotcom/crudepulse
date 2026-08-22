@@ -16,7 +16,7 @@ interface FreightRoute {
 
 interface FreightResponse {
   routes: FreightRoute[]
-  balticIndex: number
+  balticIndex: { name: string; latest: number; change: string; period: string } | number
   news: Array<{ title: string; source: string; time: string }>
   summary: string
   lastUpdated: string
@@ -56,11 +56,22 @@ export function FreightTrackerPage() {
           <div className="flex items-end gap-6 mt-3">
             <div>
               <div className="text-4xl font-black text-white" style={{ fontFamily: 'Orbitron, monospace' }}>
-                {data?.balticIndex?.toLocaleString() ?? '—'}
+                {typeof data?.balticIndex === 'object' && data.balticIndex !== null
+                  ? data.balticIndex.latest?.toLocaleString()
+                  : typeof data?.balticIndex === 'number'
+                    ? data.balticIndex.toLocaleString()
+                    : '—'}
               </div>
               <div className="text-[10px] text-[#94A3B8] mt-0.5" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                Baltic Dirty Tanker Index (BDTI)
+                {typeof data?.balticIndex === 'object' && data.balticIndex !== null
+                  ? `${data.balticIndex.name} (${data.balticIndex.period})`
+                  : 'Baltic Dirty Tanker Index (BDTI)'}
               </div>
+              {typeof data?.balticIndex === 'object' && data.balticIndex !== null && (
+                <div className="text-[10px] mt-0.5 font-bold" style={{ fontFamily: 'Share Tech Mono, monospace', color: data.balticIndex.change?.startsWith('+') ? '#00ff88' : '#ff3366' }}>
+                  {data.balticIndex.change}
+                </div>
+              )}
             </div>
           </div>
         </ModuleCard>

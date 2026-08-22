@@ -153,21 +153,22 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
           </button>
         </div>
 
-        {/* Tab bar — all 17 tabs, wrapping to multiline */}
-        <nav className="hidden md:flex flex-wrap items-center gap-0.5 px-3 pb-1.5 pt-0">
+        {/* Tab bar — all tabs, bigger with gaps */}
+        <nav className="hidden md:flex flex-wrap items-center gap-1.5 px-4 pb-2 pt-1">
           {ALL_TABS.map(item => {
             const Icon = item.icon
             const active = isActive(item)
             return (
               <Link key={item.to} to={item.to}
                 className={cn(
-                  'flex items-center gap-1 px-2 py-1 text-[9px] font-semibold tracking-wide transition-all border rounded-sm whitespace-nowrap',
+                  'flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold tracking-wide rounded-md whitespace-nowrap',
+                  'transition-all duration-300 ease-in-out border',
                   active
-                    ? 'border-[rgba(62,224,122,0.3)] bg-[rgba(62,224,122,0.08)] text-white'
-                    : 'border-transparent text-[#94A3B8] hover:text-[#e0e0e0] hover:bg-white/[0.04]'
+                    ? 'border-[rgba(62,224,122,0.4)] bg-[rgba(62,224,122,0.12)] text-white shadow-[0_0_12px_rgba(62,224,122,0.15)]'
+                    : 'border-transparent text-[#8899A0] hover:text-[#d0d0d0] hover:bg-white/[0.04]'
                 )}
                 style={{ fontFamily: 'Orbitron, monospace' }}>
-                <Icon size={9} style={{ color: active ? '#3EE07A' : undefined }} />
+                <Icon size={11} className="transition-colors duration-300" style={{ color: active ? '#3EE07A' : undefined }} />
                 <span>{item.label}</span>
               </Link>
             )
@@ -180,7 +181,7 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
         <div className="md:hidden fixed inset-0 z-50 bg-black/80" onClick={() => setMobileOpen(false)}>
           <div className="absolute top-[96px] left-0 right-0 bg-[#0d1117] border-b border-[#2a2a3a] max-h-[80vh] overflow-y-auto p-3"
             onClick={e => e.stopPropagation()}>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {ALL_TABS.map(item => {
                 const Icon = item.icon
                 const active = isActive(item)
@@ -188,13 +189,13 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
                   <Link key={item.to} to={item.to}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      'flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-semibold rounded border transition-all',
+                      'flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold rounded-md border transition-all duration-300',
                       active
-                        ? 'bg-[rgba(62,224,122,0.08)] border-[rgba(62,224,122,0.3)] text-white'
-                        : 'border-transparent text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
+                        ? 'bg-[rgba(62,224,122,0.12)] border-[rgba(62,224,122,0.4)] text-white shadow-[0_0_12px_rgba(62,224,122,0.15)]'
+                        : 'border-transparent text-[#8899A0] hover:text-white hover:bg-white/[0.03]'
                     )}
                     style={{ fontFamily: 'Orbitron, monospace' }}>
-                    <Icon size={11} style={{ color: active ? '#3EE07A' : undefined }} />
+                    <Icon size={12} className="transition-colors duration-300" style={{ color: active ? '#3EE07A' : undefined }} />
                     <span>{item.label}</span>
                   </Link>
                 )
