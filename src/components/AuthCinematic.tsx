@@ -361,7 +361,7 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
                           textShadow: '0 0 18px rgba(62,224,122,0.55)',
                         }}
                       >
-                        Pulse
+                        Pulses
                       </span>
                     </div>
                     <div

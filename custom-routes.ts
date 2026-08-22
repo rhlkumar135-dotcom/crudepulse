@@ -84,10 +84,10 @@ async function sendConfirmationEmail(email: string, name: string, token: string)
         await transporter.sendMail({
           from: smtpUser,
           to: email,
-          subject: 'Confirm your CrudePulse account',
+          subject: 'Confirm your Crude Pulses account',
           html: `
             <div style="font-family: 'IBM Plex Mono', monospace; background: #0A0E14; color: #E8ECF0; padding: 40px; max-width: 500px; margin: 0 auto;">
-              <h1 style="color: #FFC107; font-size: 20px;">⚡ CrudePulse</h1>
+              <h1 style="color: #FFC107; font-size: 20px;">⚡ Crude Pulses</h1>
               <p style="color: #8892A0; font-size: 14px;">Hi ${name},</p>
               <p style="color: #E8ECF0; font-size: 14px;">Thanks for signing up. Please confirm your email address to activate your account.</p>
               <a href="${confirmUrl}" style="display: inline-block; background: #FFC107; color: #0A0E14; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 20px 0;">Confirm Email</a>
@@ -195,7 +195,7 @@ app.get('/auth/confirm/:token', async (c) => {
     <body style="background:#0A0E14;color:#E8ECF0;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
       <div style="text-align:center">
         <h1 style="color:#2DD4BF">✅ Email Confirmed!</h1>
-        <p style="color:#8892A0">Welcome to CrudePulse, ${user.name || 'trader'}.</p>
+        <p style="color:#8892A0">Welcome to Crude Pulses, ${user.name || 'trader'}.</p>
         <p style="color:#8892A0">Redirecting in 3 seconds...</p>
       </div>
     </body></html>
