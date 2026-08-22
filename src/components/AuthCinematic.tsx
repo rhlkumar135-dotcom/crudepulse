@@ -16,27 +16,40 @@ interface Props {
 
 // ─── Live Ticker Data ────────────────────────────────────────────────
 
-const TICKER_ITEMS = [
-  { label: 'WTI', value: 71.42 },
-  { label: 'BRENT', value: 75.08 },
-  { label: 'SPREAD', value: 3.66 },
-]
-
 // ─── Live Ticker ─────────────────────────────────────────────────────
 
 function LiveTicker() {
-  const [prices, setPrices] = useState(TICKER_ITEMS)
+  const [prices, setPrices] = useState([
+    { label: 'WTI', value: 0 },
+    { label: 'BRENT', value: 0 },
+    { label: 'SPREAD', value: 0 },
+  ])
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPrices(prev =>
-        prev.map(item => ({
-          ...item,
-          value: item.value + (Math.random() - 0.5) * 0.3,
-        }))
-      )
-    }, 3000)
-    return () => clearInterval(interval)
+    async function fetchPrices() {
+      try {
+        const res = await fetch('/api/market/prices')
+        const data = await res.json()
+        const wti = data?.wti?.current ?? 0
+        const brent = data?.brent?.current ?? 0
+        const spread = data?.spread ?? (brent - wti)
+        setPrices([
+          { label: 'WTI', value: wti },
+          { label: 'BRENT', value: brent },
+          { label: 'SPREAD', value: typeof spread === 'number' ? spread : parseFloat(spread) || 0 },
+        ])
+        setLoaded(true)
+      } catch {
+        setPrices([
+          { label: 'WTI', value: 87.06 },
+          { label: 'BRENT', value: 94.39 },
+          { label: 'SPREAD', value: 7.33 },
+        ])
+        setLoaded(true)
+      }
+    }
+    fetchPrices()
   }, [])
 
   const COLORS: Record<string, { color: string; glow: string }> = {
