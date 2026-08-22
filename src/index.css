@@ -410,12 +410,6 @@ input[type="range"]::-moz-range-thumb {
   80% { opacity: 1; }
   100% { left: 90%; opacity: 0; }
 }
-@keyframes scanlineH {
-  0% { top: 10%; opacity: 0; }
-  20% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { top: 90%; opacity: 0; }
-}
 
 /* ═══ Reduced Motion ═══ */
 @media (prefers-reduced-motion: reduce) {
@@ -448,6 +442,11 @@ input[type="range"]::-moz-range-thumb {
 @keyframes scanlineV {
   from { top: -140px; }
   to { top: 100vh; }
+}
+
+@keyframes scanlineH {
+  from { left: -100%; }
+  to { left: 100%; }
 }
 
 @keyframes livePulse {

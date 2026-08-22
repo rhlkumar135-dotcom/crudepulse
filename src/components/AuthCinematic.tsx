@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { GreenBackground } from '@/components/GreenBackground'
 
 interface AuthState {
   isLoggedIn: boolean
@@ -20,91 +21,6 @@ const TICKER_ITEMS = [
   { label: 'BRENT', value: 75.08 },
   { label: 'SPREAD', value: 3.66 },
 ]
-
-// ─── Animated Background ─────────────────────────────────────────────
-
-function GreenBackground() {
-  return (
-    <>
-      {/* Photo background with Ken Burns */}
-      <div className="fixed inset-0 z-0 overflow-hidden">
-        <img
-          src="/login-bg.png"
-          alt=""
-          className="w-full h-full object-cover"
-          style={{
-            objectPosition: 'center 40%',
-            filter: 'saturate(0.85) brightness(0.75)',
-            animation: 'kenburns 26s ease-in-out infinite alternate',
-          }}
-        />
-      </div>
-
-      {/* Green tint overlay */}
-      <div
-        className="fixed inset-0 z-[1] pointer-events-none"
-        style={{
-          background: `
-            linear-gradient(180deg, rgba(6,9,7,0.55) 0%, rgba(6,9,7,0.35) 35%, rgba(6,9,7,0.75) 78%, rgba(6,9,7,0.94) 100%),
-            radial-gradient(ellipse 70% 55% at 50% 40%, rgba(15,90,50,0.28), transparent 65%)
-          `,
-        }}
-      />
-      <div
-        className="fixed inset-0 z-[1] pointer-events-none"
-        style={{ background: 'rgba(20,60,38,0.28)', mixBlendMode: 'color' }}
-      />
-
-      {/* Floating green orbs */}
-      <div
-        className="fixed rounded-full z-[2] pointer-events-none"
-        style={{
-          width: 420, height: 420, top: '-8%', left: '-6%',
-          background: 'radial-gradient(circle, rgba(62,224,122,0.55), transparent 70%)',
-          filter: 'blur(70px)', mixBlendMode: 'screen', opacity: 0.55,
-          animation: 'floatA 16s ease-in-out infinite',
-        }}
-      />
-      <div
-        className="fixed rounded-full z-[2] pointer-events-none"
-        style={{
-          width: 360, height: 360, bottom: '-10%', right: '-5%',
-          background: 'radial-gradient(circle, rgba(15,90,50,0.6), transparent 70%)',
-          filter: 'blur(70px)', mixBlendMode: 'screen', opacity: 0.55,
-          animation: 'floatB 20s ease-in-out infinite',
-        }}
-      />
-      <div
-        className="fixed rounded-full z-[2] pointer-events-none"
-        style={{
-          width: 260, height: 260, top: '30%', right: '8%',
-          background: 'radial-gradient(circle, rgba(185,255,210,0.4), transparent 70%)',
-          filter: 'blur(70px)', mixBlendMode: 'screen', opacity: 0.55,
-          animation: 'floatC 14s ease-in-out infinite',
-        }}
-      />
-
-      {/* Scanline */}
-      <div
-        className="fixed left-0 right-0 h-[140px] z-[2] pointer-events-none"
-        style={{
-          background: 'linear-gradient(180deg, transparent, rgba(62,224,122,0.06) 45%, rgba(62,224,122,0.10) 50%, rgba(62,224,122,0.06) 55%, transparent)',
-          animation: 'scanlineV 9s linear infinite',
-        }}
-      />
-
-      {/* Grain */}
-      <div
-        className="fixed inset-0 z-[2] pointer-events-none"
-        style={{
-          opacity: 0.04,
-          mixBlendMode: 'overlay',
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-        }}
-      />
-    </>
-  )
-}
 
 // ─── Live Ticker ─────────────────────────────────────────────────────
 
