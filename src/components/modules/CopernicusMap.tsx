@@ -259,18 +259,18 @@ export default function CopernicusMap() {
             ))}
 
             {/* ═══ REAL WORLD MAP OUTLINE (Natural Earth 110m) ═══ */}
-            {Object.entries(WORLD_MAP_PATHS).map(([continent, paths]) => {
-              const isHighlighted = continent === 'Middle East'
-              return paths.map((d, i) => (
+            {WORLD_MAP_PATHS.map((landmass) => {
+              const isHighlighted = landmass.label === 'Middle East'
+              return (
                 <path
-                  key={`${continent}-${i}`}
-                  d={d}
+                  key={landmass.label}
+                  d={landmass.d}
                   fill={isHighlighted ? '#1A2520' : '#141E2C'}
                   stroke={isHighlighted ? '#2A4A38' : '#1E3048'}
                   strokeWidth="0.5"
                   opacity="0.9"
                 />
-              ))
+              )
             })}
 
             {/* ═══ TRADE ROUTES (dashed) ═══ */}
