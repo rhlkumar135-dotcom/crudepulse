@@ -1,6 +1,6 @@
 import { useState, useEffect, Component, type ReactNode, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { User, LogOut, Shield, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter } from 'lucide-react'
+import { User, LogOut, Shield, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
 import { AuthCinematic } from '@/components/AuthCinematic'
@@ -25,6 +25,7 @@ const FuturesCurvePage = lazy(() => import('@/components/pages/FuturesCurvePage'
 const OPECCompliancePage = lazy(() => import('@/components/pages/OPECCompliancePage').then(m => ({ default: m.OPECCompliancePage })))
 const DownstreamPage = lazy(() => import('@/components/pages/DownstreamPage').then(m => ({ default: m.DownstreamPage })))
 const SanctionsTrackerPage = lazy(() => import('@/components/pages/SanctionsTrackerPage').then(m => ({ default: m.SanctionsTrackerPage })))
+const GlossaryPage = lazy(() => import('@/components/pages/GlossaryPage').then(m => ({ default: m.GlossaryPage })))
 
 type Role = 'user' | 'admin'
 
@@ -81,6 +82,7 @@ const ALL_TABS: NavItem[] = [
   // Policy
   { to: '/opec-compliance', label: 'OPEC+', icon: ShieldAlert, color: '#ff00ff' },
   { to: '/sanctions', label: 'Sanctions', icon: ShieldAlert, color: '#ff3366' },
+  { to: '/glossary', label: 'Glossary', icon: BookOpen, color: '#3EE07A' },
 ]
 
 function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => void }) {
@@ -99,7 +101,7 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
             <span className="text-sm font-black tracking-[0.1em] text-white"
               style={{ fontFamily: 'Orbitron, monospace' }}>
-              CRUDE<span style={{ color: '#3EE07A' }}>PULSE</span>
+              CRUDE<span style={{ color: '#3EE07A' }}>PULSES</span>
             </span>
           </Link>
 
@@ -251,6 +253,7 @@ function AppRoutes({ auth, setAuth }: {
             <Route path="/opec-compliance" element={<AuthGate auth={auth}><OPECCompliancePage /></AuthGate>} />
             <Route path="/downstream" element={<AuthGate auth={auth}><DownstreamPage /></AuthGate>} />
             <Route path="/sanctions" element={<AuthGate auth={auth}><SanctionsTrackerPage /></AuthGate>} />
+            <Route path="/glossary" element={<AuthGate auth={auth}><GlossaryPage /></AuthGate>} />
           </Routes>
           </Suspense>
         </main>
