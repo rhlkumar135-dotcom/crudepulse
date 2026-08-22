@@ -23,7 +23,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function StorageSatellite() {
-  const { data: apiData } = useMarketData<StorageResponse>('/api/market/storage')
+  const { data: apiData } = useMarketData<StorageResponse>('/api/market/storage', 'free', 300_000)
   const storageHistory = apiData?.history || []
   const latestStorage = apiData?.latest || { cushing: 0, spRoc: 0, totalUs: 0 }
   const chartData = storageHistory.map(d => ({

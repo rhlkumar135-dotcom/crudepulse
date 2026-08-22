@@ -20,7 +20,7 @@ function normalizeField(f: OilField, allFields: OilField[]) {
 }
 
 export function FieldScorecard() {
-  const { data } = useMarketData<{ fields: OilField[] }>('/api/market/fields')
+  const { data } = useMarketData<{ fields: OilField[] }>('/api/market/fields', 'free', 300_000)
   const oilFields = data?.fields || []
   const [selected, setSelected] = useState<OilField | null>(oilFields[0] || null)
   const radarData = selected ? normalizeField(selected, oilFields) : []

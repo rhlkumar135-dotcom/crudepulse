@@ -4,7 +4,7 @@ import { CountUp } from '../CountUp'
 interface ReserveData { country: string; code: string; reserves: number; production: number; rpRatio: number; flag: string }
 
 export function ReservesClock() {
-  const { data, loading } = useMarketData<{ countries: ReserveData[] }>('/api/market/reserves')
+  const { data, loading } = useMarketData<{ countries: ReserveData[] }>('/api/market/reserves', 'free', 600_000)
   const reservesData = data?.countries || []
   const maxRp = Math.max(...reservesData.map(r => r.rpRatio), 1)
 

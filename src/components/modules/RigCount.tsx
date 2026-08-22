@@ -22,7 +22,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function RigCountChart() {
-  const { data } = useMarketData<RigResponse>('/api/market/rigs')
+  const { data } = useMarketData<RigResponse>('/api/market/rigs', 'free', 600_000)
   const currentRigs = data?.basins || []
   const totalRigs = data?.total || 0
   const totalOilRigs = data?.oilTotal || 0

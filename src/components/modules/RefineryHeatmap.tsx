@@ -32,7 +32,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function RefineryHeatmap() {
-  const { data } = useMarketData<RefineryResponse>('/api/market/refinery')
+  const { data } = useMarketData<RefineryResponse>('/api/market/refinery', 'free', 300_000)
   const refineryData = data?.padd || []
   const refineryHistory = data?.history || []
 

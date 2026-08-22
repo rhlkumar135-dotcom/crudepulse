@@ -42,7 +42,7 @@ function toSVG(lat: number, lng: number): [number, number] {
 }
 
 export function GlobalFlowMap() {
-  const { data } = useMarketData<{ routes: TradeFlow[] }>('/api/market/flows')
+  const { data } = useMarketData<{ routes: TradeFlow[] }>('/api/market/flows', 'free', 30_000)
   const tradeFlows = data?.routes || []
   const [selected, setSelected] = useState<TradeFlow | null>(null)
   const [selectedCP, setSelectedCP] = useState<ChokepointInfo | null>(null)
@@ -168,13 +168,20 @@ export function GlobalFlowMap() {
                       </circle>
                     </>
                   )}
-                  {/* Source dot (larger, pulsing) */}
-                  <circle cx={fx} cy={fy} r={isActive ? 7 : 4} fill={color}
-                    opacity={isActive ? 1 : 0.7} filter={isActive ? 'url(#soft-glow)' : undefined}
+                  {/* Source dot (large, pulsing glow) */}
+                  <circle cx={fx} cy={fy} r={isActive ? 10 : 6} fill={color}
+                    opacity={isActive ? 0.25 : 0.15} className="transition-all duration-300">
+                    <animate attributeName="r" values={isActive ? '8;14;8' : '4;8;4'} dur="3s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values={isActive ? '0.25;0.05;0.25' : '0.15;0.03;0.15'} dur="3s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={fx} cy={fy} r={isActive ? 5 : 3.5} fill={color}
+                    opacity={isActive ? 1 : 0.85} filter="url(#soft-glow)"
                     className="transition-all duration-300" />
-                  {/* Dest dot */}
-                  <circle cx={tx} cy={ty} r={isActive ? 5 : 2.5} fill={color}
-                    opacity={isActive ? 0.9 : 0.5} className="transition-all duration-300" />
+                  <circle cx={fx} cy={fy} r={1.5} fill="#fff" opacity={0.9} />
+                  {/* Dest dot (clear) */}
+                  <circle cx={tx} cy={ty} r={isActive ? 4 : 2.5} fill={color}
+                    opacity={isActive ? 0.9 : 0.6} className="transition-all duration-300" />
+                  <circle cx={tx} cy={ty} r={1} fill="#fff" opacity={0.7} />
                   {/* Tooltip on active */}
                   {isActive && (
                     <g>

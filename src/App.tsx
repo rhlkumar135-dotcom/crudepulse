@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, type ReactNode } from 'react'
+import { useState, useEffect, Component, type ReactNode, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
 import { User, LogOut, Shield, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -6,24 +6,25 @@ import { TickerBar } from '@/components/TickerBar'
 import { AuthCinematic } from '@/components/AuthCinematic'
 import { LandingPage } from '@/components/LandingPage'
 import { GreenBackground } from '@/components/GreenBackground'
-import { MarketsPage } from '@/components/pages/MarketsPage'
-import { DisruptionsPage } from '@/components/pages/DisruptionsPage'
-import { OperationsPage } from '@/components/pages/OperationsPage'
-import { AnalysisPage } from '@/components/pages/AnalysisPage'
-import { GlobalPage } from '@/components/pages/GlobalPage'
-import { ReservesPage } from '@/components/pages/ReservesPage'
-import { SatelliteIntelPage } from '@/components/pages/SatelliteIntelPage'
-import { NewsAtlasPage } from '@/components/pages/NewsAtlasPage'
-import { GradesPage } from '@/components/pages/GradesPage'
-import { MajorsPage } from '@/components/pages/MajorsPage'
-import { SPRTrackerPage } from '@/components/pages/SPRTrackerPage'
-import { RefineryDirectoryPage } from '@/components/pages/RefineryDirectoryPage'
-import { PipelineMapPage } from '@/components/pages/PipelineMapPage'
-import { FreightTrackerPage } from '@/components/pages/FreightTrackerPage'
-import { FuturesCurvePage } from '@/components/pages/FuturesCurvePage'
-import { OPECCompliancePage } from '@/components/pages/OPECCompliancePage'
-import { DownstreamPage } from '@/components/pages/DownstreamPage'
-import { SanctionsTrackerPage } from '@/components/pages/SanctionsTrackerPage'
+
+const MarketsPage = lazy(() => import('@/components/pages/MarketsPage').then(m => ({ default: m.MarketsPage })))
+const DisruptionsPage = lazy(() => import('@/components/pages/DisruptionsPage').then(m => ({ default: m.DisruptionsPage })))
+const OperationsPage = lazy(() => import('@/components/pages/OperationsPage').then(m => ({ default: m.OperationsPage })))
+const AnalysisPage = lazy(() => import('@/components/pages/AnalysisPage').then(m => ({ default: m.AnalysisPage })))
+const GlobalPage = lazy(() => import('@/components/pages/GlobalPage').then(m => ({ default: m.GlobalPage })))
+const ReservesPage = lazy(() => import('@/components/pages/ReservesPage').then(m => ({ default: m.ReservesPage })))
+const SatelliteIntelPage = lazy(() => import('@/components/pages/SatelliteIntelPage').then(m => ({ default: m.SatelliteIntelPage })))
+const NewsAtlasPage = lazy(() => import('@/components/pages/NewsAtlasPage').then(m => ({ default: m.NewsAtlasPage })))
+const GradesPage = lazy(() => import('@/components/pages/GradesPage').then(m => ({ default: m.GradesPage })))
+const MajorsPage = lazy(() => import('@/components/pages/MajorsPage').then(m => ({ default: m.MajorsPage })))
+const SPRTrackerPage = lazy(() => import('@/components/pages/SPRTrackerPage').then(m => ({ default: m.SPRTrackerPage })))
+const RefineryDirectoryPage = lazy(() => import('@/components/pages/RefineryDirectoryPage').then(m => ({ default: m.RefineryDirectoryPage })))
+const PipelineMapPage = lazy(() => import('@/components/pages/PipelineMapPage').then(m => ({ default: m.PipelineMapPage })))
+const FreightTrackerPage = lazy(() => import('@/components/pages/FreightTrackerPage').then(m => ({ default: m.FreightTrackerPage })))
+const FuturesCurvePage = lazy(() => import('@/components/pages/FuturesCurvePage').then(m => ({ default: m.FuturesCurvePage })))
+const OPECCompliancePage = lazy(() => import('@/components/pages/OPECCompliancePage').then(m => ({ default: m.OPECCompliancePage })))
+const DownstreamPage = lazy(() => import('@/components/pages/DownstreamPage').then(m => ({ default: m.DownstreamPage })))
+const SanctionsTrackerPage = lazy(() => import('@/components/pages/SanctionsTrackerPage').then(m => ({ default: m.SanctionsTrackerPage })))
 
 type Role = 'user' | 'admin'
 
@@ -227,6 +228,7 @@ function AppRoutes({ auth, setAuth }: {
       <div className="relative z-10">
         <NavBar auth={auth} onLogout={() => setAuth(null)} />
         <main>
+          <Suspense fallback={<div className="flex items-center justify-center h-[50vh]"><div className="text-xs text-[#94A3B8] font-mono tracking-wider animate-pulse">LOADING MODULE...</div></div>}>
           <Routes>
             <Route path="/" element={
               auth ? <Navigate to="/markets" replace /> : <LandingPage />
@@ -250,6 +252,7 @@ function AppRoutes({ auth, setAuth }: {
             <Route path="/downstream" element={<AuthGate auth={auth}><DownstreamPage /></AuthGate>} />
             <Route path="/sanctions" element={<AuthGate auth={auth}><SanctionsTrackerPage /></AuthGate>} />
           </Routes>
+          </Suspense>
         </main>
       </div>
     </div>

@@ -18,7 +18,7 @@ function riskLabel(score: number): string {
 }
 
 export function ChokepointsMonitor() {
-  const { data } = useMarketData<{ straits: Chokepoint[] }>('/api/market/chokepoints')
+  const { data } = useMarketData<{ straits: Chokepoint[] }>('/api/market/chokepoints', 'free', 300_000)
   const chokepoints = data?.straits || []
   const [selected, setSelected] = useState<Chokepoint | null>(null)
   const sorted = [...chokepoints].sort((a: Chokepoint, b: Chokepoint) => b.riskScore - a.riskScore)
