@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CrudePulse — Sign In</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#060907;
+    --green:#3EE07A;
+    --green-deep:#0F5A32;
+    --green-glow: rgba(62,224,122,0.55);
+    --red:#EF4444;
+    --muted:#a9c2b0;
+    --line: rgba(62,224,122,0.18);
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; background:var(--bg); font-family:'Space Grotesk', sans-serif; color:#fff; overflow:hidden; }
+
+  /* ---------- Photo background ---------- */
+  .photo-bg{
+    position:fixed; inset:0; z-index:0; overflow:hidden;
+  }
+  .photo-bg img{
+    width:100%; height:100%; object-fit:cover; object-position:center 40%;
+    animation: kenburns 26s ease-in-out infinite alternate;
+    filter: saturate(0.85) brightness(0.75);
+  }
+  @keyframes kenburns{
+    from{ transform: scale(1.0) translate(0,0); }
+    to{ transform: scale(1.09) translate(-1%, -1.5%); }
+  }
+
+  /* green wash + darken for legibility, per "green theme only" */
+  .tint{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    background:
+      linear-gradient(180deg, rgba(6,9,7,0.55) 0%, rgba(6,9,7,0.35) 35%, rgba(6,9,7,0.75) 78%, rgba(6,9,7,0.94) 100%),
+      radial-gradient(ellipse 70% 55% at 50% 40%, rgba(15,90,50,0.28), transparent 65%);
+    mix-blend-mode: normal;
+  }
+  .tint::after{
+    content:''; position:absolute; inset:0;
+    background: rgba(20,60,38,0.28);
+    mix-blend-mode: color;
+  }
+  .grain{
+    position:fixed; inset:0; z-index:2; pointer-events:none; opacity:0.04; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* blurred ambient glow orbs, floating over the photo */
+  .orb{
+    position:fixed; border-radius:50%; z-index:2; pointer-events:none;
+    filter: blur(70px);
+    mix-blend-mode: screen;
+    opacity:0.55;
+  }
+  .orb.o1{
+    width:420px; height:420px; top:-8%; left:-6%;
+    background: radial-gradient(circle, rgba(62,224,122,0.55), transparent 70%);
+    animation: floatA 16s ease-in-out infinite;
+  }
+  .orb.o2{
+    width:360px; height:360px; bottom:-10%; right:-5%;
+    background: radial-gradient(circle, rgba(15,90,50,0.6), transparent 70%);
+    animation: floatB 20s ease-in-out infinite;
+  }
+  .orb.o3{
+    width:260px; height:260px; top:30%; right:8%;
+    background: radial-gradient(circle, rgba(185,255,210,0.4), transparent 70%);
+    animation: floatC 14s ease-in-out infinite;
+  }
+  @keyframes floatA{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(4%,3%) scale(1.1); } }
+  @keyframes floatB{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-3%,-4%) scale(1.08); } }
+  @keyframes floatC{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-5%,3%) scale(0.95); } }
+
+  @media (max-width:600px){
+    .orb{ filter: blur(50px); opacity:0.4; }
+    .orb.o1{ width:260px; height:260px; }
+    .orb.o2{ width:220px; height:220px; }
+    .orb.o3{ display:none; }
+  }
+
+  /* drifting green scan-glow, echoes the photo's own data-overlay motif */
+  .scanline{
+    position:fixed; left:0; right:0; height:140px; z-index:2; pointer-events:none;
+    background: linear-gradient(180deg, transparent, rgba(62,224,122,0.06) 45%, rgba(62,224,122,0.10) 50%, rgba(62,224,122,0.06) 55%, transparent);
+    animation: scan 9s linear infinite;
+  }
+  @keyframes scan{ from{ top:-140px; } to{ top:100vh; } }
+
+  /* ---------- Layout ---------- */
+  .wrap{
+    position:relative; z-index:3; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:32px 20px;
+    transform: translateY(-7%);
+  }
+
+  @media (max-width:600px){
+    .wrap{ transform: translateY(-4%); padding:24px 16px; }
+  }
+
+  .eyebrow{
+    display:flex; align-items:center; gap:8px; font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:0.14em; color:var(--green); text-transform:uppercase;
+    margin-bottom:16px; opacity:0; animation: fadeUp 0.8s ease forwards 0.1s;
+    text-shadow: 0 0 12px var(--green-glow);
+  }
+  .dot-live{ width:6px; height:6px; border-radius:50%; background:var(--green); animation: livePulse 2s ease-out infinite; }
+  @keyframes livePulse{ 0%{ box-shadow:0 0 0 0 rgba(62,224,122,0.55);} 70%{ box-shadow:0 0 0 8px rgba(62,224,122,0);} 100%{ box-shadow:0 0 0 0 rgba(62,224,122,0);} }
+
+  .headline{
+    font-size: clamp(20px, 2.9vw, 30px); font-weight:700; letter-spacing:-0.015em;
+    text-align:center; max-width:800px; line-height:1.32;
+    color:#eafff2;
+    text-shadow: 0 2px 24px rgba(0,0,0,0.6);
+    opacity:0; animation: fadeUp 0.8s ease forwards 0.22s;
+  }
+  .headline .grad{
+    background: linear-gradient(90deg, #b9ffd2, var(--green) 45%, #1fae5c 70%, var(--green));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    background-size:250% auto; animation: shimmer 6s linear infinite;
+    text-shadow:none;
+  }
+  @keyframes shimmer{ to{ background-position: -250% center; } }
+
+  .subhead{ margin-top:10px; color:var(--muted); font-size:14px; text-align:center; opacity:0; animation: fadeUp 0.8s ease forwards 0.34s; }
+
+  @keyframes fadeUp{ to{ opacity:1; transform:translateY(0);} from{ transform:translateY(12px);} }
+
+  /* ---------- Ticker ---------- */
+  .ticker{
+    display:flex; gap:28px; margin:24px 0 6px; font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    opacity:0; animation: fadeUp 0.8s ease forwards 0.46s;
+  }
+  .tick{ display:flex; align-items:center; gap:6px; color:var(--muted); }
+  .tick b{ color:#fff; font-weight:600; position:relative; padding:1px 5px; border-radius:4px; }
+  .flash{ animation: flashUp 1s ease; }
+  .flash.down{ animation: flashDown 1s ease; }
+  @keyframes flashUp{ 0%{ background: rgba(62,224,122,0.4); box-shadow:0 0 14px rgba(62,224,122,0.5);} 100%{ background: transparent; box-shadow:none;} }
+  @keyframes flashDown{ 0%{ background: rgba(239,68,68,0.4); box-shadow:0 0 14px rgba(239,68,68,0.5);} 100%{ background: transparent; box-shadow:none;} }
+
+  /* ---------- Card (parallax glass) ---------- */
+  .card-stage{ perspective:1000px; margin-top:22px; opacity:0; animation: fadeUp 0.9s ease forwards 0.6s; }
+  .card{
+    position:relative; width:460px; max-width:92vw;
+    background: rgba(8,16,11,0.68);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border:1px solid var(--line); border-radius:18px;
+    padding:28px 26px 22px;
+    box-shadow: 0 40px 80px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(62,224,122,0.06), inset 0 1px 0 rgba(255,255,255,0.04);
+    transition: transform 0.15s ease-out;
+    transform-style: preserve-3d;
+    overflow:hidden;
+  }
+  .card::before{
+    content:''; position:absolute; inset:-2px; z-index:0; pointer-events:none;
+    background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.05) 45%, rgba(62,224,122,0.14) 50%, rgba(255,255,255,0.05) 55%, transparent 70%);
+    background-size: 250% 250%;
+    animation: sweep 7s ease-in-out infinite;
+  }
+  @keyframes sweep{ 0%{ background-position: 200% 0%; } 100%{ background-position: -50% 100%; } }
+
+  .card > *{ position:relative; z-index:1; }
+
+  .pulse-core{
+    position:absolute; top:-70px; left:50%; transform:translateX(-50%);
+    width:180px; height:180px; border-radius:50%; z-index:0; pointer-events:none;
+    background: radial-gradient(circle, rgba(62,224,122,0.32), rgba(15,90,50,0.12) 55%, transparent 72%);
+    filter: blur(6px);
+    animation: coreBeat 2.4s ease-in-out infinite;
+  }
+  @keyframes coreBeat{ 0%,100%{ transform:translateX(-50%) scale(0.9); opacity:0.7; } 50%{ transform:translateX(-50%) scale(1.08); opacity:1; } }
+
+  .pulse-strip{ position:absolute; top:-1px; left:14px; right:14px; height:26px; overflow:hidden; pointer-events:none; z-index:1; }
+  .pulse-strip svg{ width:200%; height:100%; animation: pulseScroll 5s linear infinite; }
+  @keyframes pulseScroll{ from{ transform:translateX(0);} to{ transform:translateX(-50%);} }
+
+  .brand-row{ display:flex; align-items:baseline; justify-content:space-between; margin:10px 0 22px; }
+  .brand{ font-size:19px; font-weight:700; letter-spacing:-0.01em; color:#eafff2; }
+  .brand .pulse-word{
+    background: linear-gradient(90deg, var(--green), #b9ffd2);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 18px var(--green-glow);
+  }
+  .secure-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.08em; color:var(--green);
+    border:1px solid rgba(62,224,122,0.35); padding:3px 7px; border-radius:20px; text-transform:uppercase;
+    display:flex; align-items:center; gap:5px;
+  }
+  .secure-tag::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--green); box-shadow:0 0 6px var(--green); }
+
+  label{ display:block; font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.1em; color:var(--muted); text-transform:uppercase; margin-bottom:6px; margin-top:16px; }
+  label:first-of-type{ margin-top:0; }
+
+  .field{ position:relative; }
+  .field input{
+    width:100%; background: rgba(255,255,255,0.03); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; color:#fff; font-family:'IBM Plex Mono', monospace; font-size:13.5px; outline:none;
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .field input::placeholder{ color:#5b7364; }
+  .field input:focus{ border-color: var(--green); box-shadow: 0 0 0 3px rgba(62,224,122,0.16), 0 0 24px rgba(62,224,122,0.14); background: rgba(62,224,122,0.03); }
+  .eye{ position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--muted); cursor:pointer; font-size:12px; font-family:'IBM Plex Mono', monospace; user-select:none; }
+  .eye:hover{ color:#fff; }
+
+  .authenticate{
+    width:100%; margin-top:22px;
+    background: linear-gradient(90deg, #1fae5c, var(--green), #1fae5c);
+    background-size:200% auto;
+    color:#04150a; font-weight:700; letter-spacing:0.02em; font-size:14px;
+    border:none; border-radius:10px; padding:13px; cursor:pointer; position:relative; overflow:hidden;
+    transition: transform .15s ease, box-shadow .2s ease, background-position .4s ease;
+    box-shadow: 0 8px 24px -6px rgba(62,224,122,0.55);
+  }
+  .authenticate:hover{ transform: translateY(-1px); box-shadow: 0 14px 32px -6px rgba(62,224,122,0.7); background-position: 100% center; }
+  .authenticate:active{ transform: translateY(0) scale(0.98); }
+  .ripple{ position:absolute; border-radius:50%; background:rgba(255,255,255,0.5); transform:scale(0); animation: ripple 0.6s ease-out; pointer-events:none; }
+  @keyframes ripple{ to{ transform:scale(3); opacity:0; } }
+
+  .divider{ display:flex; align-items:center; gap:10px; margin:18px 0 4px; color:var(--muted); font-size:11px; font-family:'IBM Plex Mono', monospace; }
+  .divider::before, .divider::after{ content:''; flex:1; height:1px; background:var(--line); }
+
+  .ghost-btn{
+    width:100%; background:transparent; border:1px solid var(--line); color:#dcede2; padding:11px; border-radius:10px;
+    font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+    transition: border-color .2s ease, background .2s ease, transform .15s ease;
+    font-family:'Space Grotesk', sans-serif; font-weight:500;
+  }
+  .ghost-btn:hover{ border-color: var(--green); background: rgba(62,224,122,0.08); transform: translateY(-1px); box-shadow:0 0 20px rgba(62,224,122,0.14); }
+  .ghost-btn .arrow{ transition: transform .2s ease; }
+  .ghost-btn:hover .arrow{ transform: translateX(3px); }
+
+  .signup-line{ text-align:center; margin-top:16px; font-size:12.5px; color:var(--muted); }
+  .signup-line a{ color: var(--green); text-decoration:none; font-weight:600; }
+  .signup-line a:hover{ text-decoration:underline; }
+
+  .sources{
+    margin-top:20px; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:9.5px;
+    letter-spacing:0.09em; color:#5f7a68; text-transform:uppercase;
+    opacity:0; animation: fadeUp 0.8s ease forwards 0.85s;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .photo-bg img, .scanline, .headline .grad, .card::before, .pulse-core, .dot-live, .orb{ animation:none !important; }
+    .headline, .subhead, .ticker, .card-stage, .eyebrow, .sources{ animation:none !important; opacity:1 !important; transform:none !important; }
+    .card{ transform:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="photo-bg"><img src="crudepulse-bg.png" alt="" /></div>
+<div class="tint"></div>
+<div class="orb o1"></div>
+<div class="orb o2"></div>
+<div class="orb o3"></div>
+<div class="scanline"></div>
+<div class="grain"></div>
+
+<div class="wrap">
+
+  <div class="eyebrow"><span class="dot-live"></span> LIVE · GLOBAL CRUDE INTELLIGENCE</div>
+
+  <h1 class="headline">Real-time crude oil intelligence, <span class="grad">reimagined</span> — live markets, satellite insight, and global disruption tracking in one strikingly visual dashboard.</h1>
+
+  <div class="ticker">
+    <div class="tick">WTI <b id="wti">$71.42</b></div>
+    <div class="tick">BRENT <b id="brent">$75.08</b></div>
+    <div class="tick">DISRUPTIONS <b id="disr">14 active</b></div>
+  </div>
+
+  <div class="card-stage">
+    <div class="card" id="card">
+      <div class="pulse-core"></div>
+      <div class="pulse-strip">
+        <svg viewBox="0 0 400 26" preserveAspectRatio="none">
+          <path d="M0,13 L40,13 L48,4 L56,22 L64,13 L100,13 L108,6 L116,20 L124,13 L400,13
+                   L440,13 L448,4 L456,22 L464,13 L500,13 L508,6 L516,20 L524,13 L800,13"
+                fill="none" stroke="#3EE07A" stroke-width="1.5" opacity="0.65"/>
+        </svg>
+      </div>
+
+      <div class="brand-row">
+        <div class="brand">Crude<span class="pulse-word">Pulse</span></div>
+        <div class="secure-tag">Secure</div>
+      </div>
+
+      <label>Email</label>
+      <div class="field"><input type="email" placeholder="you@example.com" /></div>
+
+      <label>Password</label>
+      <div class="field">
+        <input id="pw" type="password" placeholder="••••••••" />
+        <span class="eye" onclick="togglePw(event)">Show</span>
+      </div>
+
+      <button class="authenticate" onclick="rippleFx(event)">Sign In</button>
+
+      <div class="divider">or</div>
+
+      <button class="ghost-btn">Continue without signing up <span class="arrow">→</span></button>
+
+      <div class="signup-line">No account? <a href="#">Sign up free</a></div>
+    </div>
+  </div>
+
+  <div class="sources">EIA · GDELT · SENTINEL-5P · NASA FIRMS · ALPHA VANTAGE</div>
+
+</div>
+
+<script>
+  (function(){
+    const card = document.getElementById('card');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduceMotion) return;
+    card.addEventListener('mousemove', e=>{
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left)/r.width - 0.5;
+      const y = (e.clientY - r.top)/r.height - 0.5;
+      card.style.transform = `rotateY(${x*7}deg) rotateX(${-y*7}deg) translateZ(0)`;
+    });
+    card.addEventListener('mouseleave', ()=>{ card.style.transform = 'rotateY(0) rotateX(0)'; });
+  })();
+
+  function togglePw(e){
+    const pw = document.getElementById('pw');
+    const isPw = pw.type === 'password';
+    pw.type = isPw ? 'text' : 'password';
+    e.target.textContent = isPw ? 'Hide' : 'Show';
+  }
+
+  function rippleFx(e){
+    const btn = e.currentTarget;
+    const circle = document.createElement('span');
+    const d = Math.max(btn.clientWidth, btn.clientHeight);
+    circle.style.width = circle.style.height = d+'px';
+    circle.style.left = (e.clientX - btn.getBoundingClientRect().left - d/2)+'px';
+    circle.style.top = (e.clientY - btn.getBoundingClientRect().top - d/2)+'px';
+    circle.className = 'ripple';
+    btn.appendChild(circle);
+    setTimeout(()=>circle.remove(), 650);
+  }
+
+  function tick(){
+    const ids = ['wti','brent'];
+    const id = ids[Math.random()>0.5?0:1];
+    const el = document.getElementById(id);
+    const current = parseFloat(el.textContent.replace('$',''));
+    const delta = (Math.random()-0.5)*0.3;
+    el.textContent = '$'+(current+delta).toFixed(2);
+    el.classList.remove('flash','down');
+    void el.offsetWidth;
+    el.classList.add('flash', delta<0 ? 'down' : '');
+    setTimeout(()=> el.classList.remove('flash','down'), 1000);
+  }
+  setInterval(tick, 3000);
+</script>
+
+</body>
+</html>

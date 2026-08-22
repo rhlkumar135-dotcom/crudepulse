@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
 import { AuthCinematic } from '@/components/AuthCinematic'
 import { LandingPage } from '@/components/LandingPage'
+import { GreenBackground } from '@/components/GreenBackground'
 import { MarketsPage } from '@/components/pages/MarketsPage'
 import { DisruptionsPage } from '@/components/pages/DisruptionsPage'
 import { OperationsPage } from '@/components/pages/OperationsPage'
@@ -91,13 +92,13 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
   return (
     <>
       <TickerBar />
-      <header className="border-b border-[#2a2a3a] bg-[#0a0a0f]/90 backdrop-blur-md">
+      <header className="border-b border-[rgba(62,224,122,0.15)]" style={{ background: 'rgba(6,9,7,0.9)', backdropFilter: 'blur(12px)' }}>
         {/* Top row: brand + auth */}
         <div className="flex items-center px-5 h-10 gap-3">
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
             <span className="text-sm font-black tracking-[0.1em] text-white"
               style={{ fontFamily: 'Orbitron, monospace' }}>
-              CRUDE<span className="text-[#00ff88]">PULSES</span>
+              CRUDE<span style={{ color: '#3EE07A' }}>PULSE</span>
             </span>
           </Link>
 
@@ -105,9 +106,9 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
 
           {/* Live indicator */}
           <div className="flex items-center gap-2 shrink-0">
-            <span className="live-dot" />
-            <span className="text-[10px] font-bold text-[#00ff88] tracking-[0.12em]"
-              style={{ fontFamily: 'Share Tech Mono, monospace' }}>LIVE</span>
+            <span className="live-dot" style={{ background: '#3EE07A', boxShadow: '0 0 8px #3EE07A80, 0 0 16px #3EE07A40' }} />
+            <span className="text-[10px] font-bold tracking-[0.12em]"
+              style={{ fontFamily: 'Share Tech Mono, monospace', color: '#3EE07A' }}>LIVE</span>
           </div>
 
           <div className="flex-1" />
@@ -140,8 +141,8 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
             </>
           )}
           {!auth && (
-            <Link to="/" className="px-4 py-1.5 border border-[#00ff88]/30 text-[#00ff88] text-[10px] font-bold tracking-wider hover:bg-[#00ff88]/10 transition-all rounded-sm"
-              style={{ fontFamily: 'Orbitron, monospace' }}>
+            <Link to="/" className="px-4 py-1.5 border text-[10px] font-bold tracking-wider hover:opacity-80 transition-all rounded-sm"
+              style={{ fontFamily: 'Orbitron, monospace', borderColor: 'rgba(62,224,122,0.4)', color: '#3EE07A' }}>
               SIGN IN
             </Link>
           )}
@@ -162,11 +163,11 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
                 className={cn(
                   'flex items-center gap-1 px-2 py-1 text-[9px] font-semibold tracking-wide transition-all border rounded-sm whitespace-nowrap',
                   active
-                    ? 'border-[#00ff88]/30 bg-[#00ff88]/[0.08] text-white'
+                    ? 'border-[rgba(62,224,122,0.3)] bg-[rgba(62,224,122,0.08)] text-white'
                     : 'border-transparent text-[#94A3B8] hover:text-[#e0e0e0] hover:bg-white/[0.04]'
                 )}
                 style={{ fontFamily: 'Orbitron, monospace' }}>
-                <Icon size={9} style={{ color: active ? item.color : undefined }} />
+                <Icon size={9} style={{ color: active ? '#3EE07A' : undefined }} />
                 <span>{item.label}</span>
               </Link>
             )
@@ -189,11 +190,11 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
                     className={cn(
                       'flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-semibold rounded border transition-all',
                       active
-                        ? 'bg-[#00ff88]/[0.08] border-[#00ff88]/30 text-white'
+                        ? 'bg-[rgba(62,224,122,0.08)] border-[rgba(62,224,122,0.3)] text-white'
                         : 'border-transparent text-[#94A3B8] hover:text-white hover:bg-white/[0.03]'
                     )}
                     style={{ fontFamily: 'Orbitron, monospace' }}>
-                    <Icon size={11} style={{ color: active ? item.color : undefined }} />
+                    <Icon size={11} style={{ color: active ? '#3EE07A' : undefined }} />
                     <span>{item.label}</span>
                   </Link>
                 )
@@ -220,11 +221,8 @@ function AppRoutes({ auth, setAuth }: {
   setAuth: (next: AuthState | null) => void
 }) {
   return (
-    <div className="min-h-screen bg-bg relative">
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[300px] bg-[#00ff88]/[0.008] blur-[150px] rounded-full" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[250px] bg-[#ff00ff]/[0.005] blur-[120px] rounded-full" />
-      </div>
+    <div className="min-h-screen relative" style={{ background: '#060907' }}>
+      <GreenBackground />
       <div className="relative z-10">
         <NavBar auth={auth} onLogout={() => setAuth(null)} />
         <main>

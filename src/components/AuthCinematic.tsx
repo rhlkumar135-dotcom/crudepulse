@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { User, LogOut, Shield, Eye, EyeOff, ArrowRight, ChevronRight } from 'lucide-react'
-import { cn } from '@/lib/cn'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Eye, EyeOff, ArrowRight } from 'lucide-react'
 
 interface AuthState {
   isLoggedIn: boolean
@@ -14,228 +13,146 @@ interface Props {
   onGuest?: () => void
 }
 
-// ─── Floating Data Particles ───────────────────────────────────────────
+// ─── Live Ticker Data ────────────────────────────────────────────────
 
 const TICKER_ITEMS = [
-  'WTI $68.42 ▲1.2%', 'Brent $72.15 ▲0.8%', 'OPEC+ CUTS 2.1M BBL/D',
-  'SPR LEVELS 395.3M BBL', 'NAT GAS $2.84 ▼0.3%', 'REFINERY UTIL 92.1%',
-  'IRAN SANCTIONS tightened', 'SUEZ TRANSIT +12%', 'HORMUZ RISK: ELEVATED',
-  'US SHALE +340K B/D', 'CHINA IMPORTS ▲8.2%', 'NIGER DELTA SPILL ALERT',
-  'RED SEA DISRUPTION', 'GOLD $2,412 ▲0.5%', 'USD INDEX 104.2',
-  'BRENT-WTI SPREAD $3.73', 'OIL DEMAND 103.2M B/D', 'RIG COUNT 582 ▲3',
-  'RUSSIAN CRUDE 9.2M B/D', 'LIBYA OUTPUT HALTED', 'IRAQ QUOTA 4.0M B/D',
-  'BRAZIL PRE-SALT 3.8M B/D', 'NORWAY JOHAN SVERDRUP 720K B/D',
+  { label: 'WTI', value: 71.42 },
+  { label: 'BRENT', value: 75.08 },
+  { label: 'SPREAD', value: 3.66 },
 ]
 
-const NEWS_HEADLINES = [
-  'Houthi forces target 2nd tanker in Red Sea this week',
-  'OPEC+ emergency meeting called as Brent falls below $70',
-  'US SPR releases 4M barrels amid supply concerns',
-  'Permian Basin output hits record 6.1M barrels per day',
-  'Iran nuclear deal collapse threatens Strait of Hormuz',
-  'China builds 500M barrels strategic reserve',
-  'BP declares force majeure on Nigerian crude exports',
-  'Baltic Dry Index surges 45% on vessel shortages',
-  'North Sea maintenance cuts output by 300K b/d',
-  'Venezuela sanctions relief could add 200K b/d',
-]
+// ─── Animated Background ─────────────────────────────────────────────
 
-const MAP_COORDS = [
-  '26.5°N 56.3°E', '27.0°N 51.0°E', '28.0°N -90.0°W',
-  '57.0°N 2.0°E', '31.7°N -103.2°W', '4.5°N 6.5°E',
-  '30.0°N 32.5°E', '12.6°N 43.3°E', '2.5°N 101.5°E',
-  '24.0°N 54.0°E', '21.5°N 57.0°E', '32.0°N 53.0°E',
-]
-
-interface Particle {
-  id: number
-  type: 'ticker' | 'headline' | 'coords'
-  text: string
-  x: number
-  y: number
-  speed: number
-  opacity: number
-  size: number
-}
-
-function useParticles(count: number): Particle[] {
-  const [particles, setParticles] = useState<Particle[]>(() => {
-    const items: Particle[] = []
-    for (let i = 0; i < count; i++) {
-      const type = i % 3 === 0 ? 'ticker' : i % 3 === 1 ? 'headline' : 'coords'
-      const pool = type === 'ticker' ? TICKER_ITEMS : type === 'headline' ? NEWS_HEADLINES : MAP_COORDS
-      items.push({
-        id: i,
-        type,
-        text: pool[i % pool.length],
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        speed: 0.15 + Math.random() * 0.35,
-        opacity: 0.04 + Math.random() * 0.08,
-        size: type === 'ticker' ? 10 : type === 'headline' ? 9 : 8,
-      })
-    }
-    return items
-  })
-
-  useEffect(() => {
-    let frame: number
-    const tick = () => {
-      setParticles(prev => prev.map(p => ({
-        ...p,
-        y: p.y - p.speed * 0.12,
-        x: p.x + Math.sin(Date.now() * 0.0003 + p.id) * 0.02,
-        opacity: 0.04 + Math.sin(Date.now() * 0.0005 + p.id * 2) * 0.025,
-      })).map(p => p.y < -5 ? { ...p, y: 105 } : p))
-      frame = requestAnimationFrame(tick)
-    }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [])
-
-  return particles
-}
-
-// ─── Mini Sparkline ────────────────────────────────────────────────────
-
-function MiniSparkline({ seed, color }: { seed: number; color: string }) {
-  const points = useMemo(() => {
-    const pts: string[] = []
-    for (let i = 0; i < 20; i++) {
-      const y = 50 + Math.sin(i * 0.5 + seed) * 30 + Math.cos(i * 0.8 + seed * 2) * 15
-      pts.push(`${(i / 19) * 100},${y}`)
-    }
-    return pts.join(' ')
-  }, [seed])
-
+function GreenBackground() {
   return (
-    <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
-      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" opacity="0.3" />
-    </svg>
+    <>
+      {/* Photo background with Ken Burns */}
+      <div className="fixed inset-0 z-0 overflow-hidden">
+        <img
+          src="/login-bg.png"
+          alt=""
+          className="w-full h-full object-cover"
+          style={{
+            objectPosition: 'center 40%',
+            filter: 'saturate(0.85) brightness(0.75)',
+            animation: 'kenburns 26s ease-in-out infinite alternate',
+          }}
+        />
+      </div>
+
+      {/* Green tint overlay */}
+      <div
+        className="fixed inset-0 z-[1] pointer-events-none"
+        style={{
+          background: `
+            linear-gradient(180deg, rgba(6,9,7,0.55) 0%, rgba(6,9,7,0.35) 35%, rgba(6,9,7,0.75) 78%, rgba(6,9,7,0.94) 100%),
+            radial-gradient(ellipse 70% 55% at 50% 40%, rgba(15,90,50,0.28), transparent 65%)
+          `,
+        }}
+      />
+      <div
+        className="fixed inset-0 z-[1] pointer-events-none"
+        style={{ background: 'rgba(20,60,38,0.28)', mixBlendMode: 'color' }}
+      />
+
+      {/* Floating green orbs */}
+      <div
+        className="fixed rounded-full z-[2] pointer-events-none"
+        style={{
+          width: 420, height: 420, top: '-8%', left: '-6%',
+          background: 'radial-gradient(circle, rgba(62,224,122,0.55), transparent 70%)',
+          filter: 'blur(70px)', mixBlendMode: 'screen', opacity: 0.55,
+          animation: 'floatA 16s ease-in-out infinite',
+        }}
+      />
+      <div
+        className="fixed rounded-full z-[2] pointer-events-none"
+        style={{
+          width: 360, height: 360, bottom: '-10%', right: '-5%',
+          background: 'radial-gradient(circle, rgba(15,90,50,0.6), transparent 70%)',
+          filter: 'blur(70px)', mixBlendMode: 'screen', opacity: 0.55,
+          animation: 'floatB 20s ease-in-out infinite',
+        }}
+      />
+      <div
+        className="fixed rounded-full z-[2] pointer-events-none"
+        style={{
+          width: 260, height: 260, top: '30%', right: '8%',
+          background: 'radial-gradient(circle, rgba(185,255,210,0.4), transparent 70%)',
+          filter: 'blur(70px)', mixBlendMode: 'screen', opacity: 0.55,
+          animation: 'floatC 14s ease-in-out infinite',
+        }}
+      />
+
+      {/* Scanline */}
+      <div
+        className="fixed left-0 right-0 h-[140px] z-[2] pointer-events-none"
+        style={{
+          background: 'linear-gradient(180deg, transparent, rgba(62,224,122,0.06) 45%, rgba(62,224,122,0.10) 50%, rgba(62,224,122,0.06) 55%, transparent)',
+          animation: 'scanlineV 9s linear infinite',
+        }}
+      />
+
+      {/* Grain */}
+      <div
+        className="fixed inset-0 z-[2] pointer-events-none"
+        style={{
+          opacity: 0.04,
+          mixBlendMode: 'overlay',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+        }}
+      />
+    </>
   )
 }
 
-// ─── Animated Background ───────────────────────────────────────────────
+// ─── Live Ticker ─────────────────────────────────────────────────────
 
-function AnimatedBackground() {
-  const particles = useParticles(36)
+function LiveTicker() {
+  const [prices, setPrices] = useState(TICKER_ITEMS)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPrices(prev =>
+        prev.map(item => ({
+          ...item,
+          value: item.value + (Math.random() - 0.5) * 0.3,
+        }))
+      )
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
-      {/* Blurred background image */}
-      <div className="absolute inset-0"
-        style={{
-          backgroundImage: 'url(/login-bg.png)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'blur(2px) brightness(0.6) saturate(1.2)',
-          transform: 'scale(1.05)',
-        }}
-      />
-
-      {/* Light overlay for readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#050810]/40 via-[#050810]/25 to-[#050810]/45" />
-
-      {/* Neon glow accents */}
-      <div className="absolute inset-0"
-        style={{
-          background: `
-            radial-gradient(ellipse 120% 80% at 30% 20%, rgba(0,255,136,0.04) 0%, transparent 60%),
-            radial-gradient(ellipse 100% 60% at 70% 80%, rgba(255,0,255,0.03) 0%, transparent 60%),
-            radial-gradient(ellipse 80% 80% at 50% 50%, rgba(0,212,255,0.02) 0%, transparent 70%)
-          `
-        }}
-      />
-
-      {/* Grid overlay */}
-      <div className="absolute inset-0 circuit-grid opacity-20" />
-
-      {/* Floating particles — oil prices, news, coordinates */}
-      {particles.map(p => (
-        <div
-          key={p.id}
-          className="absolute whitespace-nowrap pointer-events-none"
-          style={{
-            left: `${p.x}%`,
-            top: `${p.y}%`,
-            opacity: p.opacity,
-            fontSize: `${p.size}px`,
-            fontFamily: 'Share Tech Mono, monospace',
-            color: p.type === 'ticker' ? '#00ff88' : p.type === 'headline' ? '#ff3366' : '#00d4ff',
-            letterSpacing: p.type === 'coords' ? '0.15em' : undefined,
-            transition: 'none',
-            filter: 'blur(0.5px)',
-          }}
-        >
-          {p.type === 'ticker' && <span className="mr-1">◆</span>}
-          {p.text}
+    <div className="flex gap-7 mb-2 justify-center" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5 }}>
+      {prices.map((item, i) => (
+        <div key={i} className="flex items-center gap-1.5" style={{ color: '#a9c2b0' }}>
+          {item.label}
+          <b className="text-white font-semibold px-1 py-0.5 rounded" style={{ position: 'relative' }}>
+            ${item.value.toFixed(2)}
+          </b>
         </div>
       ))}
-
-      {/* Glowing orb — animated pulse */}
-      <div className="absolute top-[15%] left-[20%] w-[500px] h-[400px] rounded-full animate-pulse"
-        style={{
-          background: 'radial-gradient(circle, rgba(0,255,136,0.06) 0%, transparent 70%)',
-          filter: 'blur(80px)',
-          animationDuration: '8s',
-        }}
-      />
-      <div className="absolute bottom-[20%] right-[15%] w-[400px] h-[350px] rounded-full animate-pulse"
-        style={{
-          background: 'radial-gradient(circle, rgba(255,0,255,0.04) 0%, transparent 70%)',
-          filter: 'blur(80px)',
-          animationDuration: '12s',
-          animationDelay: '3s',
-        }}
-      />
-      <div className="absolute top-[60%] left-[60%] w-[300px] h-[300px] rounded-full animate-pulse"
-        style={{
-          background: 'radial-gradient(circle, rgba(0,212,255,0.04) 0%, transparent 70%)',
-          filter: 'blur(80px)',
-          animationDuration: '10s',
-          animationDelay: '6s',
-        }}
-      />
-
-      {/* Sparkline rows — bottom */}
-      <div className="absolute bottom-8 left-0 right-0 flex gap-2 px-8 opacity-20">
-        {Array.from({ length: 8 }, (_, i) => (
-          <div key={i} className="flex-1 h-12">
-            <MiniSparkline seed={i * 1.7} color={i % 2 === 0 ? '#00ff88' : '#ff3366'} />
-          </div>
-        ))}
-      </div>
-
-      {/* Vertical scan line */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[#00ff88]/10 to-transparent"
-          style={{
-            animation: 'scanline 8s ease-in-out infinite',
-          }}
-        />
-      </div>
-
-      {/* Horizontal scan line */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#00ff88]/8 to-transparent"
-          style={{
-            animation: 'scanlineH 6s ease-in-out infinite',
-          }}
-        />
-      </div>
-
-      {/* Noise overlay */}
-      <div className="absolute inset-0 opacity-[0.015]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-          backgroundSize: '200px',
-        }}
-      />
     </div>
   )
 }
 
-// ─── Auth Form ─────────────────────────────────────────────────────────
+// ─── Pulse SVG Strip ─────────────────────────────────────────────────
+
+function PulseStrip() {
+  return (
+    <div className="absolute top-[-1px] left-[14px] right-[14px] h-[26px] overflow-hidden pointer-events-none z-[1]">
+      <svg viewBox="0 0 400 26" preserveAspectRatio="none" className="w-[200%] h-full" style={{ animation: 'pulseScroll 5s linear infinite' }}>
+        <path
+          d="M0,13 L40,13 L48,4 L56,22 L64,13 L100,13 L108,6 L116,20 L124,13 L400,13 L440,13 L448,4 L456,22 L464,13 L500,13 L508,6 L516,20 L524,13 L800,13"
+          fill="none" stroke="#3EE07A" strokeWidth="1.5" opacity="0.65"
+        />
+      </svg>
+    </div>
+  )
+}
+
+// ─── Auth Form ───────────────────────────────────────────────────────
 
 export function AuthCinematic({ onLogin, onGuest }: Props) {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -246,6 +163,25 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [confirmSent, setConfirmSent] = useState(false)
+  const [pwFocused, setPwFocused] = useState(false)
+
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  // Parallax mouse tracking
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const card = cardRef.current
+    if (!card) return
+    const r = card.getBoundingClientRect()
+    const x = (e.clientX - r.left) / r.width - 0.5
+    const y = (e.clientY - r.top) / r.height - 0.5
+    card.style.transform = `rotateY(${x * 7}deg) rotateX(${-y * 7}deg) translateZ(0)`
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    if (cardRef.current) {
+      cardRef.current.style.transform = 'rotateY(0) rotateX(0)'
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -298,163 +234,466 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      <AnimatedBackground />
+    <div className="min-h-screen relative overflow-hidden" style={{ background: '#060907' }}>
+      <GreenBackground />
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Brand */}
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-black tracking-[0.15em] text-white mb-2 uppercase"
-            style={{ fontFamily: 'Orbitron, monospace', textShadow: '0 0 30px #00ff8840, 0 0 60px #00ff8815' }}>
-            <span className="cyber-glitch">CRUDE</span><span className="text-[#00ff88]">PULSES</span>
-          </h1>
-          <p className="text-[10px] text-[#94A3B8] tracking-[0.3em] uppercase"
-            style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-            <span className="text-[#00ff88]/60">&gt;</span> CRUDE OIL INTELLIGENCE TERMINAL
-          </p>
+      {/* Content wrapper */}
+      <div
+        className="relative z-[3] min-h-screen flex flex-col items-center justify-center px-5 py-8"
+        style={{ transform: 'translateY(-7%)' }}
+      >
+        {/* Eyebrow */}
+        <div
+          className="flex items-center gap-2 mb-4"
+          style={{
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: 11,
+            letterSpacing: '0.14em',
+            color: '#3EE07A',
+            textTransform: 'uppercase',
+            textShadow: '0 0 12px rgba(62,224,122,0.55)',
+            animation: 'fadeUp 0.8s ease forwards 0.1s',
+            opacity: 0,
+          }}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{
+              background: '#3EE07A',
+              animation: 'livePulse 2s ease-out infinite',
+            }}
+          />
+          LIVE · GLOBAL CRUDE INTELLIGENCE
         </div>
 
-        {/* Auth Card */}
-        <div className="cyber-card">
-          <div className="p-6 pb-4">
-            {confirmSent ? (
-              <div className="text-center py-6">
-                <div className="text-4xl mb-4">📧</div>
-                <h2 className="text-sm font-bold text-white tracking-wider mb-2"
-                  style={{ fontFamily: 'Orbitron, monospace' }}>CHECK YOUR EMAIL</h2>
-                <p className="text-[10px] text-[#94A3B8] mb-1" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                  Confirmation link sent to:
-                </p>
-                <p className="text-[11px] text-[#00ff88] font-bold mb-3" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                  {email}
-                </p>
-                <p className="text-[9px] text-[#94A3B8]/60 mb-5" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                  Click the link to activate. Expires in 24h.
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <button onClick={() => { setConfirmSent(false); setIsSignUp(false); setError('') }}
-                    className="cyber-btn text-[10px]">
-                    BACK TO SIGN IN
-                  </button>
-                  <button onClick={async () => {
-                    try {
-                      await fetch('/api/auth/signup', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password, name: name || undefined }),
-                      })
-                    } catch { /* ignore */ }
-                  }}
-                    className="cyber-btn cyber-btn-magenta text-[10px]">
-                    RESEND
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-[11px] font-bold text-white tracking-[0.15em] uppercase"
-                    style={{ fontFamily: 'Orbitron, monospace' }}>
-                    {isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'}
-                  </h2>
-                  <span className="text-[8px] text-[#94A3B8] tracking-widest"
-                    style={{ fontFamily: 'Share Tech Mono, monospace' }}>SECURE</span>
-                </div>
+        {/* Headline */}
+        <h1
+          className="text-center max-w-[800px] mb-4"
+          style={{
+            fontSize: 'clamp(20px, 2.9vw, 30px)',
+            fontWeight: 700,
+            letterSpacing: '-0.015em',
+            lineHeight: 1.32,
+            color: '#eafff2',
+            textShadow: '0 2px 24px rgba(0,0,0,0.6)',
+            animation: 'fadeUp 0.8s ease forwards 0.22s',
+            opacity: 0,
+          }}
+        >
+          Real-time crude oil intelligence,{' '}
+          <span
+            style={{
+              background: 'linear-gradient(90deg, #b9ffd2, #3EE07A 45%, #1fae5c 70%, #3EE07A)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+              backgroundSize: '250% auto',
+              animation: 'shimmer 6s linear infinite',
+            }}
+          >
+            reimagined
+          </span>{' '}
+          — live markets, satellite insight, and global disruption tracking in one strikingly visual dashboard.
+        </h1>
 
-                <form onSubmit={handleSubmit} className="space-y-3">
-                  {isSignUp && (
-                    <div>
-                      <label className="block text-[8px] text-[#94A3B8] mb-1 tracking-[0.2em] uppercase"
-                        style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                        <span className="text-[#00ff88]/60">&gt;</span> NAME
+        {/* Live Ticker */}
+        <div style={{ animation: 'fadeUp 0.8s ease forwards 0.46s', opacity: 0 }}>
+          <LiveTicker />
+        </div>
+
+        {/* Login Card */}
+        <div
+          style={{
+            perspective: 1000,
+            marginTop: 22,
+            animation: 'fadeUp 0.9s ease forwards 0.6s',
+            opacity: 0,
+          }}
+        >
+          <div
+            ref={cardRef}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            className="relative w-[460px] max-w-[92vw] overflow-hidden"
+            style={{
+              background: 'rgba(8,16,11,0.68)',
+              backdropFilter: 'blur(20px) saturate(1.2)',
+              WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
+              border: '1px solid rgba(62,224,122,0.18)',
+              borderRadius: 18,
+              padding: '28px 26px 22px',
+              boxShadow: '0 40px 80px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(62,224,122,0.06), inset 0 1px 0 rgba(255,255,255,0.04)',
+              transition: 'transform 0.15s ease-out',
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            {/* Card shimmer sweep */}
+            <div
+              className="absolute inset-[-2px] z-0 pointer-events-none"
+              style={{
+                background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.05) 45%, rgba(62,224,122,0.14) 50%, rgba(255,255,255,0.05) 55%, transparent 70%)',
+                backgroundSize: '250% 250%',
+                animation: 'sweep 7s ease-in-out infinite',
+              }}
+            />
+
+            {/* Pulse core */}
+            <div
+              className="absolute z-0 pointer-events-none"
+              style={{
+                top: -70, left: '50%', transform: 'translateX(-50%)',
+                width: 180, height: 180, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(62,224,122,0.32), rgba(15,90,50,0.12) 55%, transparent 72%)',
+                filter: 'blur(6px)',
+                animation: 'coreBeat 2.4s ease-in-out infinite',
+              }}
+            />
+
+            {/* Pulse strip */}
+            <PulseStrip />
+
+            {/* Content */}
+            <div className="relative z-[1]">
+              {confirmSent ? (
+                <div className="text-center py-6">
+                  <div className="text-4xl mb-4">📧</div>
+                  <h2
+                    className="text-sm font-bold mb-2"
+                    style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#eafff2', letterSpacing: '0.05em' }}
+                  >
+                    CHECK YOUR EMAIL
+                  </h2>
+                  <p className="text-[10px] mb-1" style={{ fontFamily: "'IBM Plex Mono', monospace", color: '#a9c2b0' }}>
+                    Confirmation link sent to:
+                  </p>
+                  <p className="text-[11px] font-bold mb-3" style={{ fontFamily: "'IBM Plex Mono', monospace", color: '#3EE07A' }}>
+                    {email}
+                  </p>
+                  <p className="text-[9px] mb-5" style={{ fontFamily: "'IBM Plex Mono', monospace", color: 'rgba(169,194,176,0.6)' }}>
+                    Click the link to activate. Expires in 24h.
+                  </p>
+                  <div className="flex gap-3 justify-center">
+                    <button
+                      onClick={() => { setConfirmSent(false); setIsSignUp(false); setError('') }}
+                      className="px-5 py-2.5 text-[10px] font-bold border border-[rgba(62,224,122,0.35)] rounded-[10px] transition-all hover:border-[#3EE07A] hover:bg-[rgba(62,224,122,0.08)]"
+                      style={{ fontFamily: "'IBM Plex Mono', monospace", color: '#3EE07A', letterSpacing: '0.05em' }}
+                    >
+                      BACK TO SIGN IN
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await fetch('/api/auth/signup', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email, password, name: name || undefined }),
+                          })
+                        } catch { /* ignore */ }
+                      }}
+                      className="px-5 py-2.5 text-[10px] font-bold border border-[rgba(62,224,122,0.35)] rounded-[10px] transition-all hover:border-[#3EE07A] hover:bg-[rgba(62,224,122,0.08)]"
+                      style={{ fontFamily: "'IBM Plex Mono', monospace", color: '#3EE07A', letterSpacing: '0.05em' }}
+                    >
+                      RESEND
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Brand row */}
+                  <div className="flex items-baseline justify-between mb-5">
+                    <div className="text-lg font-bold" style={{ color: '#eafff2', letterSpacing: '-0.01em' }}>
+                      Crude
+                      <span
+                        style={{
+                          background: 'linear-gradient(90deg, #3EE07A, #b9ffd2)',
+                          WebkitBackgroundClip: 'text',
+                          backgroundClip: 'text',
+                          color: 'transparent',
+                          textShadow: '0 0 18px rgba(62,224,122,0.55)',
+                        }}
+                      >
+                        Pulse
+                      </span>
+                    </div>
+                    <div
+                      className="flex items-center gap-1.5 text-[10px] uppercase"
+                      style={{
+                        fontFamily: "'IBM Plex Mono', monospace",
+                        letterSpacing: '0.08em',
+                        color: '#3EE07A',
+                        border: '1px solid rgba(62,224,122,0.35)',
+                        padding: '3px 7px',
+                        borderRadius: 20,
+                      }}
+                    >
+                      <span
+                        className="w-[5px] h-[5px] rounded-full"
+                        style={{ background: '#3EE07A', boxShadow: '0 0 6px #3EE07A' }}
+                      />
+                      Secure
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSubmit}>
+                    {isSignUp && (
+                      <div>
+                        <label
+                          className="block mb-1.5"
+                          style={{
+                            fontFamily: "'IBM Plex Mono', monospace",
+                            fontSize: 10.5,
+                            letterSpacing: '0.1em',
+                            color: '#a9c2b0',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          NAME
+                        </label>
+                        <input
+                          type="text"
+                          value={name}
+                          onChange={e => setName(e.target.value)}
+                          placeholder="your_name"
+                          className="w-full"
+                          style={{
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(62,224,122,0.18)',
+                            borderRadius: 10,
+                            padding: '12px 14px',
+                            color: '#fff',
+                            fontFamily: "'IBM Plex Mono', monospace",
+                            fontSize: 13.5,
+                            outline: 'none',
+                            transition: 'border-color .2s ease, box-shadow .2s ease, background .2s ease',
+                          }}
+                          onFocus={e => {
+                            e.currentTarget.style.borderColor = '#3EE07A'
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(62,224,122,0.16), 0 0 24px rgba(62,224,122,0.14)'
+                            e.currentTarget.style.background = 'rgba(62,224,122,0.03)'
+                          }}
+                          onBlur={e => {
+                            e.currentTarget.style.borderColor = 'rgba(62,224,122,0.18)'
+                            e.currentTarget.style.boxShadow = 'none'
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <div className={isSignUp ? 'mt-4' : ''}>
+                      <label
+                        className="block mb-1.5"
+                        style={{
+                          fontFamily: "'IBM Plex Mono', monospace",
+                          fontSize: 10.5,
+                          letterSpacing: '0.1em',
+                          color: '#a9c2b0',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        EMAIL
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="w-full"
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(62,224,122,0.18)',
+                          borderRadius: 10,
+                          padding: '12px 14px',
+                          color: '#fff',
+                          fontFamily: "'IBM Plex Mono', monospace",
+                          fontSize: 13.5,
+                          outline: 'none',
+                          transition: 'border-color .2s ease, box-shadow .2s ease, background .2s ease',
+                        }}
+                        onFocus={e => {
+                          e.currentTarget.style.borderColor = '#3EE07A'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(62,224,122,0.16), 0 0 24px rgba(62,224,122,0.14)'
+                          e.currentTarget.style.background = 'rgba(62,224,122,0.03)'
+                        }}
+                        onBlur={e => {
+                          e.currentTarget.style.borderColor = 'rgba(62,224,122,0.18)'
+                          e.currentTarget.style.boxShadow = 'none'
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                        }}
+                      />
+                    </div>
+
+                    <div className="mt-4">
+                      <label
+                        className="block mb-1.5"
+                        style={{
+                          fontFamily: "'IBM Plex Mono', monospace",
+                          fontSize: 10.5,
+                          letterSpacing: '0.1em',
+                          color: '#a9c2b0',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        PASSWORD
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00ff88]/40 text-[11px]"
-                          style={{ fontFamily: 'Share Tech Mono, monospace' }}>&gt;</span>
-                        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="your_name"
-                          className="cyber-input w-full" />
+                        <input
+                          type={showPw ? 'text' : 'password'}
+                          value={password}
+                          onChange={e => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pr-10"
+                          style={{
+                            background: 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${pwFocused ? '#3EE07A' : 'rgba(62,224,122,0.18)'}`,
+                            borderRadius: 10,
+                            padding: '12px 14px',
+                            color: '#fff',
+                            fontFamily: "'IBM Plex Mono', monospace",
+                            fontSize: 13.5,
+                            outline: 'none',
+                            transition: 'border-color .2s ease, box-shadow .2s ease, background .2s ease',
+                            boxShadow: pwFocused ? '0 0 0 3px rgba(62,224,122,0.16), 0 0 24px rgba(62,224,122,0.14)' : 'none',
+                            background: pwFocused ? 'rgba(62,224,122,0.03)' : 'rgba(255,255,255,0.03)',
+                          }}
+                          onFocus={() => setPwFocused(true)}
+                          onBlur={() => setPwFocused(false)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPw(!showPw)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                          style={{
+                            color: pwFocused ? '#3EE07A' : '#a9c2b0',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontFamily: "'IBM Plex Mono', monospace",
+                            background: 'none',
+                            border: 'none',
+                          }}
+                        >
+                          {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
                       </div>
                     </div>
-                  )}
-                  <div>
-                    <label className="block text-[8px] text-[#94A3B8] mb-1 tracking-[0.2em] uppercase"
-                      style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                      <span className="text-[#00ff88]/60">&gt;</span> EMAIL
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00ff88]/40 text-[11px]"
-                        style={{ fontFamily: 'Share Tech Mono, monospace' }}>&gt;</span>
-                      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
-                        className="cyber-input w-full" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[8px] text-[#94A3B8] mb-1 tracking-[0.2em] uppercase"
-                      style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                      <span className="text-[#00ff88]/60">&gt;</span> PASSWORD
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00ff88]/40 text-[11px]"
-                        style={{ fontFamily: 'Share Tech Mono, monospace' }}>&gt;</span>
-                      <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
-                        className="cyber-input w-full pr-9" />
-                      <button type="button" onClick={() => setShowPw(!showPw)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]/40 hover:text-[#00ff88] transition-colors">
-                        {showPw ? <EyeOff size={13} /> : <Eye size={13} />}
-                      </button>
-                    </div>
+
+                    {error && (
+                      <div
+                        className="mt-3 p-2 text-[10px]"
+                        style={{
+                          color: '#EF4444',
+                          background: 'rgba(239,68,68,0.06)',
+                          border: '1px solid rgba(239,68,68,0.2)',
+                          fontFamily: "'IBM Plex Mono', monospace",
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        {error}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full mt-5 relative overflow-hidden disabled:opacity-50"
+                      style={{
+                        background: 'linear-gradient(90deg, #1fae5c, #3EE07A, #1fae5c)',
+                        backgroundSize: '200% auto',
+                        color: '#04150a',
+                        fontWeight: 700,
+                        letterSpacing: '0.02em',
+                        fontSize: 14,
+                        border: 'none',
+                        borderRadius: 10,
+                        padding: 13,
+                        cursor: 'pointer',
+                        transition: 'transform .15s ease, box-shadow .2s ease, background-position .4s ease',
+                        boxShadow: '0 8px 24px -6px rgba(62,224,122,0.55)',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-1px)'
+                        e.currentTarget.style.boxShadow = '0 14px 32px -6px rgba(62,224,122,0.7)'
+                        e.currentTarget.style.backgroundPosition = '100% center'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)'
+                        e.currentTarget.style.boxShadow = '0 8px 24px -6px rgba(62,224,122,0.55)'
+                      }}
+                    >
+                      {loading ? 'PROCESSING...' : isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'}
+                    </button>
+                  </form>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-2.5 my-4">
+                    <div className="flex-1 h-px" style={{ background: 'rgba(62,224,122,0.18)' }} />
+                    <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#a9c2b0' }}>or</span>
+                    <div className="flex-1 h-px" style={{ background: 'rgba(62,224,122,0.18)' }} />
                   </div>
 
-                  {error && (
-                    <div className="text-[10px] text-[#ff3366] p-2 bg-[#ff3366]/[0.06] border border-[#ff3366]/20 tracking-wider"
-                      style={{ fontFamily: 'Share Tech Mono, monospace', clipPath: 'polygon(0 3px, 3px 0, calc(100% - 3px) 0, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 0 calc(100% - 3px))' }}>
-                      {error}
-                    </div>
-                  )}
-
-                  <button type="submit" disabled={loading}
-                    className="w-full cyber-btn-filled py-2.5 text-[11px] font-bold tracking-[0.15em] disabled:opacity-50"
-                    style={{ fontFamily: 'Orbitron, monospace' }}>
-                    {loading ? 'PROCESSING...' : isSignUp ? 'CREATE ACCOUNT' : 'AUTHENTICATE'}
+                  {/* Guest button */}
+                  <button
+                    onClick={handleGuest}
+                    className="w-full flex items-center justify-center gap-2 transition-all group"
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(62,224,122,0.18)',
+                      color: '#dcede2',
+                      padding: 11,
+                      borderRadius: 10,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontWeight: 500,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = '#3EE07A'
+                      e.currentTarget.style.background = 'rgba(62,224,122,0.08)'
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(62,224,122,0.14)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'rgba(62,224,122,0.18)'
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
+                  >
+                    Continue without signing up
+                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                   </button>
-                </form>
-              </>
-            )}
-          </div>
 
-          {/* Guest + Toggle */}
-          <div className="border-t border-[#2a2a3a] px-6 py-3 space-y-2">
-            {/* Proceed Without Signup */}
-            <button onClick={handleGuest}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded border border-[#00ff88]/40 bg-[#00ff88]/[0.06] hover:bg-[#00ff88]/[0.12] hover:border-[#00ff88]/50 transition-all group"
-              style={{ boxShadow: '0 0 15px rgba(0,255,136,0.15), 0 0 30px rgba(0,255,136,0.06), inset 0 0 12px rgba(0,255,136,0.04)' }}
-            >
-              <span className="text-[10px] text-[#00ff88]/80 tracking-[0.15em] font-semibold"
-                style={{ fontFamily: 'Orbitron, monospace' }}>
-                PROCEED WITHOUT SIGNUP
-              </span>
-              <ArrowRight size={12} className="text-[#00ff88]/60 group-hover:text-[#00ff88] group-hover:translate-x-0.5 transition-all" />
-            </button>
-
-            {/* Toggle sign in / sign up */}
-            <div className="flex items-center justify-center">
-              <span className="text-[10px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                {isSignUp ? 'EXISTING USER?' : 'NO ACCOUNT?'}
-                <button onClick={() => { setIsSignUp(!isSignUp); setError(''); setConfirmSent(false) }}
-                  className="ml-1 text-[#00ff88] hover:text-[#00ff88]/80 font-bold">
-                  {isSignUp ? 'SIGN IN' : 'SIGN UP FREE'}
-                </button>
-              </span>
+                  {/* Toggle */}
+                  <div className="text-center mt-4" style={{ fontSize: 12.5, color: '#a9c2b0' }}>
+                    {isSignUp ? 'EXISTING USER?' : 'No account?'}
+                    <button
+                      onClick={() => { setIsSignUp(!isSignUp); setError(''); setConfirmSent(false) }}
+                      className="ml-1 font-semibold transition-opacity hover:opacity-80"
+                      style={{ color: '#3EE07A', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5 }}
+                    >
+                      {isSignUp ? 'SIGN IN' : 'Sign up free'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Bottom tagline */}
-        <div className="text-center mt-5">
-          <p className="text-[9px] text-[#94A3B8]/30 tracking-[0.2em]"
-            style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-            REAL-TIME CRUDE OIL INTELLIGENCE
-          </p>
+        {/* Sources */}
+        <div
+          className="mt-5 text-center"
+          style={{
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: 9.5,
+            letterSpacing: '0.09em',
+            color: '#5f7a68',
+            textTransform: 'uppercase',
+            animation: 'fadeUp 0.8s ease forwards 0.85s',
+            opacity: 0,
+          }}
+        >
+          EIA · GDELT · SENTINEL-5P · NASA FIRMS · ALPHA VANTAGE
         </div>
       </div>
     </div>
