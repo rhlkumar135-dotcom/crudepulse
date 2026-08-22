@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Newspaper, MapPin, Filter, Search } from 'lucide-react'
+import { Newspaper, Search } from 'lucide-react'
 import { WORLD_MAP_PATHS, latLngToSvg } from '@/lib/world-map-paths'
 
 interface Story { title: string; url: string; source: string; timestamp: string; category: string; importance: number; lat: number; lng: number }
@@ -12,7 +12,7 @@ const CAT_COLORS: Record<string, string> = {
 export function NewsAtlasPage() {
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedStory, setSelectedStory] = useState<Story | null>(null)
+  const [selectedStory, setSelectedStory] = useState<number | null>(null)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
 
@@ -33,8 +33,6 @@ export function NewsAtlasPage() {
     if (search && !s.title.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
-
-  const W = 800, H = 400
 
   return (
     <div className="p-6 space-y-6">
@@ -59,19 +57,19 @@ export function NewsAtlasPage() {
 
       <div className="flex gap-4" style={{ height: 500 }}>
         <div className="glass-card rounded-lg overflow-hidden flex-1">
-          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" style={{ background: '#080B10' }}>
-            <rect width={W} height={H} fill="#080B10" />
-            {WORLD_MAP_PATHS.map((c, i) => <path key={i} d={c.d} fill="#141E2C" stroke="#1E3048" strokeWidth={0.5} />)}
+          <svg viewBox="0 0 960 500" className="w-full h-full" style={{ background: '#080B10' }}>
+            <rect width={960} height={500} fill="#080B10" />
+            {WORLD_MAP_PATHS.map((lm) => <path key={lm.label} d={lm.d} fill="#141E2C" stroke="#1E3048" strokeWidth={0.5} />)}
             {filtered.map((s, i) => {
               const [px, py] = latLngToSvg(s.lat, s.lng)
               const color = CAT_COLORS[s.category] || '#22C55E'
-              const isSelected = selectedStory?.title === s.title
+              const sel = selectedStory === i
               const size = 3 + (s.importance / 20)
               return (
-                <g key={i} onClick={() => setSelectedStory(isSelected ? null : s)} className="cursor-pointer">
-                  <circle cx={px} cy={py} r={isSelected ? size * 2 : size} fill={color} opacity={isSelected ? 0.4 : 0.2} />
+                <g key={i} onClick={() => setSelectedStory(sel ? null : i)} className="cursor-pointer">
+                  <circle cx={px} cy={py} r={sel ? size * 2 : size} fill={color} opacity={sel ? 0.4 : 0.2} />
                   <circle cx={px} cy={py} r={size * 0.5} fill={color} opacity={0.9} />
-                  {isSelected && <circle cx={px} cy={py} r={size * 3} fill="none" stroke={color} strokeWidth={1} opacity={0.3}><animate attributeName="r" values={`${size * 2};${size * 4};${size * 2}`} dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" /></circle>}
+                  {sel && <circle cx={px} cy={py} r={size * 3} fill="none" stroke={color} strokeWidth={1} opacity={0.3}><animate attributeName="r" values={`${size * 2};${size * 4};${size * 2}`} dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" /></circle>}
                 </g>
               )
             })}
@@ -80,7 +78,7 @@ export function NewsAtlasPage() {
 
         <div className="w-80 space-y-2 overflow-y-auto pr-1" style={{ maxHeight: 500 }}>
           {filtered.map((s, i) => (
-            <div key={i} onClick={() => setSelectedStory(selectedStory?.title === s.title ? null : s)} className={`glass-card p-3 rounded-lg cursor-pointer transition-colors ${selectedStory?.title === s.title ? 'border-white/20' : 'hover:border-white/10'}`}>
+            <div key={i} onClick={() => setSelectedStory(selectedStory === i ? null : i)} className={`glass-card p-3 rounded-lg cursor-pointer transition-colors ${selectedStory === i ? 'border-white/20' : 'hover:border-white/10'}`}>
               <div className="flex items-start gap-2">
                 <div className="w-2 h-2 rounded-full mt-1 flex-shrink-0" style={{ background: CAT_COLORS[s.category] }} />
                 <div className="flex-1 min-w-0">
