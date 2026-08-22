@@ -275,3 +275,62 @@ export const WORLD_MAP_PATHS: Record<string, string[]> = {
     'M892.4 324.0 L889.9 328.1 L886.5 328.2 L888.0 325.3 L884.4 323.3 L887.4 317.8 L881.8 311.0 L885.9 313.0 L886.7 317.3 L889.0 318.1 L888.8 316.3 L892.8 320.1 L896.4 319.2 L892.4 324.0 Z',
   ],
 }
+
+// Helper: convert lat/lng to SVG coords (equirectangular)
+export function latLngToSvg(lat: number, lng: number, w: number, h: number) {
+  const x = ((lng + 180) / 360) * w
+  const y = ((90 - lat) / 180) * h
+  return { x, y }
+}
+
+// Helper: create a curved flow path between two lat/lng points
+export function flowPath(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
+  const W = 800, H = 400
+  const p1 = latLngToSvg(from.lat, from.lng, W, H)
+  const p2 = latLngToSvg(to.lat, to.lng, W, H)
+  const mx = (p1.x + p2.x) / 2
+  const my = (p1.y + p2.y) / 2 - 30
+  return `M${p1.x},${p1.y} Q${mx},${my} ${p2.x},${p2.y}`
+}
+
+export interface OilRegion { name: string; lat: number; lng: number; radius: number; threat: 'elevated' | 'watch' | 'normal'; production?: string }
+export interface Chokepoint { name: string; lat: number; lng: number; throughput: string; risk: string }
+export interface TradeFlow { name: string; from: { lat: number; lng: number }; to: { lat: number; lng: number }; volume: string; region: string }
+
+export const OIL_REGIONS: OilRegion[] = [
+  { name: 'Persian Gulf', lat: 27.5, lng: 51.5, radius: 18, threat: 'elevated', production: '~32M bbl/d' },
+  { name: 'Permian Basin', lat: 31.7, lng: -103.2, radius: 14, threat: 'normal', production: '~6M bbl/d' },
+  { name: 'Gulf of Mexico', lat: 26.0, lng: -90.0, radius: 12, threat: 'watch', production: '~2M bbl/d' },
+  { name: 'West Africa', lat: 4.0, lng: 7.0, radius: 12, threat: 'watch', production: '~5M bbl/d' },
+  { name: 'North Sea', lat: 61.0, lng: 3.0, radius: 10, threat: 'normal', production: '~2.5M bbl/d' },
+  { name: 'Ural-Volga', lat: 57.0, lng: 55.0, radius: 12, threat: 'watch', production: '~8M bbl/d' },
+]
+
+export const CHOKEPOINTS: Chokepoint[] = [
+  { name: 'Hormuz', lat: 26.5, lng: 56.3, throughput: '21M bbl/d', risk: 'Iran tensions, mine warfare' },
+  { name: 'Suez', lat: 29.9, lng: 32.5, throughput: '9M bbl/d', risk: 'Houthi attacks, congestion' },
+  { name: 'Bab el-Mandeb', lat: 12.6, lng: 43.3, throughput: '6.2M bbl/d', risk: 'Piracy, Houthi drone strikes' },
+  { name: 'Malacca', lat: 2.5, lng: 101.5, throughput: '16M bbl/d', risk: 'Naval tensions, piracy' },
+  { name: 'Panama', lat: 9.1, lng: -79.7, throughput: '1M bbl/d', risk: 'Drought restrictions' },
+]
+
+export const TRADE_FLOWS: TradeFlow[] = [
+  { name: 'ME → Asia', from: { lat: 27, lng: 51 }, to: { lat: 22, lng: 114 }, volume: '~15M bbl/d', region: 'middle-east' },
+  { name: 'ME → Europe', from: { lat: 27, lng: 51 }, to: { lat: 52, lng: 4 }, volume: '~4M bbl/d', region: 'middle-east' },
+  { name: 'ME → Americas', from: { lat: 27, lng: 51 }, to: { lat: 26, lng: -89 }, volume: '~2M bbl/d', region: 'middle-east' },
+  { name: 'Russia → Europe', from: { lat: 57, lng: 55 }, to: { lat: 52, lng: 4 }, volume: '~2.5M bbl/d', region: 'russia' },
+  { name: 'Russia → Asia', from: { lat: 57, lng: 55 }, to: { lat: 35, lng: 120 }, volume: '~3.5M bbl/d', region: 'russia' },
+  { name: 'W.Africa → Americas', from: { lat: 4, lng: 7 }, to: { lat: 30, lng: -90 }, volume: '~3M bbl/d', region: 'africa' },
+  { name: 'W.Africa → Europe', from: { lat: 4, lng: 7 }, to: { lat: 52, lng: 4 }, volume: '~2M bbl/d', region: 'africa' },
+  { name: 'N.America → Europe', from: { lat: 30, lng: -90 }, to: { lat: 52, lng: 4 }, volume: '~2.5M bbl/d', region: 'americas' },
+  { name: 'S.America → Americas', from: { lat: -3, lng: -60 }, to: { lat: 30, lng: -90 }, volume: '~2M bbl/d', region: 'americas' },
+  { name: 'N.America internal', from: { lat: 32, lng: -103 }, to: { lat: 30, lng: -90 }, volume: '~5M bbl/d', region: 'americas' },
+]
+
+export const FLOW_COLORS: Record<string, string> = {
+  'middle-east': '#F59E0B',
+  'russia': '#EF4444',
+  'africa': '#8B5CF6',
+  'americas': '#14B8A6',
+  'europe': '#3B82F6',
+}

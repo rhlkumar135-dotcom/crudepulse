@@ -197,7 +197,7 @@ function AppRoutes({ auth, setAuth }: { auth: AuthState | null; setAuth: React.D
 
 export default function App() {
   const [auth, setAuth] = useState<AuthState | null>(null)
-  if (!auth) return <AuthCinematic onLogin={(a) => setAuth(a)} />
+  if (!auth) return <AuthCinematic onLogin={(a) => setAuth(a)} onGuest={() => setAuth({ isLoggedIn: true, email: 'guest@crudepulses.com', tier: 'free', role: 'user', name: 'Guest' })} />
   return (
     <BrowserRouter>
       <AppRoutes auth={auth} setAuth={setAuth} />
