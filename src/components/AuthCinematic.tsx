@@ -122,13 +122,10 @@ function AnimatedBackground() {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Blurred background image */}
+      {/* Cinematic gradient background — oil rig atmosphere */}
       <div className="absolute inset-0"
         style={{
-          backgroundImage: 'url(/login-bg.png)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'blur(12px) brightness(0.10) saturate(1.1)',
+          background: 'radial-gradient(ellipse 120% 100% at 50% 30%, #1a0f00 0%, #0d0600 25%, #050300 50%, #020100 75%, #000 100%)',
           transform: 'scale(1.05)',
         }}
       />
