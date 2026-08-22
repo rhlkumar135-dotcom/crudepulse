@@ -13,6 +13,7 @@ interface Refinery {
   status: string
   lat: number
   lng: number
+  region?: string
 }
 
 interface RefineriesResponse {
@@ -42,7 +43,7 @@ export function RefineryDirectoryPage() {
   const filtered = refineries.filter(r =>
     (search === '' || r.name.toLowerCase().includes(search.toLowerCase()) || r.country.toLowerCase().includes(search.toLowerCase()) || r.owner.toLowerCase().includes(search.toLowerCase())) &&
     (statusFilter === 'All' || r.status === statusFilter) &&
-    (regionFilter === 'All' || r.region === regionFilter)
+    (regionFilter === 'All' || (r.region ?? r.country) === regionFilter)
   )
 
   if (loading && !refineries.length) {

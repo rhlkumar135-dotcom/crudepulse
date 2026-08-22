@@ -8,10 +8,15 @@ interface CrudeGrade {
   name: string
   apiGravity: number
   sulfurContent: number
-  classification: string
+  classification: string | { density: string; sweetness: string }
   origin: string
   benchmark: string
   typicalPrice: number
+}
+
+function formatClassification(c: string | { density: string; sweetness: string }): string {
+  if (typeof c === 'string') return c
+  return `${c.density} ${c.sweetness}`
 }
 
 interface GradesResponse {
@@ -71,8 +76,8 @@ export function GradesPage() {
               {compareGrades.map(g => (
                 <div key={g.name} className="bg-[#0d1117] border border-white/[0.06] rounded p-3 space-y-2">
                   <div className="text-xs font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>{g.name}</div>
-                  <div className="text-[10px]" style={{ fontFamily: 'Share Tech Mono, monospace', color: CLASSIFICATION_COLOR[g.classification] ?? '#94A3B8' }}>
-                    {g.classification}
+                  <div className="text-[10px]" style={{ fontFamily: 'Share Tech Mono, monospace', color: CLASSIFICATION_COLOR[formatClassification(g.classification)] ?? '#94A3B8' }}>
+                    {formatClassification(g.classification)}
                   </div>
                   <div className="space-y-1">
                     <div className="flex justify-between text-[10px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
@@ -102,7 +107,7 @@ export function GradesPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
             {grades.map(g => {
               const isSelected = selected.includes(g.name)
-              const classColor = CLASSIFICATION_COLOR[g.classification] ?? '#94A3B8'
+              const classColor = CLASSIFICATION_COLOR[formatClassification(g.classification)] ?? '#94A3B8'
               return (
                 <div key={g.name}
                   onClick={() => toggleSelect(g.name)}
@@ -122,7 +127,7 @@ export function GradesPage() {
 
                   <span className="inline-block text-[8px] font-bold px-1.5 py-0.5 rounded tracking-wider"
                     style={{ fontFamily: 'Share Tech Mono, monospace', color: classColor, backgroundColor: classColor + '15' }}>
-                    {g.classification}
+                    {formatClassification(g.classification)}
                   </span>
 
                   <div className="space-y-1.5">

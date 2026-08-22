@@ -4,24 +4,21 @@ import { useMarketData } from '@/lib/useMarketData'
 import { cn } from '@/lib/cn'
 
 interface FreightRoute {
-  id: string
-  name: string
-  from: string
-  to: string
-  vessel_type: string
-  rate_usd_mt: number
-  rate_ws: number
-  change_pct: number
-  chokepoint_risk: 'high' | 'medium' | 'low' | 'none'
-  chokepoints: string[]
-  distance_nm: number
+  route: string
+  description: string
+  origin: string
+  destination: string
+  vesselType: string
+  wsRate: number
+  change: string
+  duration: number
 }
 
 interface FreightResponse {
   routes: FreightRoute[]
-  baltic_index: number
-  baltic_change: number
-  data_note: string
+  balticIndex: number
+  news: Array<{ title: string; source: string; time: string }>
+  summary: string
   lastUpdated: string
 }
 
@@ -45,78 +42,66 @@ export function FreightTrackerPage() {
       <div className="space-y-4">
 
         {/* Data availability note */}
-        <div className="flex items-center gap-2 bg-[#1a1000] border border-[#F5A623]/20 rounded p-3">
-          <AlertCircle size={13} className="text-[#F5A623] shrink-0" />
-          <span className="text-[10px] text-[#F5A623]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-            {data?.data_note ?? 'Data availability may be limited. Baltic Exchange rates are commercially licensed; displayed data is derived from public disclosures and news.'}
-          </span>
-        </div>
+        {data?.summary && (
+          <div className="flex items-center gap-2 bg-[#1a1000] border border-[#F5A623]/20 rounded p-3">
+            <AlertCircle size={13} className="text-[#F5A623] shrink-0" />
+            <span className="text-[10px] text-[#F5A623]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+              {data.summary}
+            </span>
+          </div>
+        )}
 
         {/* Baltic Index */}
         <ModuleCard icon={Ship} color="#00d4ff" title="Baltic Exchange Index" cadence="DAILY" tag="LIMITED">
           <div className="flex items-end gap-6 mt-3">
             <div>
               <div className="text-4xl font-black text-white" style={{ fontFamily: 'Orbitron, monospace' }}>
-                {data?.baltic_index?.toLocaleString() ?? '—'}
+                {data?.balticIndex?.toLocaleString() ?? '—'}
               </div>
               <div className="text-[10px] text-[#94A3B8] mt-0.5" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                 Baltic Dirty Tanker Index (BDTI)
               </div>
             </div>
-            {data?.baltic_change !== undefined && (
-              <div className={cn('flex items-center gap-1 text-sm font-bold mb-1', data.baltic_change >= 0 ? 'text-[#00ff88]' : 'text-[#ff3366]')}>
-                {data.baltic_change >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                {data.baltic_change >= 0 ? '+' : ''}{data.baltic_change.toFixed(1)}%
-              </div>
-            )}
           </div>
         </ModuleCard>
 
         {/* Route Cards */}
         <ModuleCard icon={Ship} color="#ff00ff" title="Freight Route Rates" cadence="DAILY" tag="DERIVED · LIMITED">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-            {routes.map(r => (
-              <div key={r.id} className={cn(
-                'border rounded p-4 space-y-3 transition-colors',
-                r.chokepoint_risk === 'high' ? 'bg-[#1a0a10] border-[#ff3366]/20' : 'bg-[#0d1117] border-white/[0.05]'
-              )}>
+            {routes.map((r, i) => (
+              <div key={i} className="bg-[#0d1117] border border-white/[0.05] rounded p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-[11px] font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>{r.name}</div>
+                    <div className="text-[11px] font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>{r.description}</div>
                     <div className="text-[9px] text-[#94A3B8] mt-0.5" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                      {r.from} → {r.to} · {r.distance_nm.toLocaleString()} nm · {r.vessel_type}
+                      {r.origin} → {r.destination} · {r.vesselType}
                     </div>
                   </div>
-                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 ml-2"
-                    style={{ color: RISK_COLOR[r.chokepoint_risk], backgroundColor: RISK_COLOR[r.chokepoint_risk] + '18', fontFamily: 'Share Tech Mono, monospace' }}>
-                    {RISK_LABEL[r.chokepoint_risk]}
-                  </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-black/30 rounded p-2">
-                    <div className="text-[9px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>Rate (USD/mt)</div>
+                    <div className="text-[9px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>Worldscale Rate</div>
                     <div className="text-sm font-bold text-[#00d4ff]" style={{ fontFamily: 'Orbitron, monospace' }}>
-                      ${r.rate_usd_mt.toFixed(2)}
+                      WS {r.wsRate}
                     </div>
                   </div>
                   <div className="bg-black/30 rounded p-2">
-                    <div className="text-[9px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>Worldscale</div>
+                    <div className="text-[9px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>Change</div>
                     <div className="text-sm font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>
-                      WS {r.rate_ws.toFixed(0)}
+                      {r.change}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className={cn('text-[10px] font-bold', r.change_pct >= 0 ? 'text-[#00ff88]' : 'text-[#ff3366]')}>
-                    {r.change_pct >= 0 ? '▲' : '▼'} {Math.abs(r.change_pct).toFixed(1)}% vs prev week
+                  <div className="text-[9px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+                    Duration: {r.duration} days
                   </div>
-                  {r.chokepoints.length > 0 && (
-                    <div className="text-[9px] text-[#F5A623]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                      via {r.chokepoints.join(', ')}
-                    </div>
-                  )}
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded"
+                    style={{ color: '#94A3B8', backgroundColor: '#94A3B818', fontFamily: 'Share Tech Mono, monospace' }}>
+                    {r.route}
+                  </span>
                 </div>
               </div>
             ))}

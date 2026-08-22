@@ -12,19 +12,21 @@ interface OutageFlag {
 
 interface Pipeline {
   name: string
-  route: string
-  capacity_bpd: number
+  from: string
+  to: string
+  capacityBpd: number
   owner: string
-  status: 'Operational' | 'Partial' | 'Offline'
-  length_km: number
-  commodity: string
-  outages: OutageFlag[]
+  status: string
+  lengthKm: number
+  latlngs?: [number, number][]
+  outages?: OutageFlag[]
 }
 
 interface PipelineResponse {
   pipelines: Pipeline[]
-  total_capacity_bpd: number
-  active_outages: number
+  totalCapacityBpd: number
+  outageNews: Array<{ title: string; source: string; time: string; severity: string }>
+  count: number
   lastUpdated: string
 }
 
@@ -50,9 +52,9 @@ export function PipelineMapPage() {
         {/* Summary */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Total Capacity', value: data?.total_capacity_bpd ? `${(data.total_capacity_bpd / 1_000_000).toFixed(1)}M bpd` : '—', color: '#00ff88' },
+            { label: 'Total Capacity', value: data?.totalCapacityBpd ? `${(data.totalCapacityBpd / 1_000_000).toFixed(1)}M bpd` : '—', color: '#00ff88' },
             { label: 'Pipelines Tracked', value: String(pipelines.length), color: '#00d4ff' },
-            { label: 'Active Outages', value: String(data?.active_outages ?? 0), color: data?.active_outages ? '#ff3366' : '#00ff88' },
+            { label: 'Active Outages', value: String(data?.outageNews?.length ?? 0), color: (data?.outageNews?.length ?? 0) > 0 ? '#ff3366' : '#00ff88' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-[#0d1117] border border-white/[0.06] rounded p-4 text-center">
               <div className="text-[10px] text-[#94A3B8] mb-1" style={{ fontFamily: 'Share Tech Mono, monospace' }}>{label}</div>
@@ -66,13 +68,13 @@ export function PipelineMapPage() {
             {pipelines.map((p, i) => (
               <div key={i} className={cn(
                 'border rounded p-4 transition-colors',
-                p.outages.length > 0 ? 'bg-[#1a0a10] border-[#ff3366]/20' : 'bg-[#0d1117] border-white/[0.05]'
+                (p.outages ?? []).length > 0 ? 'bg-[#1a0a10] border-[#ff3366]/20' : 'bg-[#0d1117] border-white/[0.05]'
               )}>
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <div className="text-[12px] font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>{p.name}</div>
                     <div className="text-[10px] text-[#94A3B8] mt-0.5" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                      {p.route} · {p.length_km.toLocaleString()} km · {p.commodity}
+                      {p.from} → {p.to} · {p.lengthKm.toLocaleString()} km
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -85,15 +87,15 @@ export function PipelineMapPage() {
 
                 <div className="flex gap-4 text-[10px] text-[#94A3B8] mb-2" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                   <span>Owner: <span className="text-white">{p.owner}</span></span>
-                  <span>Cap: <span className="text-[#00d4ff] font-bold">{p.capacity_bpd.toLocaleString()} bpd</span></span>
+                  <span>Cap: <span className="text-[#00d4ff] font-bold">{p.capacityBpd?.toLocaleString()} bpd</span></span>
                 </div>
 
-                {p.outages.length > 0 && (
+                {(p.outages ?? []).length > 0 && (
                   <div className="space-y-1.5 mt-2 pt-2 border-t border-[#ff3366]/15">
                     <div className="text-[9px] text-[#ff3366]/70 uppercase tracking-wider flex items-center gap-1">
-                      <AlertTriangle size={9} /> {p.outages.length} outage flag{p.outages.length > 1 ? 's' : ''} detected
+                      <AlertTriangle size={9} /> {(p.outages ?? []).length} outage flag{(p.outages ?? []).length > 1 ? 's' : ''} detected
                     </div>
-                    {p.outages.map((o, j) => (
+                    {(p.outages ?? []).map((o, j) => (
                       <div key={j} className="flex items-start gap-2">
                         <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: SEV_COLOR[o.severity] }} />
                         <div>
@@ -108,7 +110,7 @@ export function PipelineMapPage() {
                   </div>
                 )}
 
-                {p.outages.length === 0 && (
+                {(p.outages ?? []).length === 0 && (
                   <div className="flex items-center gap-1 text-[9px] text-[#00ff88]/60" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                     <CheckCircle size={9} /> No outages detected in GDELT 24h scan
                   </div>

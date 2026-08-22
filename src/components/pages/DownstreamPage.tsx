@@ -7,9 +7,8 @@ import { cn } from '@/lib/cn'
 interface ProductPrice {
   product: string
   region: string
-  price_gallon: number
-  unit: string
-  change_pct: number
+  pricePerGal: number
+  changePct: number
   source: string
 }
 
@@ -30,6 +29,7 @@ interface DownstreamResponse {
   products: Array<{ product: string; region: string; pricePerGal: number; changePct: number; source: string }>
   crackSpreads: { gulfGasolineCrack: number; gulfDieselCrack: number; note: string }
   news: Array<{ title: string; source: string; time: string }>
+  crude_vs_products?: Array<{ date: string; crude: number; gasoline: number; diesel: number }>
   lastUpdated: string
 }
 
@@ -85,19 +85,24 @@ export function DownstreamPage() {
         ))}
 
         {/* Crack Spreads */}
-        {data?.crack_spreads && data.crack_spreads.length > 0 && (
+        {data?.crackSpreads && (
           <ModuleCard icon={Droplets} color="#ff00ff" title="Crack Spreads" cadence="WEEKLY" tag="Refining margin indicator">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-              {data.crack_spreads.map(cs => (
-                <div key={cs.name} className="bg-[#0d1117] border border-white/[0.05] rounded p-3 text-center">
-                  <div className="text-[9px] text-[#94A3B8] mb-1" style={{ fontFamily: 'Share Tech Mono, monospace' }}>{cs.name}</div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {[
+                { label: 'Gulf Gasoline Crack', value: data.crackSpreads.gulfGasolineCrack },
+                { label: 'Gulf Diesel Crack', value: data.crackSpreads.gulfDieselCrack },
+              ].map(cs => (
+                <div key={cs.label} className="bg-[#0d1117] border border-white/[0.05] rounded p-3 text-center">
+                  <div className="text-[9px] text-[#94A3B8] mb-1" style={{ fontFamily: 'Share Tech Mono, monospace' }}>{cs.label}</div>
                   <div className="text-lg font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>${cs.value.toFixed(2)}</div>
-                  <div className={cn('text-[10px] font-mono', cs.change_pct >= 0 ? 'text-[#00ff88]' : 'text-[#ff3366]')}>
-                    {cs.change_pct >= 0 ? '+' : ''}{cs.change_pct.toFixed(1)}%
-                  </div>
                 </div>
               ))}
             </div>
+            {data.crackSpreads.note && (
+              <div className="text-[9px] text-[#94A3B8] mt-2 p-2 bg-white/[0.02] rounded" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+                {data.crackSpreads.note}
+              </div>
+            )}
           </ModuleCard>
         )}
 

@@ -8,10 +8,16 @@ interface OilMajor {
   ticker: string
   name: string
   marketCap: string
-  upstreamRevenue: number
-  downstreamRevenue: number
-  earnings: number
+  upstreamRevenue: number | string
+  downstreamRevenue: number | string
+  earnings: number | string
   stockPrice: number
+}
+
+function parseDollars(v: number | string): number {
+  if (typeof v === 'number') return v
+  const n = parseFloat(String(v).replace(/[^0-9.]/g, ''))
+  return isNaN(n) ? 0 : n
 }
 
 interface MajorsResponse {
@@ -91,8 +97,8 @@ export function MajorsPage() {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   {[
                     { label: 'Mkt Cap', value: m.marketCap },
-                    { label: 'Earnings', value: `$${m.earnings}B` },
-                    { label: 'Revenue', value: `$${(m.upstreamRevenue + m.downstreamRevenue).toFixed(0)}B` },
+                    { label: 'Earnings', value: `$${parseDollars(m.earnings)}B` },
+                    { label: 'Revenue', value: `$${(parseDollars(m.upstreamRevenue) + parseDollars(m.downstreamRevenue)).toFixed(0)}B` },
                   ].map(({ label, value }) => (
                     <div key={label} className="bg-black/30 rounded p-1.5">
                       <div className="text-[8px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>{label}</div>
@@ -101,7 +107,7 @@ export function MajorsPage() {
                   ))}
                 </div>
 
-                <RevBar upPct={m.upstreamRevenue + m.downstreamRevenue > 0 ? (m.upstreamRevenue / (m.upstreamRevenue + m.downstreamRevenue)) * 100 : 50} />
+                <RevBar upPct={parseDollars(m.upstreamRevenue) + parseDollars(m.downstreamRevenue) > 0 ? (parseDollars(m.upstreamRevenue) / (parseDollars(m.upstreamRevenue) + parseDollars(m.downstreamRevenue))) * 100 : 50} />
               </div>
             ))}
           </div>

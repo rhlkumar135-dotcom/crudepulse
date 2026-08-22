@@ -230,8 +230,7 @@ export function GlobalFlowMap() {
                   {/* Popup when selected */}
                   {isActive && (
                     <foreignObject x={Math.min(cx + 10, W - 205)} y={Math.max(cy - 70, 5)} width={200} height={135}>
-                      <div className="bg-[#0a0e14]/95 border border-white/15 rounded-lg shadow-2xl shadow-black/50 p-2.5 backdrop-blur-sm"
-                        xmlns="http://www.w3.org/1999/xhtml">
+                      <div className="bg-[#0a0e14]/95 border border-white/15 rounded-lg shadow-2xl shadow-black/50 p-2.5 backdrop-blur-sm">
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full" style={{ background: cp.color }} />
