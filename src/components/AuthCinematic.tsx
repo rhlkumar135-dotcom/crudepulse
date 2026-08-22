@@ -122,18 +122,14 @@ function AnimatedBackground() {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Cinematic gradient background — oil rig atmosphere */}
-      <div className="absolute inset-0"
-        style={{
-          background: 'radial-gradient(ellipse 120% 100% at 50% 30%, #1a0f00 0%, #0d0600 25%, #050300 50%, #020100 75%, #000 100%)',
-          transform: 'scale(1.05)',
-        }}
-      />
+      {/* Blurred oil rig sunset background — 10% blur */}
+      <div className="absolute inset-0">
+        <img src="/login-bg.png" alt="" className="w-full h-full object-cover scale-105"
+          style={{ filter: 'blur(6px) brightness(0.90) saturate(1.1)' }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050810]/80 via-[#050810]/50 to-[#050810]/85" />
+      </div>
 
-      {/* Dark overlay for readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#050810]/80 via-[#050810]/60 to-[#050810]/85" />
-
-      {/* Neon glow accents */}
+      {/* Neon glow accents on top of image */}
       <div className="absolute inset-0"
         style={{
           background: `
