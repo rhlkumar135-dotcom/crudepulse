@@ -250,7 +250,7 @@ export function LandingPage() {
         {/* ═══ FOOTER ═══ */}
         <div className="text-center mt-12">
           <p className="text-[10px] text-gray-600" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-            CRUDEPULSES — Open-source crude oil intelligence. Data is aggregated from public sources and may contain inaccuracies.
+            CrudePulses — Open-source crude oil intelligence. Data is aggregated from public sources and may contain inaccuracies.
           </p>
         </div>
       </div>

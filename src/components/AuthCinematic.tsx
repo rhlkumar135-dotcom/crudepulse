@@ -351,8 +351,7 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
                   {/* Brand row */}
                   <div className="flex items-baseline justify-between mb-5">
                     <div className="text-lg font-bold" style={{ color: '#eafff2', letterSpacing: '-0.01em' }}>
-                      Crude
-                      <span
+                      Crude<span
                         style={{
                           background: 'linear-gradient(90deg, #3EE07A, #b9ffd2)',
                           WebkitBackgroundClip: 'text',
@@ -360,9 +359,7 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
                           color: 'transparent',
                           textShadow: '0 0 18px rgba(62,224,122,0.55)',
                         }}
-                      >
-                        Pulses
-                      </span>
+                      >Pulses</span>
                     </div>
                     <div
                       className="flex items-center gap-1.5 text-[10px] uppercase"

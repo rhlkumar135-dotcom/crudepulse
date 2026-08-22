@@ -101,7 +101,7 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
             <span className="text-sm font-black tracking-[0.1em] text-white"
               style={{ fontFamily: 'Orbitron, monospace' }}>
-              CRUDE<span style={{ color: '#3EE07A' }}>PULSES</span>
+              Crude<span style={{ color: '#3EE07A' }}>Pulses</span>
             </span>
           </Link>
 
