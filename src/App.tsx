@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react
 import { User, LogOut, Shield, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
-import { AuthCinematic } from '@/components/AuthCinematic'
+import AuthCinematic from '@/components/AuthCinematic'
 import { LandingPage } from '@/components/LandingPage'
 import { MarketsPage } from '@/components/pages/MarketsPage'
 import { DisruptionsPage } from '@/components/pages/DisruptionsPage'

@@ -1,116 +1,108 @@
-import { Target, AlertTriangle } from 'lucide-react'
-import { PageLayout, ModuleCard } from './PageLayout'
-import { useMarketData } from '@/lib/useMarketData'
-import { cn } from '@/lib/cn'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { AlertTriangle } from 'lucide-react'
 
-interface OPECResponse {
-  members: Array<{ name: string; code: string; quotaBpd: number; actualBpd: number; compliancePct: number; trend: string }>
-  overallCompliance: number
-  totalQuotaBpd: number
-  totalActualBpd: number
-  surplusDeficitBpd: number
-  overproducers: string[]
-  news: Array<{ title: string; source: string; time: string }>
-  commentary: string
-  lastUpdated: string
-}
+interface Member { country: string; quota: number; actual: number; group: string; compliance: number; overproduced: boolean; delta: number }
 
-export function OPECCompliancePage() {
-  const { data, loading } = useMarketData<OPECResponse>('/api/market/opec', 'free', 30_000)
+export default function OPECCompliancePage() {
+  const [data, setData] = useState<{ members: Member[]; totalQuota: number; totalActual: number; overproducers: Member[] } | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  if (loading && !data) {
-    return <PageLayout title="OPEC+ Quota Compliance" subtitle="Production quotas · Compliance tracking"><div className="text-[#94A3B8] text-sm font-mono animate-pulse">Loading OPEC data…</div></PageLayout>
-  }
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/market/opec')
+        const body = await res.json()
+        setData(body)
+      } catch {}
+      setLoading(false)
+    }
+    load()
+    const iv = setInterval(load, 300000)
+    return () => clearInterval(iv)
+  }, [])
 
-  const members = data?.members ?? []
-  const compliant = members.filter(m => m.compliancePct >= 100).length
+  if (loading) return <div className="p-6 space-y-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 rounded-xl bg-white/[0.03] animate-pulse" />)}</div>
+  if (!data) return null
+
+  const overallCompliance = Math.round((data.totalQuota / data.totalActual) * 100)
 
   return (
-    <PageLayout title="OPEC+ Quota Compliance" subtitle="Production quotas · Compliance tracking · Monthly">
-      <div className="space-y-4">
-        {/* Summary */}
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: 'Group Compliance', value: `${data?.overallCompliance?.toFixed(1) ?? '—'}%`, color: (data?.overallCompliance ?? 0) >= 100 ? '#00ff88' : '#F5A623' },
-            { label: 'Total Quota', value: data?.totalQuotaBpd ? `${(data.totalQuotaBpd / 1_000).toFixed(0)}K` : '—', color: '#00d4ff' },
-            { label: 'Total Actual', value: data?.totalActualBpd ? `${(data.totalActualBpd / 1_000).toFixed(0)}K` : '—', color: '#ff00ff' },
-            { label: 'Fully Compliant', value: `${compliant}/${members.length}`, color: '#00ff88' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-[#0d1117] border border-white/[0.06] rounded p-3 text-center">
-              <div className="text-[9px] text-[#94A3B8] mb-1" style={{ fontFamily: 'Share Tech Mono, monospace' }}>{label}</div>
-              <div className="text-lg font-black" style={{ fontFamily: 'Orbitron, monospace', color }}>{value}</div>
-            </div>
-          ))}
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-bright">OPEC+ Compliance</h1>
+          <div className="h-0.5 w-24 bg-gradient-to-r from-amber to-transparent mt-1" />
         </div>
-
-        {/* Members Table */}
-        <ModuleCard icon={Target} color="#ff00ff" title="Member Compliance" cadence="MONTHLY" tag="OPEC Monthly Oil Market Report">
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-[11px]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-              <thead>
-                <tr className="border-b border-white/[0.06]">
-                  {['Member', 'Quota (kbpd)', 'Actual (kbpd)', 'Compliance', 'Trend'].map(h => (
-                    <th key={h} className="text-left py-2 px-2 text-[9px] text-[#4a4a5a] uppercase tracking-wider font-normal">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((m) => (
-                  <tr key={m.name} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
-                    <td className="py-2 px-2 text-white font-bold" style={{ fontFamily: 'Orbitron, monospace', fontSize: 10 }}>{m.name}</td>
-                    <td className="py-2 px-2 text-[#00d4ff]">{m.quotaBpd?.toLocaleString()}</td>
-                    <td className="py-2 px-2 text-white">{m.actualBpd?.toLocaleString()}</td>
-                    <td className="py-2 px-2">
-                      <span className={cn('font-bold', m.compliancePct >= 100 ? 'text-[#00ff88]' : m.compliancePct >= 90 ? 'text-[#F5A623]' : 'text-[#ff3366]')}>
-                        {m.compliancePct?.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="py-2 px-1 text-[9px] text-[#94A3B8]">{m.trend}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ModuleCard>
-
-        {/* Overproducers */}
-        {data?.overproducers && data.overproducers.length > 0 && (
-          <ModuleCard icon={AlertTriangle} color="#ff3366" title="Persistent Overproducers" cadence="MONTHLY">
-            <div className="mt-2 flex flex-wrap gap-2">
-              {data.overproducers.map(name => (
-                <span key={name} className="text-[10px] font-bold px-2 py-1 rounded bg-[#ff3366]/15 text-[#ff3366]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                  {name}
-                </span>
-              ))}
-            </div>
-          </ModuleCard>
-        )}
-
-        {/* News */}
-        {data?.news && data.news.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-[9px] text-[#4a4a5a] uppercase tracking-wider" style={{ fontFamily: 'Share Tech Mono, monospace' }}>Latest OPEC News</div>
-            {data.news.slice(0, 5).map((n, i) => (
-              <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded bg-white/[0.015]">
-                <div className="text-[10px] text-white/80 leading-snug line-clamp-1">{n.title}</div>
-                <div className="text-[9px] text-[#94A3B8] shrink-0">{n.time}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {data?.commentary && (
-          <div className="text-[10px] text-[#94A3B8] bg-[#0d1117] border border-white/[0.05] rounded p-3" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-            {data.commentary}
-          </div>
-        )}
-
-        <div className="text-center py-2">
-          <div className="text-[10px] text-[#94A3B8] tracking-[0.12em] uppercase" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-            OPEC Monthly Oil Market Report · EIA International Energy Statistics · 30s refresh
-          </div>
-        </div>
+        <Badge className="bg-amber/10 text-amber border-amber/20">MONTHLY</Badge>
       </div>
-    </PageLayout>
+
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="bg-bg-card border-border p-4">
+          <div className="text-[10px] font-mono text-muted mb-1">TOTAL QUOTA</div>
+          <div className="text-lg font-mono font-bold text-text-bright">{(data.totalQuota / 1000).toFixed(1)}M bbl/d</div>
+        </Card>
+        <Card className="bg-bg-card border-border p-4">
+          <div className="text-[10px] font-mono text-muted mb-1">TOTAL ACTUAL</div>
+          <div className="text-lg font-mono font-bold text-text-bright">{(data.totalActual / 1000).toFixed(1)}M bbl/d</div>
+        </Card>
+        <Card className="bg-bg-card border-border p-4">
+          <div className="text-[10px] font-mono text-muted mb-1">OVERALL COMPLIANCE</div>
+          <div className={`text-lg font-mono font-bold ${overallCompliance >= 100 ? 'text-green-400' : 'text-red'}`}>{overallCompliance}%</div>
+        </Card>
+      </div>
+
+      {data.overproducers.length > 0 && (
+        <Card className="bg-red/[0.04] border-red/15 p-3">
+          <div className="flex items-center gap-2 text-red text-sm font-mono">
+            <AlertTriangle size={14} />
+            OVERPRODUCERS: {data.overproducers.map(m => `${m.country} (+${m.delta}K)`).join(', ')}
+          </div>
+        </Card>
+      )}
+
+      <Card className="bg-bg-card border-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-mono">
+            <thead>
+              <tr className="border-b border-border text-muted">
+                <th className="p-3 text-left">Country</th>
+                <th className="p-3 text-left">Group</th>
+                <th className="p-3 text-right">Quota (K bbl/d)</th>
+                <th className="p-3 text-right">Actual (K bbl/d)</th>
+                <th className="p-3 text-right">Compliance</th>
+                <th className="p-3 text-left">Quota vs Actual</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.members.map(m => (
+                <tr key={m.country} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                  <td className="p-3 text-text-bright font-medium">{m.country}</td>
+                  <td className="p-3"><Badge className={m.group === 'OPEC' ? 'bg-amber/10 text-amber border-amber/20' : 'bg-cyan/10 text-cyan border-cyan/20'}>{m.group}</Badge></td>
+                  <td className="p-3 text-right text-muted">{m.quota.toLocaleString()}</td>
+                  <td className="p-3 text-right text-text-bright">{m.actual.toLocaleString()}</td>
+                  <td className="p-3 text-right">
+                    <span className={m.compliance >= 100 ? 'text-green-400' : m.compliance >= 95 ? 'text-amber' : 'text-red'}>
+                      {m.compliance}%
+                    </span>
+                  </td>
+                  <td className="p-3 w-40">
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div className="h-full rounded-full" style={{
+                          width: `${Math.min(100, (m.actual / m.quota) * 100)}%`,
+                          backgroundColor: m.overproduced ? '#ef4444' : '#00D4AA',
+                        }} />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
   )
 }
