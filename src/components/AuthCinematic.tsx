@@ -122,11 +122,10 @@ function AnimatedBackground() {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Background image — no blur */}
+      {/* Background image — 0 blur, your uploaded image */}
       <div className="absolute inset-0">
-        <img src="/login-bg.jpg" alt="" className="w-full h-full object-cover scale-[1.03]"
-          style={{ filter: 'blur(0px) brightness(0.85) saturate(1.1)' }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#050810]/70 via-[#050810]/40 to-[#050810]/80" />
+        <img src="/login-bg.png" alt="" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050810]/60 via-transparent to-[#050810]/70" />
       </div>
 
       {/* Neon glow accents on top of image */}
