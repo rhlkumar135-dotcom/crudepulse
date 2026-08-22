@@ -128,13 +128,13 @@ function AnimatedBackground() {
           backgroundImage: 'url(/login-bg.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          filter: 'blur(2px) brightness(0.45) saturate(1.1)',
+          filter: 'blur(2px) brightness(0.6) saturate(1.2)',
           transform: 'scale(1.05)',
         }}
       />
 
-      {/* Dark overlay for readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#050810]/80 via-[#050810]/60 to-[#050810]/85" />
+      {/* Light overlay for readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#050810]/40 via-[#050810]/25 to-[#050810]/45" />
 
       {/* Neon glow accents */}
       <div className="absolute inset-0"
@@ -426,7 +426,8 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
           <div className="border-t border-[#2a2a3a] px-6 py-3 space-y-2">
             {/* Proceed Without Signup */}
             <button onClick={handleGuest}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded border border-[#00ff88]/20 bg-[#00ff88]/[0.04] hover:bg-[#00ff88]/[0.08] hover:border-[#00ff88]/30 transition-all group"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded border border-[#00ff88]/40 bg-[#00ff88]/[0.06] hover:bg-[#00ff88]/[0.12] hover:border-[#00ff88]/50 transition-all group"
+              style={{ boxShadow: '0 0 15px rgba(0,255,136,0.15), 0 0 30px rgba(0,255,136,0.06), inset 0 0 12px rgba(0,255,136,0.04)' }}
             >
               <span className="text-[10px] text-[#00ff88]/80 tracking-[0.15em] font-semibold"
                 style={{ fontFamily: 'Orbitron, monospace' }}>
@@ -452,7 +453,7 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
         <div className="text-center mt-5">
           <p className="text-[9px] text-[#94A3B8]/30 tracking-[0.2em]"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-            GDELT · EIA · SENTINEL-5P · NASA FIRMS · YAHOO FINANCE · BA
+            REAL-TIME CRUDE OIL INTELLIGENCE
           </p>
         </div>
       </div>
