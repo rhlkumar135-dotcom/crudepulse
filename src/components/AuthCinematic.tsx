@@ -128,7 +128,7 @@ function AnimatedBackground() {
           backgroundImage: 'url(/login-bg.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          filter: 'blur(6px) brightness(0.90) saturate(1.1)',
+          filter: 'blur(12px) brightness(0.10) saturate(1.1)',
           transform: 'scale(1.05)',
         }}
       />
