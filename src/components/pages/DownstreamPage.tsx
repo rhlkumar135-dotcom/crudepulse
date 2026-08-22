@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertCircle, Droplet } from 'lucide-react'
 
 interface RegionData {
-  name: string
+  region: string
   gasoline: number
   diesel: number
   jet: number
   crackSpread: number
 }
+
+type RegionDataView = RegionData & { name: string }
 
 interface DownstreamResponse {
   regions: RegionData[]
@@ -84,7 +86,7 @@ export function DownstreamPage() {
         {regions.map((r, i) => (
           <Card key={i} className="bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04] transition-colors">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-mono text-white">{r.name}</CardTitle>
+              <CardTitle className="text-sm font-mono text-white">{r.region}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {products.map(p => (
