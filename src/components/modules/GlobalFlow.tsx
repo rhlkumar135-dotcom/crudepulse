@@ -111,9 +111,9 @@ export function GlobalFlowMap() {
           {/* ═══ WORLD MAP OUTLINE (Natural Earth 110m) ═══ */}
           <g>
             {WORLD_MAP_PATHS.map((landmass) => {
-              const fill = landmass.name === 'Middle East' ? '#1A2520' : '#141E2C'
+              const fill = landmass.label === 'Middle East' ? '#1A2520' : '#141E2C'
               return (
-                <path key={landmass.name} d={landmass.path} fill={fill} stroke="#1E3048" strokeWidth="0.5" opacity="0.85" />
+                <path key={landmass.label} d={landmass.d} fill={fill} stroke="#1E3048" strokeWidth="0.5" opacity="0.85" />
               )
             })}
           </g>

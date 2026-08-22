@@ -260,11 +260,11 @@ export default function CopernicusMap() {
 
             {/* ═══ REAL WORLD MAP OUTLINE (Natural Earth 110m) ═══ */}
             {WORLD_MAP_PATHS.map((landmass) => {
-              const isHighlighted = landmass.name === 'Middle East'
+              const isHighlighted = landmass.label === 'Middle East'
               return (
                 <path
-                  key={landmass.name}
-                  d={landmass.path}
+                  key={landmass.label}
+                  d={landmass.d}
                   fill={isHighlighted ? '#1A2520' : '#141E2C'}
                   stroke={isHighlighted ? '#2A4A38' : '#1E3048'}
                   strokeWidth="0.5"

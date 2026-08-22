@@ -68,15 +68,15 @@ export function SatelliteIntelPage() {
               <filter id="glow2"><feGaussianBlur stdDeviation="2" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
             </defs>
             <rect width={W} height={H} fill="url(#oceanGrad2)" />
-            {WORLD_MAP_PATHS.map((c, i) => <path key={i} d={c.path} fill="#141E2C" stroke="#1E3048" strokeWidth={0.5} />)}
+            {WORLD_MAP_PATHS.map((c, i) => <path key={i} d={c.d} fill="#141E2C" stroke="#1E3048" strokeWidth={0.5} />)}
             {FACILITIES.map((f, i) => {
-              const p = latLngToSvg(f.lat, f.lng, W, H)
+              const [px, py] = latLngToSvg(f.lat, f.lng)
               const color = THREAT_COLORS[f.threat] || '#666'
               return (
                 <g key={i} onClick={() => setSelectedFacility(selectedFacility?.name === f.name ? null : f)} className="cursor-pointer">
-                  <circle cx={p.x} cy={p.y} r={12} fill={color} opacity={0.1} />
-                  <circle cx={p.x} cy={p.y} r={4} fill={color} filter="url(#glow2)" />
-                  <text x={p.x + 7} y={p.y + 3} fill="#CBD5E1" fontSize={5} fontFamily="IBM Plex Mono">{f.name}</text>
+                  <circle cx={px} cy={py} r={12} fill={color} opacity={0.1} />
+                  <circle cx={px} cy={py} r={4} fill={color} filter="url(#glow2)" />
+                  <text x={px + 7} y={py + 3} fill="#CBD5E1" fontSize={5} fontFamily="IBM Plex Mono">{f.name}</text>
                 </g>
               )
             })}

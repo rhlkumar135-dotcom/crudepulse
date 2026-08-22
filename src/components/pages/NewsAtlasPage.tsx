@@ -63,15 +63,15 @@ export function NewsAtlasPage() {
             <rect width={W} height={H} fill="#080B10" />
             {WORLD_MAP_PATHS.map((c, i) => <path key={i} d={c.path} fill="#141E2C" stroke="#1E3048" strokeWidth={0.5} />)}
             {filtered.map((s, i) => {
-              const p = latLngToSvg(s.lat, s.lng, W, H)
+              const [px, py] = latLngToSvg(s.lat, s.lng)
               const color = CAT_COLORS[s.category] || '#22C55E'
               const isSelected = selectedStory?.title === s.title
               const size = 3 + (s.importance / 20)
               return (
                 <g key={i} onClick={() => setSelectedStory(isSelected ? null : s)} className="cursor-pointer">
-                  <circle cx={p.x} cy={p.y} r={isSelected ? size * 2 : size} fill={color} opacity={isSelected ? 0.4 : 0.2} />
-                  <circle cx={p.x} cy={p.y} r={size * 0.5} fill={color} opacity={0.9} />
-                  {isSelected && <circle cx={p.x} cy={p.y} r={size * 3} fill="none" stroke={color} strokeWidth={1} opacity={0.3}><animate attributeName="r" values={`${size * 2};${size * 4};${size * 2}`} dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" /></circle>}
+                  <circle cx={px} cy={py} r={isSelected ? size * 2 : size} fill={color} opacity={isSelected ? 0.4 : 0.2} />
+                  <circle cx={px} cy={py} r={size * 0.5} fill={color} opacity={0.9} />
+                  {isSelected && <circle cx={px} cy={py} r={size * 3} fill="none" stroke={color} strokeWidth={1} opacity={0.3}><animate attributeName="r" values={`${size * 2};${size * 4};${size * 2}`} dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" /></circle>}
                 </g>
               )
             })}
