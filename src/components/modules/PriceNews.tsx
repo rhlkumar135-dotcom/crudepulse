@@ -43,9 +43,13 @@ export function PriceNewsChart() {
   }
 
   const lastWti = wtiHistory[wtiHistory.length - 1]
-  const prevWti = wtiHistory[wtiHistory.length - 2]
+  const prevWti = wtiHistory[wtiHistory.length - 2] || lastWti
   const lastBrent = brentHistory[brentHistory.length - 1]
-  const prevBrent = brentHistory[brentHistory.length - 2]
+  const prevBrent = brentHistory[brentHistory.length - 2] || lastBrent
+
+  if (!lastWti || !lastBrent) {
+    return <div className="p-4 text-xs text-muted/60 font-mono">Loading price data...</div>
+  }
 
   const chartData = wtiHistory.slice(-90).map((d: PricePoint, i: number) => ({
     ...d,
