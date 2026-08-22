@@ -58,7 +58,7 @@ export function FuturesCurvePage() {
   const shapeConfig = SHAPE_CONFIG[shapeKey] || SHAPE_CONFIG.Flat
 
   return (
-    <PageLayout title="Futures Curve Viewer" subtitle="Contango · Backwardation · Settlement prices · CME">
+    <PageLayout title="Futures Curve Viewer" subtitle="Contango · Backwardation · Settlement prices · CME" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
 
         {/* Shape indicator */}

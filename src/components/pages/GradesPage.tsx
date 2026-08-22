@@ -66,7 +66,7 @@ export function GradesPage() {
   }
 
   return (
-    <PageLayout title="Crude Grades & Quality Explorer" subtitle="API gravity · Sulfur content · Classification · Price">
+    <PageLayout title="Crude Grades & Quality Explorer" subtitle="API gravity · Sulfur content · Classification · Price" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
 
         {/* Compare Panel */}

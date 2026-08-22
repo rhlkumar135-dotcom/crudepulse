@@ -117,9 +117,9 @@ export function NewsAtlasPage() {
         </div>
       )}
 
-      <div className="flex-1 flex min-h-0">
-        {/* ═══ LEFT: Map ═══ */}
-        <div className="flex-1 flex flex-col border-r border-white/[0.04]">
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* ═══ TOP: Map ═══ */}
+        <div className="flex flex-col border-b border-white/[0.04]">
           {/* Search + Region chips */}
           <div className="flex items-center gap-2 p-3 border-b border-white/[0.04] bg-[#080C12]">
             <div className="relative flex-1 max-w-xs">
@@ -142,8 +142,11 @@ export function NewsAtlasPage() {
           </div>
 
           {/* SVG Map */}
-          <div className="flex-1 relative overflow-hidden bg-[#060A10]">
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+          <div
+            className="relative overflow-hidden"
+            style={{ background: 'linear-gradient(180deg, #080C12 0%, #0D1318 50%, #0F1620 100%)' }}
+          >
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ aspectRatio: '2/1' }}>
               <defs>
                 <radialGradient id="na-ocean" cx="50%" cy="50%" r="55%">
                   <stop offset="0%" stopColor="#0A1628" />
@@ -262,8 +265,8 @@ export function NewsAtlasPage() {
           </div>
         </div>
 
-        {/* ═══ RIGHT: Feed + Controls ═══ */}
-        <div className="w-[380px] flex flex-col bg-[#080C12]">
+        {/* ═══ BOTTOM: Feed + Controls ═══ */}
+        <div className="flex-1 flex flex-col bg-[#080C12] overflow-hidden">
           {/* Controls bar */}
           <div className="p-3 border-b border-white/[0.04] space-y-2">
             {/* Category legend */}

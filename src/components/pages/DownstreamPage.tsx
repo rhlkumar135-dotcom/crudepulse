@@ -58,7 +58,7 @@ export function DownstreamPage() {
   }
 
   return (
-    <PageLayout title="Downstream Product Prices" subtitle="Gasoline · Diesel · Jet Fuel · Regional pricing · Crack spreads">
+    <PageLayout title="Downstream Product Prices" subtitle="Gasoline · Diesel · Jet Fuel · Regional pricing · Crack spreads" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
 
         {/* Product Price Cards */}

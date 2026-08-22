@@ -34,7 +34,7 @@ export function SanctionsTrackerPage() {
   }
 
   return (
-    <PageLayout title="Sanctions & Trade Restrictions" subtitle="OFAC · EU Sanctions Map · Active oil-related regimes">
+    <PageLayout title="Sanctions & Trade Restrictions" subtitle="OFAC · EU Sanctions Map · Active oil-related regimes" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
 
         {/* Summary */}

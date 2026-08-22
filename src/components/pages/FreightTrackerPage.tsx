@@ -38,7 +38,7 @@ export function FreightTrackerPage() {
   }
 
   return (
-    <PageLayout title="Tanker Freight & Shipping Costs" subtitle="Baltic Index · Route rates · Chokepoint risk correlation">
+    <PageLayout title="Tanker Freight & Shipping Costs" subtitle="Baltic Index · Route rates · Chokepoint risk correlation" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
 
         {/* Data availability note */}

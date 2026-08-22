@@ -55,7 +55,7 @@ export function RefineryDirectoryPage() {
   }
 
   return (
-    <PageLayout title="Global Refinery Directory" subtitle="Capacity · Complexity · Owner · Status">
+    <PageLayout title="Global Refinery Directory" subtitle="Capacity · Complexity · Owner · Status" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
         <ModuleCard icon={Factory} color="#94A3B8" title="Refinery Directory" cadence="PERIODIC">
 

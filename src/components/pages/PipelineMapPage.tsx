@@ -46,7 +46,7 @@ export function PipelineMapPage() {
   }
 
   return (
-    <PageLayout title="Pipeline Network Map" subtitle="Capacity · Route · Owner · GDELT outage detection">
+    <PageLayout title="Pipeline Network Map" subtitle="Capacity · Route · Owner · GDELT outage detection" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
 
         {/* Summary */}

@@ -231,9 +231,11 @@ export default function CopernicusMap() {
       </div>
 
       {/* Map */}
-      <div className="flex-1 min-h-0 relative bg-card rounded-lg border border-border overflow-hidden mb-2">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628] to-[#060d18]">
-          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full">
+      <div
+        className="relative rounded-lg overflow-hidden border border-white/[0.04] mb-2"
+        style={{ background: 'linear-gradient(180deg, #080C12 0%, #0D1318 50%, #0F1620 100%)' }}
+      >
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ aspectRatio: '2/1' }}>
             <defs>
               <radialGradient id="copernicus-ocean" cx="50%" cy="50%" r="55%">
                 <stop offset="0%" stopColor="#0A1628" />
@@ -388,7 +390,6 @@ export default function CopernicusMap() {
               <text x={775} y={300} textAnchor="middle">AUSTRALIA</text>
             </g>
           </svg>
-        </div>
 
         {/* Map legend */}
         <div className="absolute bottom-2 left-2 bg-[#0a0e14]/90 border border-white/10 rounded p-1.5 space-y-0.5">

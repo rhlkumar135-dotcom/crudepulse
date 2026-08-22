@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
-export function PageLayout({ title, subtitle, children }: {
+export function PageLayout({ title, subtitle, children, lastUpdated }: {
   title: string
   subtitle: string
   children: ReactNode
+  lastUpdated?: string
 }) {
   return (
     <div className="min-h-screen bg-bg">
@@ -20,6 +21,12 @@ export function PageLayout({ title, subtitle, children }: {
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
             <span className="text-[#00ff88]/60">&gt;</span> {subtitle}
           </p>
+          {lastUpdated && (
+            <span className="text-[9px] text-[#94A3B8]/50 font-mono shrink-0 mb-1"
+              style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+              ⏱ {lastUpdated}
+            </span>
+          )}
         </div>
         {children}
       </div>

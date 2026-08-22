@@ -26,7 +26,7 @@ export function OPECCompliancePage() {
   const compliant = members.filter(m => m.compliancePct >= 100).length
 
   return (
-    <PageLayout title="OPEC+ Quota Compliance" subtitle="Production quotas · Compliance tracking · Monthly">
+    <PageLayout title="OPEC+ Quota Compliance" subtitle="Production quotas · Compliance tracking · Monthly" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
         {/* Summary */}
         <div className="grid grid-cols-4 gap-3">

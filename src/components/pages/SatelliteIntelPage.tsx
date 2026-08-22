@@ -557,8 +557,9 @@ function FacilityMap({ facilities, darkVesselEvents, spillEvents, emissionEvents
     .slice(0, 8)
 
   return (
-    <div className="relative bg-card rounded-lg border border-border overflow-hidden" style={{ height: 500 }}>
-      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="w-full h-full">
+    <div className="relative rounded-lg overflow-hidden border border-white/[0.04]"
+      style={{ background: 'linear-gradient(180deg, #080C12 0%, #0D1318 50%, #0F1620 100%)' }}>
+      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="w-full" style={{ aspectRatio: '2/1' }}>
         <defs>
           <radialGradient id="sat-ocean" cx="50%" cy="50%" r="55%">
             <stop offset="0%" stopColor="#0A1628" />
@@ -831,7 +832,7 @@ export function SatelliteIntelPage() {
   const timeSinceUpdate = d.lastUpdated ? Math.round((Date.now() - new Date(d.lastUpdated).getTime()) / 1000) : 0
 
   return (
-    <PageLayout title="Satellite Intelligence" subtitle="Thermal detection · Dark vessels · Emissions · Spill monitoring">
+    <PageLayout title="Satellite Intelligence" subtitle="Thermal detection · Dark vessels · Emissions · Spill monitoring" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-3">
 
         {/* Global Threat Summary */}

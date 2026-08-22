@@ -19,7 +19,7 @@ export function SPRTrackerPage() {
   }
 
   return (
-    <PageLayout title="Strategic Petroleum Reserves Tracker" subtitle="US SPR levels · IEA country comparison · Drawdown events">
+    <PageLayout title="Strategic Petroleum Reserves Tracker" subtitle="US SPR levels · IEA country comparison · Drawdown events" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
         {/* US SPR Level */}
         <ModuleCard icon={Shield} color="#00d4ff" title="US SPR Level" cadence="WEEKLY">

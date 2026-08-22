@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Building2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { PageLayout, ModuleCard } from './PageLayout'
 import { useMarketData } from '@/lib/useMarketData'
@@ -66,6 +66,7 @@ function RevBar({ upPct }: { upPct: number }) {
 export function MajorsPage() {
   const { data, loading } = useMarketData<MajorsResponse>('/api/market/majors', 'free', 30_000)
   const majors = data?.majors ?? []
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily')
 
   if (loading && !majors.length) {
     return (
@@ -76,9 +77,26 @@ export function MajorsPage() {
   }
 
   return (
-    <PageLayout title="Oil Majors Financial Snapshot" subtitle="Stock price · Market cap · Revenue split">
+    <PageLayout title="Oil Majors Financial Snapshot" subtitle="Stock price · Market cap · Revenue split" lastUpdated={data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : undefined}>
       <div className="space-y-4">
-        <ModuleCard icon={Building2} color="#00ff88" title="Oil Majors" cadence="DAILY" tag="PRICE · WEEKLY · FILINGS">
+        <ModuleCard icon={Building2} color="#00ff88" title="Oil Majors" cadence={viewMode.toUpperCase()} tag="PRICE · WEEKLY · FILINGS">
+          {/* Daily / Weekly Toggle */}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[10px] text-[#94A3B8] font-mono tracking-wider">VIEW:</span>
+            {(['daily', 'weekly'] as const).map(mode => (
+              <button key={mode} onClick={() => setViewMode(mode)}
+                className={cn('px-3 py-1 text-[10px] font-bold rounded transition-all border',
+                  viewMode === mode
+                    ? 'bg-[#00ff88]/15 text-[#00ff88] border-[#00ff88]/30'
+                    : 'text-[#94A3B8] border-white/[0.06] hover:text-white hover:border-white/10'
+                )} style={{ fontFamily: 'Share Tech Mono, monospace' }}>
+                {mode.toUpperCase()}
+              </button>
+            ))}
+            {data?.lastUpdated && (
+              <span className="ml-auto text-[9px] text-[#94A3B8]/50 font-mono">Updated: {new Date(data.lastUpdated).toLocaleString()}</span>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-2">
             {majors.map(m => (
               <div key={m.ticker} className="bg-[#0d1117] border border-white/[0.05] rounded p-4 space-y-3 hover:border-[#00ff88]/20 transition-colors">
