@@ -1,33 +1,106 @@
-import { Globe, Users, Globe as GlobeIcon } from 'lucide-react'
-import { PageLayout, ModuleCard } from './PageLayout'
-import { GlobalFlowMap as GlobalFlow } from '@/components/modules/GlobalFlow'
-import { FieldScorecard } from '@/components/modules/FieldScorecard'
-import CopernicusMap from '@/components/modules/CopernicusMap'
+import { useState, useEffect } from 'react'
+import { Globe } from 'lucide-react'
+import { WORLD_MAP_PATHS, OIL_REGIONS, CHOKEPOINTS, TRADE_FLOWS, FLOW_COLORS, latLngToSvg, flowPath } from '@/lib/world-map-paths'
 
 export function GlobalPage() {
+  const [flows, setFlows] = useState<any[]>([])
+  const [selectedFlow, setSelectedFlow] = useState<string | null>(null)
+  const [selectedChoke, setSelectedChoke] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/market/flows').then(r => r.json()).then(d => {
+      setFlows(d.flows || TRADE_FLOWS)
+      setLoading(false)
+    }).catch(() => { setFlows(TRADE_FLOWS); setLoading(false) })
+  }, [])
+
+  const W = 800, H = 400
+
   return (
-    <PageLayout title="Global" subtitle="Trade flows · Field performance · Satellite monitoring">
-      <div className="space-y-4">
-        <ModuleCard icon={Globe} color="#00d4ff" title="Global Flow Map" cadence="LIVE">
-          <GlobalFlow />
-        </ModuleCard>
-
-        <ModuleCard icon={Users} color="#f43f5e" title="Field Scorecard" cadence="LIVE">
-          <FieldScorecard />
-        </ModuleCard>
-
-        <ModuleCard icon={GlobeIcon} color="#a855f7" title="Copernicus / Satellite Feed" cadence="LIVE"
-          tag="NASA EONET · NOAA Coral Reef Watch">
-          <div style={{ height: 600 }}><CopernicusMap /></div>
-        </ModuleCard>
-
-        <div className="text-center py-3">
-          <div className="text-xs text-[#94A3B8] tracking-[0.12em] uppercase"
-            style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-            IEA · OPEC · NASA EONET · NOAA · Google News · 60s refresh
-          </div>
-        </div>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-2">
+        <Globe className="w-5 h-5 text-amber-400" />
+        <h2 className="text-lg font-semibold text-white">Global Trade Flows</h2>
+        <span className="live-dot" />
       </div>
-    </PageLayout>
+
+      <div className="glass-card p-4 rounded-lg">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ background: '#080B10' }}>
+          <defs>
+            <radialGradient id="oceanGrad"><stop offset="0%" stopColor="#0D1117" /><stop offset="100%" stopColor="#080B10" /></radialGradient>
+            <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+          </defs>
+          <rect width={W} height={H} fill="url(#oceanGrad)" />
+          {[0, 40, 80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 520, 560, 600, 640, 680, 720, 760, 800].map(x => <line key={`v${x}`} x1={x} y1={0} x2={x} y2={H} stroke="#1E3048" strokeWidth={0.3} opacity={0.3} />)}
+          {[0, 40, 80, 120, 160, 200, 240, 280, 320, 360, 400].map(y => <line key={`h${y}`} x1={0} y1={y} x2={W} y2={y} stroke="#1E3048" strokeWidth={0.3} opacity={0.3} />)}
+          {WORLD_MAP_PATHS.map((c, i) => (
+            <path key={i} d={c.path} fill="#141E2C" stroke="#1E3048" strokeWidth={0.5} />
+          ))}
+          {TRADE_FLOWS.map((f, i) => {
+            const fp = flowPath(f.from, f.to)
+            const isSelected = selectedFlow === f.name
+            return (
+              <g key={i} onClick={() => setSelectedFlow(isSelected ? null : f.name)} className="cursor-pointer">
+                <path d={fp} fill="none" stroke={FLOW_COLORS[f.region] || '#666'} strokeWidth={isSelected ? 3 : 1.5} opacity={isSelected ? 1 : 0.5} strokeDasharray={isSelected ? 'none' : '4,3'} />
+                {isSelected && <circle r={4} fill={FLOW_COLORS[f.region] || '#666'} filter="url(#glow)"><animateMotion dur="3s" repeatCount="indefinite" path={fp} /></circle>}
+              </g>
+            )
+          })}
+          {OIL_REGIONS.map((r, i) => {
+            const p = latLngToSvg(r.lat, r.lng, W, H)
+            return (
+              <g key={i}>
+                <circle cx={p.x} cy={p.y} r={r.radius * 0.8} fill={r.threat === 'elevated' ? '#F59E0B' : r.threat === 'watch' ? '#3B82F6' : '#22C55E'} opacity={0.15} />
+                <circle cx={p.x} cy={p.y} r={3} fill={r.threat === 'elevated' ? '#F59E0B' : r.threat === 'watch' ? '#3B82F6' : '#22C55E'} filter="url(#glow)" />
+                <text x={p.x + 6} y={p.y + 3} fill="#CBD5E1" fontSize={6} fontFamily="IBM Plex Mono">{r.name}</text>
+              </g>
+            )
+          })}
+          {CHOKEPOINTS.map((c, i) => {
+            const p = latLngToSvg(c.lat, c.lng, W, H)
+            return (
+              <g key={i} onClick={() => setSelectedChoke(selectedChoke?.name === c.name ? null : c)} className="cursor-pointer">
+                <circle cx={p.x} cy={p.y} r={8} fill="none" stroke="#EF4444" strokeWidth={1} opacity={0.4}>
+                  <animate attributeName="r" values="4;10;4" dur="3s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.6;0.1;0.6" dur="3s" repeatCount="indefinite" />
+                </circle>
+                <circle cx={p.x} cy={p.y} r={3} fill="#EF4444" />
+                <text x={p.x + 5} y={p.y - 5} fill="#EF4444" fontSize={5} fontFamily="IBM Plex Mono">{c.name}</text>
+              </g>
+            )
+          })}
+        </svg>
+
+        {selectedFlow && (() => {
+          const f = TRADE_FLOWS.find(fl => fl.name === selectedFlow)
+          if (!f) return null
+          return (
+            <div className="mt-3 p-3 bg-black/40 rounded border border-white/10 text-[10px]">
+              <p className="text-white font-mono">{f.name}</p>
+              <p className="text-gray-400 mt-1">Volume: {f.volume}</p>
+              <p className="text-gray-400">Region: {f.region}</p>
+            </div>
+          )
+        })()}
+
+        {selectedChoke && (
+          <div className="mt-3 p-3 bg-black/40 rounded border border-red-500/20 text-[10px]">
+            <p className="text-red-400 font-mono">{selectedChoke.name}</p>
+            <p className="text-gray-400 mt-1">Throughput: {selectedChoke.throughput}</p>
+            <p className="text-gray-400">Risk: {selectedChoke.risk}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(FLOW_COLORS).map(([region, color]) => (
+          <div key={region} className="flex items-center gap-1.5 text-[9px] text-gray-400 capitalize">
+            <div className="w-2 h-2 rounded-full" style={{ background: color }} />{region.replace('-', ' ')}
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5 text-[9px] text-gray-400"><div className="w-2 h-2 rounded-full bg-red-500" />Chokepoints</div>
+      </div>
+    </div>
   )
 }

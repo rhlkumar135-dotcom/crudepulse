@@ -1,118 +1,139 @@
-import { useEffect, useRef } from 'react'
-import { Building2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { PageLayout, ModuleCard } from './PageLayout'
-import { useMarketData } from '@/lib/useMarketData'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/cn'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Building2, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react'
 
-interface OilMajor {
+interface Major {
   ticker: string
   name: string
-  marketCap: string
-  upstreamRevenue: number
-  downstreamRevenue: number
-  earnings: number
+  country: string
+  revenue: number
+  employees: number
   stockPrice: number
+  change: number
 }
 
 interface MajorsResponse {
-  majors: OilMajor[]
-  lastUpdated: string
+  majors: Major[]
 }
 
-function FlashPrice({ price, change }: { price: number; change: number }) {
-  const prevRef = useRef(price)
-  const elRef = useRef<HTMLSpanElement>(null)
-
-  useEffect(() => {
-    if (price !== prevRef.current && elRef.current) {
-      const cls = price > prevRef.current ? 'text-[#00ff88]' : 'text-[#ff3366]'
-      elRef.current.classList.add(cls)
-      const t = setTimeout(() => elRef.current?.classList.remove(cls), 600)
-      prevRef.current = price
-      return () => clearTimeout(t)
-    }
-  }, [price])
-
-  return (
-    <span ref={elRef} className="transition-colors duration-600 text-sm font-bold text-white"
-      style={{ fontFamily: 'Orbitron, monospace' }}>
-      ${price.toFixed(2)}
-    </span>
-  )
+function formatRevenue(val: number): string {
+  if (val >= 1_000_000_000_000) return `$${(val / 1_000_000_000_000).toFixed(1)}T`
+  if (val >= 1_000_000_000) return `$${(val / 1_000_000_000).toFixed(1)}B`
+  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`
+  return `$${val.toLocaleString()}`
 }
 
-function RevBar({ upPct }: { upPct: number }) {
-  const downPct = 100 - upPct
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-[9px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-        <span>Upstream {upPct.toFixed(0)}%</span>
-        <span>Downstream {downPct.toFixed(0)}%</span>
-      </div>
-      <div className="h-2 w-full rounded-full overflow-hidden flex">
-        <div className="h-full transition-all duration-700" style={{ width: `${upPct}%`, backgroundColor: '#00ff88' }} />
-        <div className="h-full flex-1" style={{ backgroundColor: '#00d4ff' }} />
-      </div>
-    </div>
-  )
+function formatEmployees(val: number): string {
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`
+  if (val >= 1_000) return `${(val / 1_000).toFixed(0)}K`
+  return val.toLocaleString()
 }
 
 export function MajorsPage() {
-  const { data, loading } = useMarketData<MajorsResponse>('/api/market/majors', 'free', 30_000)
+  const [data, setData] = useState<MajorsResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/market/majors')
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error || 'Failed to load')
+        setData(body)
+      } catch (e: any) {
+        setError(e.message)
+      }
+      setLoading(false)
+    }
+    load()
+    const iv = setInterval(load, 30000)
+    return () => clearInterval(iv)
+  }, [])
+
   const majors = data?.majors ?? []
 
-  if (loading && !majors.length) {
+  if (loading && !data) {
     return (
-      <PageLayout title="Oil Majors Financial Snapshot" subtitle="Stock price · Market cap · Revenue split">
-        <div className="text-[#94A3B8] text-sm font-mono animate-pulse">Loading majors data…</div>
-      </PageLayout>
+      <div className="p-6 space-y-4">
+        <div className="space-y-2">
+          <div className="h-8 w-48 rounded bg-white/[0.03] animate-pulse" />
+          <div className="h-4 w-36 rounded bg-white/[0.03] animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-44 rounded-xl bg-white/[0.03] animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+          <AlertCircle size={16} className="text-red shrink-0" />
+          <span className="text-sm font-mono text-red">{error}</span>
+        </div>
+      </div>
     )
   }
 
   return (
-    <PageLayout title="Oil Majors Financial Snapshot" subtitle="Stock price · Market cap · Revenue split">
-      <div className="space-y-4">
-        <ModuleCard icon={Building2} color="#00ff88" title="Oil Majors" cadence="DAILY" tag="PRICE · WEEKLY · FILINGS">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-2">
-            {majors.map(m => (
-              <div key={m.ticker} className="bg-[#0d1117] border border-white/[0.05] rounded p-4 space-y-3 hover:border-[#00ff88]/20 transition-colors">
+    <div className="p-6 space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <Building2 size={20} className="text-amber" />
+          Oil Majors
+        </h1>
+        <div className="h-0.5 w-24 bg-gradient-to-r from-amber to-transparent mt-1" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {majors.map(m => {
+          const isPositive = m.change >= 0
+          return (
+            <Card key={m.ticker} className="bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04] transition-colors">
+              <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-[11px] font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>{m.name}</div>
-                    <div className="text-[9px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                      {m.ticker}
+                    <CardTitle className="text-sm font-mono text-white">{m.name}</CardTitle>
+                    <div className="text-[9px] text-zinc-500 font-mono mt-0.5">{m.country}</div>
+                  </div>
+                  <Badge className="text-[9px] font-mono px-2 py-0 bg-white/[0.06] text-zinc-400 border-white/[0.08]">
+                    {m.ticker}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-500 font-mono">Revenue</span>
+                  <span className="text-sm font-mono font-bold text-white">{formatRevenue(m.revenue)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-500 font-mono">Employees</span>
+                  <span className="text-xs font-mono text-zinc-400">{formatEmployees(m.employees)}</span>
+                </div>
+                <div className="border-t border-white/[0.04] pt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-mono font-bold text-white">${m.stockPrice.toFixed(2)}</span>
+                    <div className={cn(
+                      'flex items-center gap-1 text-xs font-mono font-bold',
+                      isPositive ? 'text-emerald' : 'text-red'
+                    )}>
+                      {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                      {isPositive ? '+' : ''}{m.change.toFixed(2)}%
                     </div>
                   </div>
-                  <div className="text-right">
-                    <FlashPrice price={m.stockPrice} change={0} />
-                  </div>
                 </div>
-
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  {[
-                    { label: 'Mkt Cap', value: m.marketCap },
-                    { label: 'Earnings', value: `$${m.earnings}B` },
-                    { label: 'Revenue', value: `$${(m.upstreamRevenue + m.downstreamRevenue).toFixed(0)}B` },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="bg-black/30 rounded p-1.5">
-                      <div className="text-[8px] text-[#94A3B8]" style={{ fontFamily: 'Share Tech Mono, monospace' }}>{label}</div>
-                      <div className="text-[11px] font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>{value}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <RevBar upPct={m.upstreamRevenue + m.downstreamRevenue > 0 ? (m.upstreamRevenue / (m.upstreamRevenue + m.downstreamRevenue)) * 100 : 50} />
-              </div>
-            ))}
-          </div>
-        </ModuleCard>
-
-        <div className="text-center py-2">
-          <div className="text-[10px] text-[#94A3B8] tracking-[0.12em] uppercase" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-            SEC EDGAR filings · Yahoo Finance market data · 30s refresh
-          </div>
-        </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
-    </PageLayout>
+    </div>
   )
 }

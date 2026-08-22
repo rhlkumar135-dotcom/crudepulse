@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react'
 
 interface Member { country: string; quota: number; actual: number; group: string; compliance: number; overproduced: boolean; delta: number }
 
-export default function OPECCompliancePage() {
+export function OPECCompliancePage() {
   const [data, setData] = useState<{ members: Member[]; totalQuota: number; totalActual: number; overproducers: Member[] } | null>(null)
   const [loading, setLoading] = useState(true)
 

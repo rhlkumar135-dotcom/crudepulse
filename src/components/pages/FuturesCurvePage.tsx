@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 
 interface FuturesPoint { month: string; price: number }
 
-export default function FuturesCurvePage() {
+export function FuturesCurvePage() {
   const [data, setData] = useState<{ wti: FuturesPoint[]; brent: FuturesPoint[]; shape: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
