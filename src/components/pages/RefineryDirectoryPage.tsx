@@ -29,6 +29,15 @@ const STATUS_COLOR: Record<string, string> = {
 
 const COMPLEXITY_LABEL = (n: number) => n >= 12 ? 'Very High' : n >= 9 ? 'High' : n >= 6 ? 'Medium' : 'Low'
 
+const REGION_MAP: Record<string, string> = {
+  'US': 'Americas', 'Canada': 'Americas', 'Brazil': 'Americas', 'Mexico': 'Americas', 'Argentina': 'Americas',
+  'China': 'Asia Pacific', 'India': 'Asia Pacific', 'Japan': 'Asia Pacific', 'South Korea': 'Asia Pacific', 'Singapore': 'Asia Pacific', 'Taiwan': 'Asia Pacific', 'Thailand': 'Asia Pacific',
+  'Saudi Arabia': 'Middle East', 'UAE': 'Middle East', 'Kuwait': 'Middle East', 'Qatar': 'Middle East', 'Oman': 'Middle East', 'Iraq': 'Middle East', 'Iran': 'Middle East',
+  'Germany': 'Europe', 'Netherlands': 'Europe', 'Belgium': 'Europe', 'Italy': 'Europe', 'Spain': 'Europe', 'France': 'Europe', 'UK': 'Europe', 'Poland': 'Europe', 'Norway': 'Europe', 'Russia': 'Europe',
+  'Nigeria': 'Africa', 'Egypt': 'Africa', 'Algeria': 'Africa', 'Libya': 'Africa', 'South Africa': 'Africa',
+}
+const getRegion = (country: string) => REGION_MAP[country] || 'Other'
+
 export function RefineryDirectoryPage() {
   const { data, loading } = useMarketData<RefineriesResponse>('/api/market/refineries-dir', 'free', 30_000)
   const [search, setSearch] = useState('')
@@ -42,7 +51,7 @@ export function RefineryDirectoryPage() {
   const filtered = refineries.filter(r =>
     (search === '' || r.name.toLowerCase().includes(search.toLowerCase()) || r.country.toLowerCase().includes(search.toLowerCase()) || r.owner.toLowerCase().includes(search.toLowerCase())) &&
     (statusFilter === 'All' || r.status === statusFilter) &&
-    (regionFilter === 'All' || r.region === regionFilter)
+    (regionFilter === 'All' || r.location === regionFilter)
   )
 
   if (loading && !refineries.length) {

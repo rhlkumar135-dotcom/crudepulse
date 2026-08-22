@@ -30,7 +30,7 @@ export function SPRTrackerPage() {
                   {data?.us?.latestMbbl?.toFixed(0) ?? '—'}<span className="text-base text-[#94A3B8] ml-1">Mb</span>
                 </div>
                 <div className="text-[10px] text-[#94A3B8] mt-0.5" style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-                  Trend: {data?.us?.trend ?? '—'} · {data?.us?.trendDelta > 0 ? '+' : ''}{data?.us?.trendDelta ?? 0} Mb
+                  Trend: {data?.us?.trend ?? '—'} · {(data?.us?.trendDelta ?? 0) > 0 ? '+' : ''}{data?.us?.trendDelta ?? 0} Mb
                 </div>
               </div>
             </div>
