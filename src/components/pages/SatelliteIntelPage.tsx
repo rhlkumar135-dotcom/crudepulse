@@ -81,8 +81,8 @@ export function SatelliteIntelPage() {
               )
             })}
             {fires.slice(0, 50).map((f, i) => {
-              const p = latLngToSvg(f.lat, f.lng, W, H)
-              return <circle key={`fire-${i}`} cx={p.x} cy={p.y} r={2} fill="#FF4500" opacity={0.6} filter="url(#glow2)" />
+              const [px, py] = latLngToSvg(f.lat, f.lng)
+              return <circle key={`fire-${i}`} cx={px} cy={py} r={2} fill="#FF4500" opacity={0.6} filter="url(#glow2)" />
             })}
           </svg>
           {selectedFacility && (

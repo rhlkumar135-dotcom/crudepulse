@@ -45,7 +45,7 @@ export function RefineryDirectoryPage() {
   const [regionFilter, setRegionFilter] = useState<string>('All')
 
   const refineries = data?.refineries ?? []
-  const regions = ['All']
+  const regions = ['All', 'Americas', 'Asia Pacific', 'Middle East', 'Europe', 'Africa', 'Other']
   const statuses = ['All', 'Operational', 'Shutdown', 'Under Construction', 'Maintenance']
 
   const filtered = refineries.filter(r =>

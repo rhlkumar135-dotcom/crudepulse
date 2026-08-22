@@ -61,7 +61,7 @@ export function NewsAtlasPage() {
         <div className="glass-card rounded-lg overflow-hidden flex-1">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" style={{ background: '#080B10' }}>
             <rect width={W} height={H} fill="#080B10" />
-            {WORLD_MAP_PATHS.map((c, i) => <path key={i} d={c.path} fill="#141E2C" stroke="#1E3048" strokeWidth={0.5} />)}
+            {WORLD_MAP_PATHS.map((c, i) => <path key={i} d={c.d} fill="#141E2C" stroke="#1E3048" strokeWidth={0.5} />)}
             {filtered.map((s, i) => {
               const [px, py] = latLngToSvg(s.lat, s.lng)
               const color = CAT_COLORS[s.category] || '#22C55E'
