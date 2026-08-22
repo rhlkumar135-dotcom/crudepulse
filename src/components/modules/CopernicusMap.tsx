@@ -61,7 +61,7 @@ function RegionInfoPopup({ region, fires, onClose }: RegionInfoPopupProps) {
   return (
     <foreignObject x={Math.min(cx + 12, W - 220)} y={Math.max(cy - 80, 10)} width={210} height={180}>
       <div className="bg-[#0a0e14]/95 border border-white/15 rounded-lg shadow-2xl shadow-black/50 p-3 backdrop-blur-sm"
-        xmlns="http://www.w3.org/1999/xhtml">
+       >
         <div className="flex items-start justify-between mb-2">
           <div>
             <div className="text-[11px] font-bold text-white font-mono">{region.name}</div>
@@ -108,7 +108,7 @@ function FirePopup({ fire, onClose }: FirePopupProps) {
   return (
     <foreignObject x={Math.min(cx + 10, W - 200)} y={Math.max(cy - 60, 10)} width={195} height={140}>
       <div className="bg-[#0a0e14]/95 border border-red-500/30 rounded-lg shadow-2xl shadow-black/50 p-2.5 backdrop-blur-sm"
-        xmlns="http://www.w3.org/1999/xhtml">
+       >
         <div className="flex items-start justify-between mb-1.5">
           <div className="flex items-center gap-1.5">
             <Flame size={10} className="text-red" />

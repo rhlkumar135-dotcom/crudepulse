@@ -2672,7 +2672,7 @@ async function fetchTrendingTopics(): Promise<Array<{ topic: string; velocity: n
 app.get('/news/atlas', async (c) => {
   const cacheKey = 'news-atlas'
   const cached = getCache(cacheKey)
-  if (cached && isCacheFresh(cacheKey, 60 * SECOND)) {
+  if (cached && isCacheFresh(cacheKey, 30 * SECOND)) {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -2680,17 +2680,13 @@ app.get('/news/atlas', async (c) => {
   // Google News returns fresh 24h articles; GDELT DOC fills the gaps
   const gnewsResults = await Promise.allSettled([
     fetchGoogleNewsRSS('crude oil price OPEC today', 30),
-    fetchGoogleNewsRSS('oil disruption attack military', 20),
-    fetchGoogleNewsRSS('oil pipeline refinery construction', 15),
-    fetchGoogleNewsRSS('oil spill environmental', 10),
-    fetchGoogleNewsRSS('oil tanker shipping strait', 15),
-    fetchGoogleNewsRSS('oil price market futures crude', 15),
-    fetchGoogleNewsRSS('Hormuz Suez Red Sea oil shipping', 15),
-    fetchGoogleNewsRSS('oil production OPEC cut output', 10),
-    fetchGoogleNewsRSS('oil demand supply global energy', 10),
-    fetchGoogleNewsRSS('WTI Brent crude oil latest', 10),
-    fetchGoogleNewsRSS('oil sanctions Russia Iran Venezuela', 10),
-    fetchGoogleNewsRSS('oil rig drilling Permian shale', 10),
+    fetchGoogleNewsRSS('oil disruption attack military', 25),
+    fetchGoogleNewsRSS('oil tanker shipping strait Hormuz', 20),
+    fetchGoogleNewsRSS('oil price market futures crude WTI', 15),
+    fetchGoogleNewsRSS('oil production OPEC cut output', 15),
+    fetchGoogleNewsRSS('oil sanctions Russia Iran Venezuela', 15),
+    fetchGoogleNewsRSS('oil refinery pipeline construction', 15),
+    fetchGoogleNewsRSS('crude oil latest news global', 15),
   ])
 
   // GDELT DOC: only 2 queries, sequential to avoid 429
@@ -2791,8 +2787,8 @@ app.get('/news/atlas', async (c) => {
     })
   }
 
-  // Sort by importance score (most important first)
-  stories.sort((a, b) => b.importanceScore - a.importanceScore)
+  // Sort by age (most recent first) — user wants 20 latest
+  stories.sort((a, b) => a.ageMs - b.ageMs)
 
   // Category counts for legend
   const categoryCounts: Record<string, number> = {}
@@ -2803,7 +2799,7 @@ app.get('/news/atlas', async (c) => {
   const trendingData = trending.status === 'fulfilled' ? trending.value : []
 
   const atlasData = {
-    stories: stories.slice(0, 200),
+    stories: stories.slice(0, 20),
     totalStories: stories.length,
     categoryCounts,
     trending: trendingData,
