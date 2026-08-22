@@ -122,10 +122,10 @@ function AnimatedBackground() {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Background image — 10% blur */}
+      {/* Background image — no blur */}
       <div className="absolute inset-0">
         <img src="/login-bg.jpg" alt="" className="w-full h-full object-cover scale-[1.03]"
-          style={{ filter: 'blur(10px) brightness(0.85) saturate(1.1)' }} />
+          style={{ filter: 'blur(0px) brightness(0.85) saturate(1.1)' }} />
         <div className="absolute inset-0 bg-gradient-to-b from-[#050810]/70 via-[#050810]/40 to-[#050810]/80" />
       </div>
 
