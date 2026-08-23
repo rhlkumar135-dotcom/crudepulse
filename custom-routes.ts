@@ -351,7 +351,25 @@ interface CacheEntry<T> {
 
 const cache = new Map<string, CacheEntry<unknown>>()
 
+let lastCacheResetDate = new Date().toISOString().split('T')[0]
+
+function checkDailyReset() {
+  const today = new Date().toISOString().split('T')[0]
+  if (today !== lastCacheResetDate) {
+    console.log(`📅 Daily cache reset: clearing ${cache.size} entries (was ${lastCacheResetDate}, now ${today})`)
+    cache.clear()
+    lastCacheResetDate = today
+  }
+}
+
+function clearAllCache() {
+  console.log(`🗑️ Manual cache clear: ${cache.size} entries removed`)
+  cache.clear()
+  lastCacheResetDate = new Date().toISOString().split('T')[0]
+}
+
 function getCache<T>(key: string): CacheEntry<T> | null {
+  checkDailyReset()
   const entry = cache.get(key) as CacheEntry<T> | undefined
   if (!entry) return null
   return entry
@@ -3341,9 +3359,28 @@ app.get('/market/sanctions', async (c) => {
 
 // ═══ Helper: Asset label mapping ══════════════════════════════════════════
 
-export default app
+// Manual cache clear — for admin use
+app.post('/cache/clear', (c) => {
+  clearAllCache()
+  return c.json({ message: 'All cache cleared', date: new Date().toISOString() })
+})
 
-// Debug route — tells us which env vars are set (keys are masked)
+// Cache status endpoint
+app.get('/cache/status', (c) => {
+  const now = Date.now()
+  const entries = Array.from(cache.entries()).map(([key, entry]) => ({
+    key,
+    ageSeconds: Math.round((now - (entry as CacheEntry<unknown>).fetchedAt) / 1000),
+    source: (entry as CacheEntry<unknown>).source,
+  }))
+  return c.json({
+    totalEntries: cache.size,
+    lastResetDate: lastCacheResetDate,
+    todayDate: new Date().toISOString().split('T')[0],
+    entries,
+  })
+})
+
 app.get('/debug/routes', (c) => {
   return c.json({
     version: 'v2-routes',
@@ -3403,3 +3440,5 @@ function parseRefreshRate(rate: string): number {
   if (rate.includes('h')) return num * 3600
   return 3600
 }
+
+export default app
