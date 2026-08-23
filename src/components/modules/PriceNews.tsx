@@ -85,16 +85,16 @@ export function PriceNewsChart() {
       {/* Live indicator bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="relative flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+          <div className="relative flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.2)' }}>
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: '#00ff88', animationDuration: '1.5s' }} />
+              <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: '#00ff88' }} />
             </span>
-            <span className="text-[10px] font-mono text-emerald-400 tracking-wider">LIVE</span>
+            <span className="text-[10px] font-mono tracking-wider" style={{ color: '#00ff88' }}>LIVE</span>
           </div>
-          <span className="text-[10px] font-mono text-text-dim/40">· 5s refresh</span>
+          <span className="text-[10px] font-mono" style={{ color: '#4a4a5a' }}>· 5s refresh</span>
         </div>
-        <div className="text-[10px] font-mono text-text-dim/30">
+        <div className="text-[10px] font-mono" style={{ color: '#3a3a4a' }}>
           {priceData?.lastUpdated ? new Date(priceData.lastUpdated).toLocaleTimeString() : 'streaming'}
         </div>
       </div>
@@ -156,19 +156,28 @@ function PriceStat({ label, value, prev, prefix, highlight, flash }: { label: st
   const isUp = change > 0.005
   const isDown = change < -0.005
 
-  const flashBg = flash === 'up' ? ' bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,0.15)]' : flash === 'down' ? ' bg-red-500/10 shadow-[0_0_12px_rgba(239,68,68,0.15)]' : ''
+  const cardStyle: React.CSSProperties = {
+    padding: '10px',
+    borderRadius: '8px',
+    transition: 'all 500ms ease',
+    ...(highlight ? { backgroundColor: 'rgba(245,166,35,0.04)', border: '1px solid rgba(245,166,35,0.1)' } : { backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid transparent' }),
+    ...(flash === 'up' ? { backgroundColor: 'rgba(0,255,136,0.12)', boxShadow: '0 0 20px rgba(0,255,136,0.15)' } : {}),
+    ...(flash === 'down' ? { backgroundColor: 'rgba(255,51,102,0.12)', boxShadow: '0 0 20px rgba(255,51,102,0.15)' } : {}),
+  }
+
+  const priceColor = flash === 'up' ? '#00ff88' : flash === 'down' ? '#ff3366' : highlight ? '#F5A623' : '#ffffff'
 
   return (
-    <div className={`p-2.5 rounded-lg transition-all duration-500 ${highlight ? 'bg-amber/[0.04] border border-amber/10' : 'bg-white/[0.02] border border-transparent'}${flashBg}`}>
-      <div className="text-[10px] text-text-dim font-mono tracking-wider mb-1">{label}</div>
+    <div style={cardStyle}>
+      <div className="text-[10px] font-mono tracking-wider mb-1" style={{ color: '#4a4a5a' }}>{label}</div>
       <div className="flex items-baseline gap-1.5">
-        <span className={`text-lg font-bold font-mono tabular-nums transition-colors duration-300 ${flash === 'up' ? 'text-emerald-400' : flash === 'down' ? 'text-red-400' : highlight ? 'text-amber' : 'text-text-bright'}`}>
+        <span className="text-lg font-bold font-mono tabular-nums" style={{ color: priceColor, transition: 'color 300ms' }}>
           <CountUp value={value} decimals={2} prefix={prefix} />
         </span>
       </div>
       <div className="flex items-center gap-1 mt-0.5">
-        {isUp ? <ArrowUpRight size={9} className="text-teal" /> : isDown ? <ArrowDownRight size={9} className="text-red" /> : null}
-        <span className={`text-[11px] font-mono ${isUp ? 'text-teal' : isDown ? 'text-red' : 'text-text-dim'}`}>
+        {isUp ? <ArrowUpRight size={9} style={{ color: '#2DD4BF' }} /> : isDown ? <ArrowDownRight size={9} style={{ color: '#ff3366' }} /> : null}
+        <span className="text-[11px] font-mono" style={{ color: isUp ? '#2DD4BF' : isDown ? '#ff3366' : '#4a4a5a' }}>
           {isUp ? '+' : ''}{change.toFixed(2)} ({isUp ? '+' : ''}{pct.toFixed(2)}%)
         </span>
       </div>
