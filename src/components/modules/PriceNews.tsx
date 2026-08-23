@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
-import { Newspaper, ExternalLink, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { Newspaper, ArrowUpRight, ArrowDownRight, Radio } from 'lucide-react'
 import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
 
 interface PricePoint { date: string; close: number }
-interface PriceResponse { wti: { current: number; history: PricePoint[] }; brent: { current: number; history: PricePoint[] }; spread: number }
+interface PriceResponse { wti: { current: number; history: PricePoint[] }; brent: { current: number; history: PricePoint[] }; spread: number; lastUpdated?: string }
 interface NewsItem { id: string; title: string; source: string; time: string; sentiment: string; score: number; category: string }
 interface NewsResponse { items: NewsItem[] }
 
@@ -26,25 +26,49 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function PriceNewsChart() {
-  const { data: priceData } = useMarketData<PriceResponse>('/api/market/prices', 'free', 10_000)
+  const { data: priceData } = useMarketData<PriceResponse>('/api/market/prices', 'free', 5_000)
   const { data: newsData } = useMarketData<NewsResponse>('/api/market/news', 'free', 15_000)
   const [hoveredPrice, setHoveredPrice] = useState<number | null>(null)
+  const [flashWti, setFlashWti] = useState<'up' | 'down' | null>(null)
+  const [flashBrent, setFlashBrent] = useState<'up' | 'down' | null>(null)
+  const prevWtiRef = useRef<number | null>(null)
+  const prevBrentRef = useRef<number | null>(null)
 
   const wtiHistory = (priceData?.wti?.history || []).filter((p: any) => p && typeof p.close === 'number')
   const brentHistory = (priceData?.brent?.history || []).filter((p: any) => p && typeof p.close === 'number')
   const newsItems = newsData?.items || []
 
+  const lastWti = wtiHistory[wtiHistory.length - 1]
+  const lastBrent = brentHistory[brentHistory.length - 1]
+
+  // Flash animation on price change
+  useEffect(() => {
+    if (!lastWti || !lastBrent) return
+    if (prevWtiRef.current !== null && lastWti.close !== prevWtiRef.current) {
+      setFlashWti(lastWti.close > prevWtiRef.current ? 'up' : 'down')
+      const t = setTimeout(() => setFlashWti(null), 800)
+      prevWtiRef.current = lastWti.close
+      return () => clearTimeout(t)
+    }
+    if (prevBrentRef.current !== null && lastBrent.close !== prevBrentRef.current) {
+      setFlashBrent(lastBrent.close > prevBrentRef.current ? 'up' : 'down')
+      const t = setTimeout(() => setFlashBrent(null), 800)
+      prevBrentRef.current = lastBrent.close
+      return () => clearTimeout(t)
+    }
+    prevWtiRef.current = lastWti.close
+    prevBrentRef.current = lastBrent.close
+  }, [lastWti?.close, lastBrent?.close])
+
   if (wtiHistory.length < 2 || brentHistory.length < 2) {
     return (
       <div className="flex items-center justify-center h-[200px] text-text-dim text-[11px] font-mono">
-        Loading market data...
+        Connecting to live feed...
       </div>
     )
   }
 
-  const lastWti = wtiHistory[wtiHistory.length - 1]
   const prevWti = wtiHistory[wtiHistory.length - 2]
-  const lastBrent = brentHistory[brentHistory.length - 1]
   const prevBrent = brentHistory[brentHistory.length - 2]
 
   const chartData = wtiHistory.slice(-90).map((d: PricePoint, i: number) => ({
@@ -58,10 +82,27 @@ export function PriceNewsChart() {
 
   return (
     <div className="space-y-3">
-      {/* Price stats row */}
+      {/* Live indicator bar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="relative flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span className="text-[10px] font-mono text-emerald-400 tracking-wider">LIVE</span>
+          </div>
+          <span className="text-[10px] font-mono text-text-dim/40">· 5s refresh</span>
+        </div>
+        <div className="text-[10px] font-mono text-text-dim/30">
+          {priceData?.lastUpdated ? new Date(priceData.lastUpdated).toLocaleTimeString() : 'streaming'}
+        </div>
+      </div>
+
+      {/* Price cards with flash */}
       <div className="grid grid-cols-3 gap-3">
-        <PriceStat label="WTI CRUDE" value={lastWti.close} prev={prevWti.close} prefix="$" highlight />
-        <PriceStat label="BRENT CRUDE" value={lastBrent.close} prev={prevBrent.close} prefix="$" />
+        <PriceStat label="WTI CRUDE" value={lastWti.close} prev={prevWti.close} prefix="$" highlight flash={flashWti} />
+        <PriceStat label="BRENT CRUDE" value={lastBrent.close} prev={prevBrent.close} prefix="$" flash={flashBrent} />
         <PriceStat label="WTI-BRENT SPREAD" value={lastBrent.close - lastWti.close} prev={prevBrent.close - prevWti.close} prefix="$" />
       </div>
 
@@ -109,17 +150,19 @@ export function PriceNewsChart() {
   )
 }
 
-function PriceStat({ label, value, prev, prefix, highlight }: { label: string; value: number; prev: number; prefix: string; highlight?: boolean }) {
+function PriceStat({ label, value, prev, prefix, highlight, flash }: { label: string; value: number; prev: number; prefix: string; highlight?: boolean; flash?: 'up' | 'down' | null }) {
   const change = value - prev
-  const pct = ((change / prev) * 100)
+  const pct = prev !== 0 ? ((change / prev) * 100) : 0
   const isUp = change > 0.005
   const isDown = change < -0.005
 
+  const flashBg = flash === 'up' ? ' bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,0.15)]' : flash === 'down' ? ' bg-red-500/10 shadow-[0_0_12px_rgba(239,68,68,0.15)]' : ''
+
   return (
-    <div className={`p-2.5 rounded-lg ${highlight ? 'bg-amber/[0.04] border border-amber/10' : 'bg-white/[0.02] border border-transparent'}`}>
+    <div className={`p-2.5 rounded-lg transition-all duration-500 ${highlight ? 'bg-amber/[0.04] border border-amber/10' : 'bg-white/[0.02] border border-transparent'}${flashBg}`}>
       <div className="text-[10px] text-text-dim font-mono tracking-wider mb-1">{label}</div>
       <div className="flex items-baseline gap-1.5">
-        <span className={`text-lg font-bold font-mono tabular-nums ${highlight ? 'text-amber' : 'text-text-bright'}`}>
+        <span className={`text-lg font-bold font-mono tabular-nums transition-colors duration-300 ${flash === 'up' ? 'text-emerald-400' : flash === 'down' ? 'text-red-400' : highlight ? 'text-amber' : 'text-text-bright'}`}>
           <CountUp value={value} decimals={2} prefix={prefix} />
         </span>
       </div>

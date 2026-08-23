@@ -19,7 +19,7 @@ export function MarketsPage() {
         <div className="text-center py-3">
           <div className="text-xs text-[#94A3B8] tracking-[0.12em] uppercase"
             style={{ fontFamily: 'Share Tech Mono, monospace' }}>
-            Yahoo Finance · Google News RSS · CoinGecko · Swissquote · GDELT · 1s refresh
+            Yahoo Finance · Google News RSS · CoinGecko · Swissquote · GDELT · streaming
           </div>
         </div>
       </div>
