@@ -3,7 +3,7 @@ import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } fro
 import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
 
-interface OilField { id: string; name: string; country: string; region: string; production: number; reserves: number; breakeven: number; rpRatio: number; yearDiscovered: number; peakYear: number; waterCut: number; apiGravity: number; status: string }
+interface OilField { id: string; name: string; country: string; region: string; production: number; reserves: number; breakeven: number; rpRatio?: number; yearDiscovered?: number; peakYear?: number; waterCut?: number; apiGravity: number; status: string }
 
 const metrics = ['production', 'reserves', 'breakeven', 'rpRatio', 'apiGravity'] as const
 const metricLabels: Record<string, string> = {
@@ -12,10 +12,11 @@ const metricLabels: Record<string, string> = {
 
 function normalizeField(f: OilField, allFields: OilField[]) {
   return metrics.map(m => {
-    const vals = allFields.map((ff: any) => ff[m])
+    const vals = allFields.map((ff: any) => ff[m] ?? 0).filter((v: number) => typeof v === 'number' && !isNaN(v))
     const min = Math.min(...vals)
     const max = Math.max(...vals)
-    return { metric: metricLabels[m], value: +(max > min ? ((f[m] - min) / (max - min)) * 100 : 50).toFixed(1), raw: f[m] }
+    const raw = (f as any)[m] ?? 0
+    return { metric: metricLabels[m], value: +(max > min ? ((raw - min) / (max - min)) * 100 : 50).toFixed(1), raw }
   })
 }
 
@@ -25,7 +26,7 @@ export function FieldScorecard() {
   const [selected, setSelected] = useState<OilField | null>(oilFields[0] || null)
   const radarData = selected ? normalizeField(selected, oilFields) : []
   const [sortKey, setSortKey] = useState<'production' | 'reserves' | 'rpRatio'>('production')
-  const sortedFields = [...oilFields].sort((a: OilField, b: OilField) => b[sortKey] - a[sortKey])
+  const sortedFields = [...oilFields].sort((a: OilField, b: OilField) => ((b as any)[sortKey] ?? 0) - ((a as any)[sortKey] ?? 0))
 
   const statusConfig: Record<string, { color: string; bg: string }> = {
     producing: { color: '#22C55E', bg: '#22C55E10' },
@@ -37,7 +38,7 @@ export function FieldScorecard() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Radar */}
         <div className="h-[170px]">
           <ResponsiveContainer width="100%" height="100%">
