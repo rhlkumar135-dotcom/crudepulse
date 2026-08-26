@@ -77,6 +77,10 @@ body::before {
 ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: #00ff88; }
 
+/* Hide scrollbar for tab navigation */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* ═══ Chamfered Card — Cyberpunk ═══ */
 .cyber-card {
   background: linear-gradient(135deg, #12121aE0, #0e0e16C0);
@@ -416,6 +420,22 @@ input[type="range"]::-moz-range-thumb {
   .cyber-glitch { animation: none; }
   .cursor-blink::after { animation: none; }
   .live-dot { animation: none; }
+}
+
+/* ═══ Mobile Responsive ═══ */
+
+/* Disable heavy CRT overlays on mobile for performance */
+@media (max-width: 768px) {
+  body::after { opacity: 0.08; }
+  body::before { opacity: 0.015; }
+  html { font-size: 13px; }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  body::after { display: none; }
+  body::before { display: none; }
+  html { font-size: 12px; }
 }
 
 /* ═══ Green Theme Animations ═══ */

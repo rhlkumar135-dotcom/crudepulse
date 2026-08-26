@@ -59,16 +59,16 @@ function LiveTicker() {
   }
 
   return (
-    <div className="flex gap-8 mb-3 justify-center" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+    <div className="flex gap-4 md:gap-8 mb-3 justify-center flex-wrap" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
       {prices.map((item, i) => {
         const c = COLORS[item.label] || { color: '#a9c2b0', glow: 'transparent' }
         return (
-          <div key={i} className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold tracking-wider uppercase" style={{ color: '#7a9484' }}>
+          <div key={i} className="flex items-center gap-1.5 md:gap-2">
+            <span className="text-[9px] md:text-[11px] font-semibold tracking-wider uppercase" style={{ color: '#7a9484' }}>
               {item.label}
             </span>
             <span
-              className="text-xl font-black px-2 py-1 rounded-md"
+              className="text-base md:text-xl font-black px-1.5 md:px-2 py-0.5 md:py-1 rounded-md"
               style={{
                 color: c.color,
                 textShadow: `0 0 20px ${c.glow}, 0 0 40px ${c.glow}`,
@@ -116,15 +116,18 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
 
   const cardRef = useRef<HTMLDivElement>(null)
 
-  // Parallax mouse tracking
+  // Parallax mouse tracking — disabled on touch devices
+  const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (isTouchDevice) return
     const card = cardRef.current
     if (!card) return
     const r = card.getBoundingClientRect()
     const x = (e.clientX - r.left) / r.width - 0.5
     const y = (e.clientY - r.top) / r.height - 0.5
     card.style.transform = `rotateY(${x * 7}deg) rotateX(${-y * 7}deg) translateZ(0)`
-  }, [])
+  }, [isTouchDevice])
 
   const handleMouseLeave = useCallback(() => {
     if (cardRef.current) {
@@ -188,8 +191,8 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
 
       {/* Content wrapper */}
       <div
-        className="relative z-[3] min-h-screen flex flex-col items-center justify-center px-5 py-8"
-        style={{ transform: 'translateY(-7%)' }}
+        className="relative z-[3] min-h-screen flex flex-col items-center justify-center px-3 md:px-5 py-6 md:py-8"
+        style={{ transform: 'translateY(-3%) md:translateY(-7%)' }}
       >
         {/* Eyebrow */}
         <div
@@ -263,14 +266,13 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
             ref={cardRef}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
-            className="relative w-[460px] max-w-[92vw] overflow-hidden"
+            className="relative w-[460px] max-w-[92vw] overflow-hidden p-4 md:py-7 md:px-[26px]"
             style={{
               background: 'rgba(8,16,11,0.68)',
               backdropFilter: 'blur(20px) saturate(1.2)',
               WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
               border: '1px solid rgba(62,224,122,0.18)',
               borderRadius: 18,
-              padding: '28px 26px 22px',
               boxShadow: '0 40px 80px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(62,224,122,0.06), inset 0 1px 0 rgba(255,255,255,0.04)',
               transition: 'transform 0.15s ease-out',
               transformStyle: 'preserve-3d',

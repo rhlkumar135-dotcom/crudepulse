@@ -92,41 +92,44 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
 
   const isActive = (item: NavItem) => path === item.to || (item.to !== '/' && path.startsWith(item.to))
 
+  // Close mobile drawer on route change
+  useEffect(() => { setMobileOpen(false) }, [path])
+
   return (
     <>
       <TickerBar />
-      <header className="border-b border-[rgba(62,224,122,0.15)]" style={{ background: 'rgba(6,9,7,0.9)', backdropFilter: 'blur(12px)' }}>
+      <header className="border-b border-[rgba(62,224,122,0.15)] sticky top-0 z-40" style={{ background: 'rgba(6,9,7,0.95)', backdropFilter: 'blur(12px)' }}>
         {/* Top row: brand + auth */}
-        <div className="flex items-center px-5 h-10 gap-3">
+        <div className="flex items-center px-3 md:px-5 h-11 md:h-10 gap-2 md:gap-3">
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
-            <span className="text-sm font-black tracking-[0.1em] text-white"
+            <span className="text-sm md:text-sm font-black tracking-[0.1em] text-white"
               style={{ fontFamily: 'Orbitron, monospace' }}>
               Crude<span style={{ color: '#3EE07A' }}>Pulses</span>
             </span>
           </Link>
 
-          <div className="w-px h-5 bg-[#2a2a3a] shrink-0" />
+          <div className="w-px h-5 bg-[#2a2a3a] shrink-0 hidden sm:block" />
 
           {/* Live indicator */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="live-dot" style={{ background: '#3EE07A', boxShadow: '0 0 8px #3EE07A80, 0 0 16px #3EE07A40' }} />
-            <span className="text-[10px] font-bold tracking-[0.12em]"
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="live-dot" style={{ width: 5, height: 5, background: '#3EE07A', boxShadow: '0 0 8px #3EE07A80' }} />
+            <span className="text-[9px] md:text-[10px] font-bold tracking-[0.12em]"
               style={{ fontFamily: 'Share Tech Mono, monospace', color: '#3EE07A' }}>LIVE</span>
           </div>
 
           <div className="flex-1" />
 
-          {/* Auth */}
+          {/* Auth — desktop only */}
           {auth && (
             <>
               {auth.role === 'admin' && (
-                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[10px] font-bold tracking-wider rounded-sm"
+                <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[10px] font-bold tracking-wider rounded-sm"
                   style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                   <Shield size={10} /> ADMIN
                 </div>
               )}
-              <div className="w-px h-5 bg-[#2a2a3a] hidden sm:block" />
-              <div className="hidden sm:flex items-center gap-2.5">
+              <div className="w-px h-5 bg-[#2a2a3a] hidden lg:block" />
+              <div className="hidden lg:flex items-center gap-2.5">
                 <div className="w-6 h-6 flex items-center justify-center border rounded-sm"
                   style={{
                     borderColor: auth.role === 'admin' ? '#F5A62340' : '#2a2a3a',
@@ -144,34 +147,36 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
             </>
           )}
           {!auth && (
-            <Link to="/" className="px-4 py-1.5 border text-[10px] font-bold tracking-wider hover:opacity-80 transition-all rounded-sm"
+            <Link to="/" className="hidden sm:inline-flex px-4 py-1.5 border text-[10px] font-bold tracking-wider hover:opacity-80 transition-all rounded-sm"
               style={{ fontFamily: 'Orbitron, monospace', borderColor: 'rgba(62,224,122,0.4)', color: '#3EE07A' }}>
               SIGN IN
             </Link>
           )}
 
           {/* Mobile hamburger */}
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-1.5 text-[#94A3B8] hover:text-white">
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          <button onClick={() => setMobileOpen(!mobileOpen)}
+            className="md:hidden p-2 -mr-1 text-[#94A3B8] hover:text-[#3EE07A] active:scale-95 transition-all"
+            aria-label="Toggle navigation">
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
-        {/* Tab bar — all tabs, bigger with gaps */}
-        <nav className="hidden md:flex flex-wrap items-center gap-1.5 px-4 pb-2 pt-1">
+        {/* Tab bar — desktop: all tabs, horizontal scroll */}
+        <nav className="hidden md:flex items-center gap-1 px-3 lg:px-4 pb-2 pt-1 overflow-x-auto scrollbar-none">
           {ALL_TABS.map(item => {
             const Icon = item.icon
             const active = isActive(item)
             return (
               <Link key={item.to} to={item.to}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold tracking-wide rounded-md whitespace-nowrap',
+                  'flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 text-[10px] lg:text-[11px] font-semibold tracking-wide rounded-md whitespace-nowrap shrink-0',
                   'transition-all duration-300 ease-in-out border',
                   active
                     ? 'border-[rgba(62,224,122,0.4)] bg-[rgba(62,224,122,0.12)] text-white shadow-[0_0_12px_rgba(62,224,122,0.15)]'
                     : 'border-transparent text-[#8899A0] hover:text-[#d0d0d0] hover:bg-white/[0.04]'
                 )}
                 style={{ fontFamily: 'Orbitron, monospace' }}>
-                <Icon size={11} className="transition-colors duration-300" style={{ color: active ? '#3EE07A' : undefined }} />
+                <Icon size={11} className="transition-colors duration-300 shrink-0" style={{ color: active ? '#3EE07A' : undefined }} />
                 <span>{item.label}</span>
               </Link>
             )
@@ -179,12 +184,28 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
         </nav>
       </header>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer — slides from top, proper touch targets */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-black/80" onClick={() => setMobileOpen(false)}>
-          <div className="absolute top-[96px] left-0 right-0 bg-[#0d1117] border-b border-[#2a2a3a] max-h-[80vh] overflow-y-auto p-3"
+        <div className="md:hidden fixed inset-0 z-50" onClick={() => setMobileOpen(false)}>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          {/* Drawer panel */}
+          <div className="absolute top-0 left-0 right-0 bg-[#0a0d0b]/98 border-b border-[rgba(62,224,122,0.2)] max-h-[85vh] overflow-y-auto"
+            style={{ backdropFilter: 'blur(20px)', paddingTop: 'env(safe-area-inset-top, 0px)' }}
             onClick={e => e.stopPropagation()}>
-            <div className="flex flex-wrap gap-1.5">
+            {/* Drawer header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a3a]/50">
+              <span className="text-xs font-bold tracking-[0.15em] text-[#3EE07A]"
+                style={{ fontFamily: 'Orbitron, monospace' }}>
+                NAVIGATION
+              </span>
+              <button onClick={() => setMobileOpen(false)}
+                className="p-1.5 rounded-sm text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            {/* Tabs grid — 2 columns on mobile for better touch */}
+            <div className="p-3 grid grid-cols-2 gap-2">
               {ALL_TABS.map(item => {
                 const Icon = item.icon
                 const active = isActive(item)
@@ -192,18 +213,35 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
                   <Link key={item.to} to={item.to}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      'flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold rounded-md border transition-all duration-300',
+                      'flex items-center gap-2 px-3 py-3 text-xs font-semibold rounded-lg border transition-all duration-200',
                       active
-                        ? 'bg-[rgba(62,224,122,0.12)] border-[rgba(62,224,122,0.4)] text-white shadow-[0_0_12px_rgba(62,224,122,0.15)]'
-                        : 'border-transparent text-[#8899A0] hover:text-white hover:bg-white/[0.03]'
+                        ? 'bg-[rgba(62,224,122,0.15)] border-[rgba(62,224,122,0.4)] text-white shadow-[0_0_12px_rgba(62,224,122,0.1)]'
+                        : 'border-[#2a2a3a]/50 text-[#8899A0] active:bg-white/[0.05]'
                     )}
                     style={{ fontFamily: 'Orbitron, monospace' }}>
-                    <Icon size={12} className="transition-colors duration-300" style={{ color: active ? '#3EE07A' : undefined }} />
-                    <span>{item.label}</span>
+                    <Icon size={14} className="shrink-0" style={{ color: active ? '#3EE07A' : item.color + '80' }} />
+                    <span className="truncate">{item.label}</span>
                   </Link>
                 )
               })}
             </div>
+            {/* User info on mobile */}
+            {auth && (
+              <div className="px-4 py-3 border-t border-[#2a2a3a]/50 flex items-center gap-3">
+                <div className="w-8 h-8 flex items-center justify-center border rounded-sm"
+                  style={{ borderColor: auth.role === 'admin' ? '#F5A62340' : '#2a2a3a', backgroundColor: auth.role === 'admin' ? '#F5A62315' : '#ffffff08' }}>
+                  {auth.role === 'admin' ? <Shield size={13} className="text-[#F5A623]" /> : <User size={13} className="text-[#94A3B8]" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-white truncate">{auth.name}</div>
+                  <div className="text-[10px] text-[#94A3B8] truncate">{auth.email}</div>
+                </div>
+                <button onClick={() => { onLogout(); setMobileOpen(false) }}
+                  className="p-2 text-[#94A3B8] hover:text-[#ff3366] hover:bg-[#ff3366]/10 rounded-sm transition-colors">
+                  <LogOut size={16} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

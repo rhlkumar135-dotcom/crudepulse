@@ -74,11 +74,11 @@ export function TickerBar() {
 
   return (
     <div
-      className="h-9 bg-[#0a0a0f]/90 backdrop-blur-sm border-b border-[#2a2a3a] flex items-center px-5 gap-5 overflow-hidden transition-all duration-500"
+      className="h-8 md:h-9 bg-[#0a0a0f]/90 backdrop-blur-sm border-b border-[#2a2a3a] flex items-center px-2 md:px-5 gap-2 md:gap-5 overflow-hidden transition-all duration-500"
       style={{ fontFamily: 'Share Tech Mono, monospace', ...barFlashStyle }}
     >
       {/* LIVE indicator */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1 md:gap-2 shrink-0">
         <div className="relative">
           <Wifi size={10} className={`transition-colors duration-300 ${isConnected ? 'text-[#00ff88]' : 'text-red-500'}`} />
           {isConnected && (
@@ -88,62 +88,62 @@ export function TickerBar() {
             </span>
           )}
         </div>
-        <span className="text-[11px] text-[#00ff88] tracking-[0.12em] font-bold">LIVE</span>
+        <span className="text-[9px] md:text-[11px] text-[#00ff88] tracking-[0.12em] font-bold">LIVE</span>
       </div>
 
-      <div className="w-px h-4 bg-[#2a2a3a] shrink-0" />
+      <div className="w-px h-3 md:h-4 bg-[#2a2a3a] shrink-0" />
 
       {/* WTI */}
       <div
-        className="flex items-center gap-2 rounded px-2 py-0.5 transition-all duration-500"
+        className="flex items-center gap-1 md:gap-2 rounded px-1 md:px-2 py-0.5 transition-all duration-500"
         style={flashDir === 'up' ? { backgroundColor: 'rgba(0, 255, 136, 0.12)' } : flashDir === 'down' ? { backgroundColor: 'rgba(255, 51, 102, 0.12)' } : {}}
       >
-        <span className="text-[11px] text-[#94A3B8] tracking-[0.12em]">WTI</span>
-        <span className="text-[#00ff88] font-bold text-xs">
+        <span className="text-[10px] md:text-[11px] text-[#94A3B8] tracking-[0.12em]">WTI</span>
+        <span className="text-[#00ff88] font-bold text-[11px] md:text-xs">
           {wti != null ? <CountUp value={wti} decimals={2} prefix="$" /> : <span className="text-[#94A3B8]">--</span>}
         </span>
         {wChg !== 0 && (
-          <span className={`flex items-center gap-0.5 text-[11px] font-bold ${wChg > 0.005 ? 'text-[#00ff88]' : wChg < -0.005 ? 'text-[#ff3366]' : 'text-[#94A3B8]'}`}>
+          <span className={`hidden sm:flex items-center gap-0.5 text-[10px] md:text-[11px] font-bold ${wChg > 0.005 ? 'text-[#00ff88]' : wChg < -0.005 ? 'text-[#ff3366]' : 'text-[#94A3B8]'}`}>
             {wChg > 0.005 ? <TrendingUp size={9} /> : wChg < -0.005 ? <TrendingDown size={9} /> : <Minus size={9} />}
             {wChg > 0 ? '+' : ''}{wChg.toFixed(2)}
           </span>
         )}
       </div>
 
-      <div className="w-px h-4 bg-[#2a2a3a] shrink-0" />
+      <div className="w-px h-3 md:h-4 bg-[#2a2a3a] shrink-0" />
 
       {/* BRENT */}
       <div
-        className="flex items-center gap-2 rounded px-2 py-0.5 transition-all duration-500"
+        className="flex items-center gap-1 md:gap-2 rounded px-1 md:px-2 py-0.5 transition-all duration-500"
         style={flashDir === 'up' ? { backgroundColor: 'rgba(0, 212, 255, 0.12)' } : flashDir === 'down' ? { backgroundColor: 'rgba(255, 51, 102, 0.12)' } : {}}
       >
-        <span className="text-[11px] text-[#94A3B8] tracking-[0.12em]">BRENT</span>
-        <span className="text-[#00d4ff] font-bold text-xs">
+        <span className="text-[10px] md:text-[11px] text-[#94A3B8] tracking-[0.12em]">BRENT</span>
+        <span className="text-[#00d4ff] font-bold text-[11px] md:text-xs">
           {brent != null ? <CountUp value={brent} decimals={2} prefix="$" /> : <span className="text-[#94A3B8]">--</span>}
         </span>
         {bChg !== 0 && (
-          <span className={`flex items-center gap-0.5 text-[11px] font-bold ${bChg > 0.005 ? 'text-[#00ff88]' : bChg < -0.005 ? 'text-[#ff3366]' : 'text-[#94A3B8]'}`}>
+          <span className={`hidden sm:flex items-center gap-0.5 text-[10px] md:text-[11px] font-bold ${bChg > 0.005 ? 'text-[#00ff88]' : bChg < -0.005 ? 'text-[#ff3366]' : 'text-[#94A3B8]'}`}>
             {bChg > 0.005 ? <TrendingUp size={9} /> : bChg < -0.005 ? <TrendingDown size={9} /> : <Minus size={9} />}
             {bChg > 0 ? '+' : ''}{bChg.toFixed(2)}
           </span>
         )}
       </div>
 
-      <div className="w-px h-4 bg-[#2a2a3a] shrink-0" />
+      <div className="w-px h-3 md:h-4 bg-[#2a2a3a] shrink-0" />
 
       {/* SPREAD */}
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-[#94A3B8] tracking-[0.12em]">SPREAD</span>
-        <span className="text-[11px] font-bold text-[#e0e0e0]">{spread != null ? `$${spread}` : '--'}</span>
+      <div className="flex items-center gap-1 md:gap-2">
+        <span className="text-[9px] md:text-[11px] text-[#94A3B8] tracking-[0.12em]">SPR</span>
+        <span className="text-[10px] md:text-[11px] font-bold text-[#e0e0e0]">{spread != null ? `$${spread}` : '--'}</span>
       </div>
 
       <div className="flex-1" />
 
       {/* Timestamp */}
-      <div className="flex items-center gap-2 text-[11px] text-[#94A3B8] shrink-0">
-        <span className="live-dot" style={{ width: 5, height: 5 }} />
+      <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-[11px] text-[#94A3B8] shrink-0">
+        <span className="live-dot" style={{ width: 4, height: 4 }} />
         <span className="tabular-nums">{time.toLocaleTimeString('en-US', { hour12: false })}</span>
-        {source && <span className="text-[11px] text-[#94A3B8]/40 uppercase">{source}</span>}
+        {source && <span className="hidden sm:inline text-[10px] text-[#94A3B8]/40 uppercase">{source}</span>}
       </div>
     </div>
   )
