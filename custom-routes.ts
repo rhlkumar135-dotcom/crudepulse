@@ -2667,7 +2667,7 @@ async function fetchGDELTDoc(query: string, maxrecords = 50): Promise<Array<{
 
 // Fetch trending topics by mention velocity
 async function fetchTrendingTopics(): Promise<Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>> {
-  const queries = ['crude oil', 'OPEC', 'Brent', 'WTI', 'Hormuz', 'sanctions oil', 'oil price', 'production cut']
+  const queries = ['crude oil', 'OPEC', 'Brent', 'oil price']
   const results = await Promise.allSettled(queries.map(async q => {
     try {
       const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=5&format=json&sort=DateDesc&startdatetime=${new Date(Date.now() - 3600_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
@@ -3383,10 +3383,15 @@ app.get('/debug/routes', (c) => {
       DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'NOT SET',
     },
     routes: [
-      'auth/signup', 'auth/login', 'auth/me', 'auth/upgrade',
-      'admin/users', 'market/prices', 'market/news', 'market/disruptions',
-      'market/rigs', 'market/reserves', 'market/refinery', 'market/storage',
-      'market/flows', 'market/chokepoints', 'market/fields',
+      'auth/signup', 'auth/login', 'auth/me', 'admin/users',
+      'market/prices', 'market/news', 'market/disruptions', 'market/rigs',
+      'market/reserves', 'market/refinery', 'market/storage', 'market/flows',
+      'market/chokepoints', 'market/fields', 'market/correlation',
+      'market/multi-zone-events', 'market/multi-asset', 'market/satellite',
+      'v4/satellite/intel', 'news/atlas', 'market/grades', 'market/majors',
+      'market/spr', 'market/refineries-dir', 'market/pipelines',
+      'market/freight', 'market/futures', 'market/opec', 'market/downstream',
+      'market/sanctions', 'cache/clear', 'cache/status', 'debug/routes', 'health',
     ]
   })
 })
