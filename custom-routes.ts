@@ -2694,27 +2694,18 @@ app.get('/news/atlas', async (c) => {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 
-  // Fetch Google News RSS (primary, reliable) + GDELT DOC 2.0 (supplementary, rate-limited)
-  // Google News returns fresh 24h articles; GDELT DOC fills the gaps
+  // Reduced to 5 parallel Google News RSS calls (was 12) for faster response
   const gnewsResults = await Promise.allSettled([
-    fetchGoogleNewsRSS('crude oil price OPEC today', 30),
-    fetchGoogleNewsRSS('oil disruption attack military', 20),
-    fetchGoogleNewsRSS('oil pipeline refinery construction', 15),
-    fetchGoogleNewsRSS('oil spill environmental', 10),
-    fetchGoogleNewsRSS('oil tanker shipping strait', 15),
-    fetchGoogleNewsRSS('oil price market futures crude', 15),
-    fetchGoogleNewsRSS('Hormuz Suez Red Sea oil shipping', 15),
-    fetchGoogleNewsRSS('oil production OPEC cut output', 10),
-    fetchGoogleNewsRSS('oil demand supply global energy', 10),
-    fetchGoogleNewsRSS('WTI Brent crude oil latest', 10),
-    fetchGoogleNewsRSS('oil sanctions Russia Iran Venezuela', 10),
-    fetchGoogleNewsRSS('oil rig drilling Permian shale', 10),
+    fetchGoogleNewsRSS('crude oil price OPEC WTI Brent today', 30),
+    fetchGoogleNewsRSS('oil disruption attack military sanctions', 25),
+    fetchGoogleNewsRSS('oil pipeline refinery tanker shipping', 20),
+    fetchGoogleNewsRSS('oil production supply demand energy', 15),
+    fetchGoogleNewsRSS('Hormuz Suez Red Sea oil geopolitics', 15),
   ])
 
-  // GDELT DOC: only 2 queries, sequential to avoid 429
+  // GDELT DOC: single query only (was 2 with delay)
   const docResults = await Promise.allSettled([
-    fetchGDELTDoc('crude oil OR OPEC', 50),
-    new Promise(r => setTimeout(r, 1500)).then(() => fetchGDELTDoc('oil disruption attack', 50)),
+    fetchGDELTDoc('crude oil OR OPEC', 40),
   ])
 
   const trending = await fetchTrendingTopics().catch(() => [] as Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>)
