@@ -1,6 +1,6 @@
-import { useState, useEffect, Component, type ReactNode, Suspense, lazy } from 'react'
+import { useState, Component, type ReactNode, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { User, LogOut, Shield, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Menu, X, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter, BookOpen } from 'lucide-react'
+import { User, LogOut, Shield, TrendingUp, Radar, Wrench, Activity, Globe, Satellite, Newspaper, Droplets, Building2, Ship, BarChart3, ShieldAlert, Factory, Route as RouteIcon, Filter, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { TickerBar } from '@/components/TickerBar'
 import { AuthCinematic } from '@/components/AuthCinematic'
@@ -61,7 +61,7 @@ class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { h
 interface NavItem { to: string; label: string; icon: any; color: string }
 
 const ALL_TABS: NavItem[] = [
-  // Core
+  // Row 1 — Core
   { to: '/markets', label: 'Markets', icon: TrendingUp, color: '#00ff88' },
   { to: '/disruptions', label: 'Disruptions', icon: Radar, color: '#ff3366' },
   { to: '/operations', label: 'Operations', icon: Wrench, color: '#ff00ff' },
@@ -69,17 +69,16 @@ const ALL_TABS: NavItem[] = [
   { to: '/global', label: 'Global', icon: Globe, color: '#F5A623' },
   { to: '/satellite-intel', label: 'Satellite', icon: Satellite, color: '#00d4ff' },
   { to: '/news', label: 'News', icon: Newspaper, color: '#FFC107' },
-  // Markets
+  // Row 1 cont — Markets
   { to: '/futures', label: 'Futures', icon: BarChart3, color: '#00ff88' },
   { to: '/majors', label: 'Majors', icon: Building2, color: '#00d4ff' },
   { to: '/freight', label: 'Freight', icon: Ship, color: '#ff9500' },
+  // Row 2 — Supply + Policy
   { to: '/downstream', label: 'Downstream', icon: Droplets, color: '#ff3366' },
   { to: '/grades', label: 'Grades', icon: Filter, color: '#2DD4BF' },
-  // Supply
   { to: '/spr', label: 'SPR', icon: Shield, color: '#00d4ff' },
   { to: '/refineries', label: 'Refineries', icon: Factory, color: '#94A3B8' },
   { to: '/pipelines', label: 'Pipelines', icon: RouteIcon, color: '#F5A623' },
-  // Policy
   { to: '/opec-compliance', label: 'OPEC+', icon: ShieldAlert, color: '#ff00ff' },
   { to: '/sanctions', label: 'Sanctions', icon: ShieldAlert, color: '#ff3366' },
   { to: '/glossary', label: 'Glossary', icon: BookOpen, color: '#3EE07A' },
@@ -88,21 +87,17 @@ const ALL_TABS: NavItem[] = [
 function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => void }) {
   const location = useLocation()
   const path = location.pathname
-  const [mobileOpen, setMobileOpen] = useState(false)
 
   const isActive = (item: NavItem) => path === item.to || (item.to !== '/' && path.startsWith(item.to))
-
-  // Close mobile drawer on route change
-  useEffect(() => { setMobileOpen(false) }, [path])
 
   return (
     <>
       <TickerBar />
       <header className="border-b border-[rgba(62,224,122,0.15)] sticky top-0 z-40" style={{ background: 'rgba(6,9,7,0.95)', backdropFilter: 'blur(12px)' }}>
         {/* Top row: brand + auth */}
-        <div className="flex items-center px-3 md:px-5 h-11 md:h-10 gap-2 md:gap-3">
+        <div className="flex items-center px-3 md:px-5 h-11 gap-2 md:gap-3">
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
-            <span className="text-sm md:text-sm font-black tracking-[0.1em] text-white"
+            <span className="text-sm font-black tracking-[0.1em] text-white"
               style={{ fontFamily: 'Orbitron, monospace' }}>
               Crude<span style={{ color: '#3EE07A' }}>Pulses</span>
             </span>
@@ -119,17 +114,17 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
 
           <div className="flex-1" />
 
-          {/* Auth — desktop only */}
+          {/* Auth */}
           {auth && (
             <>
               {auth.role === 'admin' && (
-                <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[10px] font-bold tracking-wider rounded-sm"
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[#F5A623]/[0.08] border border-[#F5A623]/20 text-[#F5A623] text-[10px] font-bold tracking-wider rounded-sm"
                   style={{ fontFamily: 'Share Tech Mono, monospace' }}>
                   <Shield size={10} /> ADMIN
                 </div>
               )}
-              <div className="w-px h-5 bg-[#2a2a3a] hidden lg:block" />
-              <div className="hidden lg:flex items-center gap-2.5">
+              <div className="w-px h-5 bg-[#2a2a3a] hidden sm:block" />
+              <div className="hidden sm:flex items-center gap-2.5">
                 <div className="w-6 h-6 flex items-center justify-center border rounded-sm"
                   style={{
                     borderColor: auth.role === 'admin' ? '#F5A62340' : '#2a2a3a',
@@ -152,99 +147,34 @@ function NavBar({ auth, onLogout }: { auth: AuthState | null; onLogout: () => vo
               SIGN IN
             </Link>
           )}
-
-          {/* Mobile hamburger */}
-          <button onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 -mr-1 text-[#94A3B8] hover:text-[#3EE07A] active:scale-95 transition-all"
-            aria-label="Toggle navigation">
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
         </div>
 
-        {/* Tab bar — desktop: all tabs, horizontal scroll */}
-        <nav className="hidden md:flex items-center gap-1 px-3 lg:px-4 pb-2 pt-1 overflow-x-auto scrollbar-none">
+        {/* All tabs — always visible, wraps to 2 rows on mobile */}
+        <nav className="flex flex-wrap items-center gap-1 px-3 md:px-5 pb-2 pt-1">
           {ALL_TABS.map(item => {
             const Icon = item.icon
             const active = isActive(item)
             return (
               <Link key={item.to} to={item.to}
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 text-[10px] lg:text-[11px] font-semibold tracking-wide rounded-md whitespace-nowrap shrink-0',
-                  'transition-all duration-300 ease-in-out border',
+                  'flex items-center gap-1 px-2 py-1.5 text-[9px] sm:text-[10px] lg:text-[11px] font-semibold tracking-wide rounded whitespace-nowrap shrink-0',
+                  'transition-all duration-200 border',
                   active
-                    ? 'border-[rgba(62,224,122,0.4)] bg-[rgba(62,224,122,0.12)] text-white shadow-[0_0_12px_rgba(62,224,122,0.15)]'
-                    : 'border-transparent text-[#8899A0] hover:text-[#d0d0d0] hover:bg-white/[0.04]'
+                    ? 'border-white/30 text-white'
+                    : 'border-transparent text-[#667780] hover:text-[#b0b8bc] hover:bg-white/[0.03]'
                 )}
-                style={{ fontFamily: 'Orbitron, monospace' }}>
-                <Icon size={11} className="transition-colors duration-300 shrink-0" style={{ color: active ? '#3EE07A' : undefined }} />
-                <span>{item.label}</span>
+                style={{
+                  fontFamily: 'Orbitron, monospace',
+                  backgroundColor: active ? item.color + '20' : undefined,
+                  boxShadow: active ? `0 0 10px ${item.color}15, inset 0 0 8px ${item.color}10` : undefined,
+                }}>
+                <Icon size={10} className="transition-colors duration-200 shrink-0" style={{ color: active ? item.color : undefined }} />
+                <span style={{ color: active ? item.color : undefined }}>{item.label}</span>
               </Link>
             )
           })}
         </nav>
       </header>
-
-      {/* Mobile Drawer — slides from top, proper touch targets */}
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50" onClick={() => setMobileOpen(false)}>
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-          {/* Drawer panel */}
-          <div className="absolute top-0 left-0 right-0 bg-[#0a0d0b]/98 border-b border-[rgba(62,224,122,0.2)] max-h-[85vh] overflow-y-auto"
-            style={{ backdropFilter: 'blur(20px)', paddingTop: 'env(safe-area-inset-top, 0px)' }}
-            onClick={e => e.stopPropagation()}>
-            {/* Drawer header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a3a]/50">
-              <span className="text-xs font-bold tracking-[0.15em] text-[#3EE07A]"
-                style={{ fontFamily: 'Orbitron, monospace' }}>
-                NAVIGATION
-              </span>
-              <button onClick={() => setMobileOpen(false)}
-                className="p-1.5 rounded-sm text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            {/* Tabs grid — 2 columns on mobile for better touch */}
-            <div className="p-3 grid grid-cols-2 gap-2">
-              {ALL_TABS.map(item => {
-                const Icon = item.icon
-                const active = isActive(item)
-                return (
-                  <Link key={item.to} to={item.to}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-3 text-xs font-semibold rounded-lg border transition-all duration-200',
-                      active
-                        ? 'bg-[rgba(62,224,122,0.15)] border-[rgba(62,224,122,0.4)] text-white shadow-[0_0_12px_rgba(62,224,122,0.1)]'
-                        : 'border-[#2a2a3a]/50 text-[#8899A0] active:bg-white/[0.05]'
-                    )}
-                    style={{ fontFamily: 'Orbitron, monospace' }}>
-                    <Icon size={14} className="shrink-0" style={{ color: active ? '#3EE07A' : item.color + '80' }} />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                )
-              })}
-            </div>
-            {/* User info on mobile */}
-            {auth && (
-              <div className="px-4 py-3 border-t border-[#2a2a3a]/50 flex items-center gap-3">
-                <div className="w-8 h-8 flex items-center justify-center border rounded-sm"
-                  style={{ borderColor: auth.role === 'admin' ? '#F5A62340' : '#2a2a3a', backgroundColor: auth.role === 'admin' ? '#F5A62315' : '#ffffff08' }}>
-                  {auth.role === 'admin' ? <Shield size={13} className="text-[#F5A623]" /> : <User size={13} className="text-[#94A3B8]" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-white truncate">{auth.name}</div>
-                  <div className="text-[10px] text-[#94A3B8] truncate">{auth.email}</div>
-                </div>
-                <button onClick={() => { onLogout(); setMobileOpen(false) }}
-                  className="p-2 text-[#94A3B8] hover:text-[#ff3366] hover:bg-[#ff3366]/10 rounded-sm transition-colors">
-                  <LogOut size={16} />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </>
   )
 }

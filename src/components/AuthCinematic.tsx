@@ -578,30 +578,30 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
                     <div className="flex-1 h-px" style={{ background: 'rgba(62,224,122,0.18)' }} />
                   </div>
 
-                  {/* Guest button */}
+                  {/* Guest button — distinct amber/gold to separate from primary green CTA */}
                   <button
                     onClick={handleGuest}
                     className="w-full flex items-center justify-center gap-2 transition-all group"
                     style={{
-                      background: 'transparent',
-                      border: '1px solid rgba(62,224,122,0.18)',
-                      color: '#dcede2',
+                      background: 'rgba(245,166,35,0.08)',
+                      border: '1px solid rgba(245,166,35,0.35)',
+                      color: '#F5A623',
                       padding: 11,
                       borderRadius: 10,
                       fontSize: 13,
                       cursor: 'pointer',
                       fontFamily: "'Space Grotesk', sans-serif",
-                      fontWeight: 500,
+                      fontWeight: 600,
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = '#3EE07A'
-                      e.currentTarget.style.background = 'rgba(62,224,122,0.08)'
+                      e.currentTarget.style.borderColor = '#F5A623'
+                      e.currentTarget.style.background = 'rgba(245,166,35,0.15)'
                       e.currentTarget.style.transform = 'translateY(-1px)'
-                      e.currentTarget.style.boxShadow = '0 0 20px rgba(62,224,122,0.14)'
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(245,166,35,0.2)'
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'rgba(62,224,122,0.18)'
-                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.borderColor = 'rgba(245,166,35,0.35)'
+                      e.currentTarget.style.background = 'rgba(245,166,35,0.08)'
                       e.currentTarget.style.transform = 'translateY(0)'
                       e.currentTarget.style.boxShadow = 'none'
                     }}

@@ -100,6 +100,7 @@ function GlobalIntelMap({ filters }: { filters: Record<FilterKey, boolean> }) {
   const fires: FireHotspot[] = v4Data?.fires?.hotspots || v4Data?.threats?.totalFiresNearFacilities || []
   const tradeFlows = (flowData?.routes || []).sort((a: TradeFlow, b: TradeFlow) => b.volume - a.volume).slice(0, 15)
   const maxVol = tradeFlows[0]?.volume || 1
+  const totalFlowVol = tradeFlows.reduce((s: number, f: TradeFlow) => s + f.volume, 0)
 
   const [selected, setSelected] = useState<{ type: string; data: any } | null>(null)
 
@@ -138,11 +139,43 @@ function GlobalIntelMap({ filters }: { filters: Record<FilterKey, boolean> }) {
             const dist = Math.sqrt(dx * dx + dy * dy)
             const archHeight = Math.min(dist * 0.25, 80)
             const midX = (fx + tx) / 2, midY = (fy + ty) / 2 - archHeight
+            const isFlowSelected = selected?.type === 'flow' && selected?.data?.id === flow.id
             return (
-              <g key={flow.id}>
-                <path d={`M ${fx} ${fy} Q ${midX} ${midY} ${tx} ${ty}`} fill="none" stroke={color} strokeWidth={thickness} opacity={0.35} strokeLinecap="round" />
-                <circle cx={fx} cy={fy} r={3} fill={color} opacity={0.7} />
-                <circle cx={tx} cy={ty} r={2} fill={color} opacity={0.5} />
+              <g key={flow.id} onClick={() => setSelected(isFlowSelected ? null : { type: 'flow', data: flow })} className="cursor-pointer">
+                {/* Glow behind selected flow */}
+                {isFlowSelected && (
+                  <path d={`M ${fx} ${fy} Q ${midX} ${midY} ${tx} ${ty}`} fill="none" stroke={color} strokeWidth={thickness * 3} opacity={0.2} />
+                )}
+                <path d={`M ${fx} ${fy} Q ${midX} ${midY} ${tx} ${ty}`} fill="none" stroke={color}
+                  strokeWidth={isFlowSelected ? thickness * 2 : thickness}
+                  opacity={isFlowSelected ? 0.9 : 0.35} strokeLinecap="round" />
+                {/* Animated dots along selected flow */}
+                {isFlowSelected && (
+                  <>
+                    <circle r="2.5" fill={color}>
+                      <animateMotion dur="2.5s" repeatCount="indefinite" path={`M ${fx} ${fy} Q ${midX} ${midY} ${tx} ${ty}`} />
+                    </circle>
+                    <circle r="1.5" fill="#fff" opacity="0.8">
+                      <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.2s" path={`M ${fx} ${fy} Q ${midX} ${midY} ${tx} ${ty}`} />
+                    </circle>
+                  </>
+                )}
+                <circle cx={fx} cy={fy} r={isFlowSelected ? 4 : 3} fill={color} opacity={isFlowSelected ? 0.9 : 0.7} />
+                <circle cx={fx} cy={fy} r={1.5} fill="#fff" opacity={0.9} />
+                <circle cx={tx} cy={ty} r={isFlowSelected ? 3 : 2} fill={color} opacity={isFlowSelected ? 0.8 : 0.5} />
+                <circle cx={tx} cy={ty} r={1} fill="#fff" opacity={0.7} />
+                {/* Tooltip for selected flow */}
+                {isFlowSelected && (
+                  <foreignObject x={Math.min(midX - 80, W - 170)} y={Math.max(midY - 40, 5)} width={160} height={60}>
+                    <div className="bg-[#0a0e14]/95 border border-white/15 rounded-lg shadow-2xl p-2 backdrop-blur-sm">
+                      <div className="text-[9px] font-bold font-mono" style={{ color }}>{flow.from} → {flow.to}</div>
+                      <div className="text-[8px] text-gray-400 font-mono">{flow.route}</div>
+                      <div className="text-[10px] font-bold font-mono mt-0.5" style={{ color }}>
+                        {(flow.volume / 1000000).toFixed(2)}M bbl/d ({((flow.volume / totalFlowVol) * 100).toFixed(1)}%)
+                      </div>
+                    </div>
+                  </foreignObject>
+                )}
               </g>
             )
           })}
@@ -274,7 +307,7 @@ function GlobalIntelMap({ filters }: { filters: Record<FilterKey, boolean> }) {
           </g>
         </svg>
 
-        {/* Legend */}
+        {/* Legend + click hint */}
         <div className="absolute bottom-2 left-2 bg-[#0a0e14]/90 border border-white/10 rounded p-1.5 space-y-0.5">
           {filters.facilities && <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full" style={{ background: '#F59E0B' }} /><span className="text-[9px] text-gray-400 font-mono">FACILITIES</span></div>}
           {filters.darkVessels && <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red" /><span className="text-[9px] text-gray-400 font-mono">DARK VESSELS</span></div>}
@@ -283,7 +316,42 @@ function GlobalIntelMap({ filters }: { filters: Record<FilterKey, boolean> }) {
           {filters.fires && <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-orange" /><span className="text-[9px] text-gray-400 font-mono">FIRES</span></div>}
           {filters.tradeFlows && <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full" style={{ background: '#38BDF8' }} /><span className="text-[9px] text-gray-400 font-mono">TRADE FLOWS</span></div>}
         </div>
+        <div className="absolute bottom-2 right-2 bg-[#0a0e14]/70 border border-white/10 rounded px-2 py-1">
+          <span className="text-[9px] text-gray-500 font-mono">Click flows, facilities & chokepoints for intel</span>
+        </div>
       </div>
+
+      {/* Selected flow detail panel */}
+      {selected?.type === 'flow' && selected.data && (
+        <div className="mt-2 p-3 rounded-lg border border-white/10 bg-[#0a0e14]/80">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full" style={{ background: regionColors[getRegion(selected.data.from)] || '#6B7A90' }} />
+            <span className="text-xs font-bold text-white font-mono">{selected.data.from}</span>
+            <span className="text-gray-500">→</span>
+            <span className="text-xs font-bold text-white font-mono">{selected.data.to}</span>
+            <div className="flex-1" />
+            <button onClick={() => setSelected(null)} className="text-[10px] text-gray-500 hover:text-white transition-colors font-mono">✕</button>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <div className="text-[9px] text-gray-500 font-mono uppercase">Volume</div>
+              <div className="text-sm font-bold font-mono" style={{ color: regionColors[getRegion(selected.data.from)] || '#6B7A90' }}>
+                {(selected.data.volume / 1000000).toFixed(2)}M bbl/d
+              </div>
+            </div>
+            <div>
+              <div className="text-[9px] text-gray-500 font-mono uppercase">Share</div>
+              <div className="text-sm font-bold text-white font-mono">
+                {((selected.data.volume / totalFlowVol) * 100).toFixed(1)}%
+              </div>
+            </div>
+            <div>
+              <div className="text-[9px] text-gray-500 font-mono uppercase">Route</div>
+              <div className="text-[11px] text-gray-300 font-mono">{selected.data.route}</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
