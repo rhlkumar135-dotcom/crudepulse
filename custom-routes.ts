@@ -286,7 +286,7 @@ async function fetchFREDSeries(seriesId: string, startDate = '2020-01-01'): Prom
   try {
     const res = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}&cosd=${startDate}`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) return []
     const csv = await res.text()
@@ -683,7 +683,7 @@ async function fetchGDELTMultiQuery(): Promise<unknown[]> {
     queries.map(async (q) => {
       try {
         const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=25&format=json&sort=DateDesc`
-        const res = await fetch(url, { signal: AbortSignal.timeout(6000) })
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
         if (!res.ok) return []
         const text = await res.text()
         if (!text.startsWith('{')) return []
@@ -1064,9 +1064,9 @@ app.get('/market/refinery', async (c) => {
   if (currentCsv) {
     const current = parseEIAUtilization(currentCsv)
     if (current) {
-      // Fetch historical weeks for chart data — limit to 8 most recent to avoid timeouts
+      // Fetch historical weeks for chart data — limit to 4 most recent for speed
       const archiveDates = await fetchEIAArchiveDates()
-      const historyPromises = archiveDates.slice(0, 8).map(async (path) => {
+      const historyPromises = archiveDates.slice(0, 4).map(async (path) => {
         const csv = await fetchEIATable2(`https://www.eia.gov${path}`)
         return csv ? parseEIAUtilization(csv) : null
       })
@@ -1224,7 +1224,7 @@ app.get('/market/storage', async (c) => {
       // Try to get historical data from archive
       const archiveDates = await fetchEIAArchiveDates()
       const histResults = await Promise.allSettled(
-        archiveDates.slice(0, 8).map(async (path) => {
+        archiveDates.slice(0, 4).map(async (path) => {
           const csv = await fetchEIACsv(`https://www.eia.gov${path}/table1.csv`)
           if (!csv) return null
           const p = parseStorageTable1(csv)
@@ -2762,7 +2762,7 @@ app.get('/news/atlas', async (c) => {
 
     const rawDate = a.pubDate ? new Date(a.pubDate).toISOString() : new Date().toISOString()
     const ageMs = Date.now() - new Date(rawDate).getTime()
-    if (ageMs < -24 * 3600_000 || ageMs > 90 * 24 * 3600_000) continue
+    if (ageMs < -24 * 3600_000 || ageMs > 30 * 24 * 3600_000) continue
 
     const loc = inferNewsLocation(a.title)
 
