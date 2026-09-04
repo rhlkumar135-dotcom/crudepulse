@@ -286,7 +286,7 @@ async function fetchFREDSeries(seriesId: string, startDate = '2020-01-01'): Prom
   try {
     const res = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}&cosd=${startDate}`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8000),
     })
     if (!res.ok) return []
     const csv = await res.text()
@@ -683,7 +683,7 @@ async function fetchGDELTMultiQuery(): Promise<unknown[]> {
     queries.map(async (q) => {
       try {
         const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=25&format=json&sort=DateDesc`
-        const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) })
         if (!res.ok) return []
         const text = await res.text()
         if (!text.startsWith('{')) return []
@@ -1064,9 +1064,9 @@ app.get('/market/refinery', async (c) => {
   if (currentCsv) {
     const current = parseEIAUtilization(currentCsv)
     if (current) {
-      // Fetch historical weeks for chart data — limit to 4 most recent for speed
+      // Fetch historical weeks for chart data — limit to 8 most recent to avoid timeouts
       const archiveDates = await fetchEIAArchiveDates()
-      const historyPromises = archiveDates.slice(0, 4).map(async (path) => {
+      const historyPromises = archiveDates.slice(0, 8).map(async (path) => {
         const csv = await fetchEIATable2(`https://www.eia.gov${path}`)
         return csv ? parseEIAUtilization(csv) : null
       })
@@ -1224,7 +1224,7 @@ app.get('/market/storage', async (c) => {
       // Try to get historical data from archive
       const archiveDates = await fetchEIAArchiveDates()
       const histResults = await Promise.allSettled(
-        archiveDates.slice(0, 4).map(async (path) => {
+        archiveDates.slice(0, 8).map(async (path) => {
           const csv = await fetchEIACsv(`https://www.eia.gov${path}/table1.csv`)
           if (!csv) return null
           const p = parseStorageTable1(csv)
@@ -1495,13 +1495,8 @@ interface AssetTimeSeries {
   data: Array<{ date: string; value: number }>
 }
 
-// Fetch Yahoo Finance chart with live price from meta
-interface AssetTimeSeriesWithLive extends AssetTimeSeries {
-  livePrice?: number
-  previousClose?: number
-}
-
-async function fetchYahooTimeSeries(symbol: string, range = '90d'): Promise<AssetTimeSeriesWithLive | null> {
+// Fetch any Yahoo Finance chart data as time series
+async function fetchYahooTimeSeries(symbol: string, range = '90d'): Promise<AssetTimeSeries | null> {
   try {
     const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -1517,13 +1512,7 @@ async function fetchYahooTimeSeries(symbol: string, range = '90d'): Promise<Asse
       .map((t, i) => ({ date: new Date(t * 1000).toISOString().split('T')[0], value: closes[i] ?? 0 }))
       .filter(d => d.value > 0)
 
-    return {
-      symbol,
-      label: symbol,
-      data,
-      livePrice: result.meta?.regularMarketPrice,
-      previousClose: result.meta?.previousClose,
-    }
+    return { symbol, label: symbol, data }
   } catch { return null }
 }
 
@@ -1966,7 +1955,7 @@ async function fetchFREDSeriesMap(seriesId: string, days = 90): Promise<Array<{ 
 
 app.get('/market/multi-asset', async (c) => {
   const cached = getCache('multi-asset')
-  if (cached && isCacheFresh('multi-asset', 10 * SECOND)) {
+  if (cached && isCacheFresh('multi-asset', 30 * SECOND)) {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -1996,46 +1985,31 @@ app.get('/market/multi-asset', async (c) => {
   const btcCurrent = results[1].status === 'fulfilled' ? results[1].value : null
   const yahooResults = results.slice(2)
 
-  // Also fetch live BTC price from CoinGecko for the most current value
-  const btcLive = btcCurrent ?? (btcHistory && btcHistory.length > 0 ? btcHistory[btcHistory.length - 1].value : 0)
-  const btcPrevClose = btcHistory && btcHistory.length > 1 ? btcHistory[btcHistory.length - 2].value : btcLive
-
-  const series: MultiAssetTimeSeries[] & Array<{ dayChange: number; dayChangePct: number }> = [] as any
+  const series: MultiAssetTimeSeries[] = []
 
   for (let i = 0; i < assetDefs.length; i++) {
     const def = assetDefs[i]
     if (def.cgId === 'bitcoin') {
-      const dayChange = +(btcLive - btcPrevClose).toFixed(2)
-      const dayChangePct = btcPrevClose ? +((btcLive - btcPrevClose) / btcPrevClose * 100).toFixed(2) : 0
       series.push({
         symbol: def.symbol, label: def.label, type: def.type, color: def.color,
-        current: btcLive,
+        current: btcCurrent ?? 0,
         history: btcHistory ?? [],
-        dayChange,
-        dayChangePct,
       })
     } else {
       const yahooIdx = i - 1
       const yahoo = yahooResults[yahooIdx]
       const data = yahoo?.status === 'fulfilled' ? yahoo.value : null
-      // Use live price from Yahoo meta (real-time market price) instead of last daily close
-      const livePrice = data?.livePrice ?? data?.data?.[data.data.length - 1]?.value ?? 0
-      const prevClose = data?.previousClose ?? data?.data?.[data.data.length - 2]?.value ?? livePrice
-      const dayChange = +(livePrice - prevClose).toFixed(2)
-      const dayChangePct = prevClose ? +((livePrice - prevClose) / prevClose * 100).toFixed(2) : 0
       series.push({
         symbol: def.symbol, label: def.label, type: def.type, color: def.color,
-        current: livePrice,
+        current: data?.data?.[data.data.length - 1]?.value ?? 0,
         history: data?.data ?? [],
-        dayChange,
-        dayChangePct,
       })
     }
   }
 
   const multiAssetData = { series }
   setCache('multi-asset', multiAssetData, 'api')
-  return c.json({ ...multiAssetData, lastUpdated: new Date().toISOString(), source: 'coingecko+yahoo-live' })
+  return c.json({ ...multiAssetData, lastUpdated: new Date().toISOString(), source: 'coingecko+swissquote+yahoo' })
 })
 
 // ═══ Module J: Copernicus / Satellite Data ═════════════════════════════════
@@ -2692,15 +2666,41 @@ async function fetchGDELTDoc(query: string, maxrecords = 50): Promise<Array<{
   } catch { return [] }
 }
 
-// Fetch trending topics by mention velocity via Google News RSS
+// Fetch trending topics by mention velocity — uses GDELT if available, falls back to Google News RSS
 async function fetchTrendingTopics(): Promise<Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>> {
   const queries = ['crude oil', 'OPEC', 'Brent', 'WTI', 'oil price', 'Hormuz', 'oil production', 'sanctions oil']
+
+  // GDELT is unreachable from this server — skip connectivity check
+  const gdeltAvailable = false
+
+  if (gdeltAvailable) {
+    // Original GDELT velocity-based trending
+    const results = await Promise.allSettled(queries.map(async q => {
+      try {
+        const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=5&format=json&sort=DateDesc&startdatetime=${new Date(Date.now() - 3600_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
+        const urlPrev = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=5&format=json&sort=DateDesc&startdatetime=${new Date(Date.now() - 7200_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}&enddatetime=${new Date(Date.now() - 3600_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
+        const [cur, prev] = await Promise.all([
+          fetch(url, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(urlPrev, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+        ])
+        const curCount = cur?.articles?.length || 0
+        const prevCount = prev?.articles?.length || 0
+        const velocity = prevCount > 0 ? Math.round(((curCount - prevCount) / Math.max(prevCount, 1)) * 100) : curCount * 50
+        return { topic: q, velocity, direction: velocity >= 0 ? 'up' as const : 'down' as const }
+      } catch { return { topic: q, velocity: 0, direction: 'up' as const } }
+    }))
+    return results.map(r => r.status === 'fulfilled' ? r.value : { topic: '', velocity: 0, direction: 'up' as const })
+      .filter(t => t.topic)
+      .sort((a, b) => Math.abs(b.velocity) - Math.abs(a.velocity))
+  }
+
+  // Fallback: count article mentions from Google News RSS over two time windows
   const now = Date.now()
   const results = await Promise.allSettled(queries.map(async q => {
     try {
       const res = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`, {
         headers: { 'User-Agent': 'Mozilla/5.0' },
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(6000),
       })
       if (!res.ok) return { topic: q, velocity: 0, direction: 'up' as const }
       const xml = await res.text()
@@ -2725,16 +2725,34 @@ app.get('/news/atlas', async (c) => {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 
-  // Fast: 4 broad Google News RSS calls + trending in parallel (skip GDELT — always times out)
+  // 8 parallel Google News RSS calls for broad coverage
   const gnewsResults = await Promise.allSettled([
-    fetchGoogleNewsRSS('crude oil price OPEC WTI Brent', 30),
-    fetchGoogleNewsRSS('oil disruption attack sanctions supply', 25),
-    fetchGoogleNewsRSS('oil pipeline refinery tanker shipping energy', 20),
-    fetchGoogleNewsRSS('Hormuz Suez Red Sea Russia Iran oil', 20),
+    fetchGoogleNewsRSS('crude oil price OPEC WTI Brent today', 30),
+    fetchGoogleNewsRSS('oil disruption attack military sanctions', 20),
+    fetchGoogleNewsRSS('oil pipeline refinery tanker shipping', 15),
+    fetchGoogleNewsRSS('oil production supply demand energy', 15),
+    fetchGoogleNewsRSS('Hormuz Suez Red Sea oil geopolitics', 15),
+    fetchGoogleNewsRSS('oil spill environmental leak methane', 10),
+    fetchGoogleNewsRSS('Russia Iran oil sanctions', 10),
+    fetchGoogleNewsRSS('oil rig drilling Permian shale', 10),
   ])
 
-  // Trending runs in parallel with the main fetch
-  const trending = fetchTrendingTopics().catch(() => [] as Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>)
+  // GDELT DOC: 2 queries for broader coverage
+  const docResults = await Promise.allSettled([
+    fetchGDELTDoc('crude oil OR OPEC', 30),
+    fetchGDELTDoc('oil supply disruption middle east', 20),
+  ])
+
+  const trending = await fetchTrendingTopics().catch(() => [] as Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>)
+
+  // Merge GDELT DOC results
+  const allDocArticles: Array<{
+    title: string; url: string; seendate: string; domain: string;
+    sourcecountry: string; socialimage: string; tone: number
+  }> = []
+  for (const r of docResults) {
+    if (r.status === 'fulfilled') allDocArticles.push(...r.value)
+  }
 
   // Merge Google News results
   const allGnewsArticles: Array<{ title: string; source: string; pubDate: string }> = []
@@ -2754,6 +2772,38 @@ app.get('/news/atlas', async (c) => {
 
   const seenTitles: string[] = []
 
+  // Process GDELT DOC articles (use sourcecountry for geolocation + socialimage)
+  for (const a of allDocArticles) {
+    if (!a.title) continue
+    if (seenTitles.some(s => titleSimilarity(s, a.title) > 0.78)) continue
+    seenTitles.push(a.title)
+
+    const rawDate = parseGDELTD(a.seendate)
+    const ageMs = Date.now() - new Date(rawDate).getTime()
+    // Accept articles up to 90 days old for broader coverage
+    if (ageMs < -24 * 3600_000 || ageMs > 90 * 24 * 3600_000) continue
+
+    const loc = inferNewsLocation(a.title, a.sourcecountry)
+
+    stories.push({
+      id: `doc-${stories.length}`,
+      title: a.title,
+      source: a.domain || 'GDELT',
+      url: a.url,
+      lat: loc.lat + (Math.random() - 0.5) * 1.5,
+      lng: loc.lng + (Math.random() - 0.5) * 1.5,
+      location: loc.name,
+      category: classifyNewsCategory(a.title),
+      tone: a.tone || 0,
+      importanceScore: computeImportanceScore({ tone: a.tone, ageMs, mentionVolume: allDocArticles.filter(g => titleSimilarity(g.title, a.title) > 0.25).length }),
+      ageMs,
+      rawDate,
+      timeAgo: formatTimeAgo(rawDate),
+      imageUrl: a.socialimage || null,
+      topicCount: 1,
+    })
+  }
+
   // Process Google News articles (no lat/lng, infer from title)
   for (const a of allGnewsArticles) {
     if (!a.title) continue
@@ -2762,7 +2812,7 @@ app.get('/news/atlas', async (c) => {
 
     const rawDate = a.pubDate ? new Date(a.pubDate).toISOString() : new Date().toISOString()
     const ageMs = Date.now() - new Date(rawDate).getTime()
-    if (ageMs < -24 * 3600_000 || ageMs > 30 * 24 * 3600_000) continue
+    if (ageMs < -24 * 3600_000 || ageMs > 90 * 24 * 3600_000) continue
 
     const loc = inferNewsLocation(a.title)
 
@@ -2794,7 +2844,7 @@ app.get('/news/atlas', async (c) => {
     categoryCounts[s.category] = (categoryCounts[s.category] || 0) + 1
   }
 
-  const trendingData = await trending
+  const trendingData = Array.isArray(trending) ? trending : []
 
   const atlasData = {
     stories: stories.slice(0, 200),

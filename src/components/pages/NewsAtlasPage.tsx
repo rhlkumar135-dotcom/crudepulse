@@ -47,7 +47,7 @@ export function NewsAtlasPage() {
   const [selectedStory, setSelectedStory] = useState<Story | null>(null)
   const [hoveredStory, setHoveredStory] = useState<Story | null>(null)
   const [activeRegion, setActiveRegion] = useState('Global')
-  const [recencyFilter, setRecencyFilter] = useState<'24h' | '7d' | '30d'>('30d')
+  const [recencyFilter, setRecencyFilter] = useState<'24h' | '7d' | '30d'>('7d')
   const [showHeatmap, setShowHeatmap] = useState(false)
   const feedRef = useRef<HTMLDivElement>(null)
   const [newCount, setNewCount] = useState(0)

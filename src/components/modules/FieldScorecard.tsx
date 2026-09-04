@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from 'recharts'
 import { useMarketData } from '@/lib/useMarketData'
 import { CountUp } from '../CountUp'
@@ -23,7 +23,10 @@ function normalizeField(f: OilField, allFields: OilField[]) {
 export function FieldScorecard() {
   const { data } = useMarketData<{ fields: OilField[] }>('/api/market/fields', 'free', 300_000)
   const oilFields = data?.fields || []
-  const [selected, setSelected] = useState<OilField | null>(oilFields[0] || null)
+  const [selected, setSelected] = useState<OilField | null>(null)
+  useEffect(() => {
+    if (oilFields.length > 0 && !selected) setSelected(oilFields[0])
+  }, [oilFields])
   const radarData = selected ? normalizeField(selected, oilFields) : []
   const [sortKey, setSortKey] = useState<'production' | 'reserves' | 'rpRatio'>('production')
   const sortedFields = [...oilFields].sort((a: OilField, b: OilField) => ((b as any)[sortKey] ?? 0) - ((a as any)[sortKey] ?? 0))
