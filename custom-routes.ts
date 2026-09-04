@@ -1495,8 +1495,13 @@ interface AssetTimeSeries {
   data: Array<{ date: string; value: number }>
 }
 
-// Fetch any Yahoo Finance chart data as time series
-async function fetchYahooTimeSeries(symbol: string, range = '90d'): Promise<AssetTimeSeries | null> {
+// Fetch Yahoo Finance chart with live price from meta
+interface AssetTimeSeriesWithLive extends AssetTimeSeries {
+  livePrice?: number
+  previousClose?: number
+}
+
+async function fetchYahooTimeSeries(symbol: string, range = '90d'): Promise<AssetTimeSeriesWithLive | null> {
   try {
     const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -1512,7 +1517,13 @@ async function fetchYahooTimeSeries(symbol: string, range = '90d'): Promise<Asse
       .map((t, i) => ({ date: new Date(t * 1000).toISOString().split('T')[0], value: closes[i] ?? 0 }))
       .filter(d => d.value > 0)
 
-    return { symbol, label: symbol, data }
+    return {
+      symbol,
+      label: symbol,
+      data,
+      livePrice: result.meta?.regularMarketPrice,
+      previousClose: result.meta?.previousClose,
+    }
   } catch { return null }
 }
 
@@ -1955,7 +1966,7 @@ async function fetchFREDSeriesMap(seriesId: string, days = 90): Promise<Array<{ 
 
 app.get('/market/multi-asset', async (c) => {
   const cached = getCache('multi-asset')
-  if (cached && isCacheFresh('multi-asset', 30 * SECOND)) {
+  if (cached && isCacheFresh('multi-asset', 10 * SECOND)) {
     return c.json({ ...cached.data as object, lastUpdated: new Date((cached as { fetchedAt: number }).fetchedAt).toISOString(), source: cached.source })
   }
 
@@ -1985,31 +1996,46 @@ app.get('/market/multi-asset', async (c) => {
   const btcCurrent = results[1].status === 'fulfilled' ? results[1].value : null
   const yahooResults = results.slice(2)
 
-  const series: MultiAssetTimeSeries[] = []
+  // Also fetch live BTC price from CoinGecko for the most current value
+  const btcLive = btcCurrent ?? (btcHistory && btcHistory.length > 0 ? btcHistory[btcHistory.length - 1].value : 0)
+  const btcPrevClose = btcHistory && btcHistory.length > 1 ? btcHistory[btcHistory.length - 2].value : btcLive
+
+  const series: MultiAssetTimeSeries[] & Array<{ dayChange: number; dayChangePct: number }> = [] as any
 
   for (let i = 0; i < assetDefs.length; i++) {
     const def = assetDefs[i]
     if (def.cgId === 'bitcoin') {
+      const dayChange = +(btcLive - btcPrevClose).toFixed(2)
+      const dayChangePct = btcPrevClose ? +((btcLive - btcPrevClose) / btcPrevClose * 100).toFixed(2) : 0
       series.push({
         symbol: def.symbol, label: def.label, type: def.type, color: def.color,
-        current: btcCurrent ?? 0,
+        current: btcLive,
         history: btcHistory ?? [],
+        dayChange,
+        dayChangePct,
       })
     } else {
       const yahooIdx = i - 1
       const yahoo = yahooResults[yahooIdx]
       const data = yahoo?.status === 'fulfilled' ? yahoo.value : null
+      // Use live price from Yahoo meta (real-time market price) instead of last daily close
+      const livePrice = data?.livePrice ?? data?.data?.[data.data.length - 1]?.value ?? 0
+      const prevClose = data?.previousClose ?? data?.data?.[data.data.length - 2]?.value ?? livePrice
+      const dayChange = +(livePrice - prevClose).toFixed(2)
+      const dayChangePct = prevClose ? +((livePrice - prevClose) / prevClose * 100).toFixed(2) : 0
       series.push({
         symbol: def.symbol, label: def.label, type: def.type, color: def.color,
-        current: data?.data?.[data.data.length - 1]?.value ?? 0,
+        current: livePrice,
         history: data?.data ?? [],
+        dayChange,
+        dayChangePct,
       })
     }
   }
 
   const multiAssetData = { series }
   setCache('multi-asset', multiAssetData, 'api')
-  return c.json({ ...multiAssetData, lastUpdated: new Date().toISOString(), source: 'coingecko+swissquote+yahoo' })
+  return c.json({ ...multiAssetData, lastUpdated: new Date().toISOString(), source: 'coingecko+yahoo-live' })
 })
 
 // ═══ Module J: Copernicus / Satellite Data ═════════════════════════════════

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts'
-import { Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { Activity, TrendingUp, TrendingDown, Zap } from 'lucide-react'
 
 interface AssetSeries {
   symbol: string
@@ -8,6 +8,8 @@ interface AssetSeries {
   type: string
   color: string
   current: number
+  dayChange: number
+  dayChangePct: number
   history: Array<{ date: string; value: number }>
 }
 
@@ -22,6 +24,7 @@ export default function MultiAssetChart() {
   const [normalize, setNormalize] = useState(true)
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['crypto', 'metal', 'oil', 'index']))
   const [error, setError] = useState<string | null>(null)
+  const [secondsAgo, setSecondsAgo] = useState<number>(0)
 
   useEffect(() => {
     let alive = true
@@ -30,13 +33,23 @@ export default function MultiAssetChart() {
         const res = await fetch('/api/market/multi-asset')
         if (!res.ok) throw new Error(`${res.status}`)
         const json = await res.json()
-        if (alive) { setData(json); setError(null) }
+        if (alive) { setData(json); setError(null); setSecondsAgo(0) }
       } catch (e) { if (alive) setError(String(e)) }
     }
     load()
-    const iv = setInterval(load, 15_000)
+    const iv = setInterval(load, 10_000)
     return () => { alive = false; clearInterval(iv) }
   }, [])
+
+  // Tick "seconds ago" counter
+  useEffect(() => {
+    if (!data?.lastUpdated) return
+    const iv = setInterval(() => {
+      const age = Math.floor((Date.now() - new Date(data!.lastUpdated).getTime()) / 1000)
+      setSecondsAgo(age)
+    }, 1000)
+    return () => clearInterval(iv)
+  }, [data?.lastUpdated])
 
   const chartData = useMemo(() => {
     if (!data?.series) return []
@@ -80,15 +93,25 @@ export default function MultiAssetChart() {
     { key: 'index', label: 'Indices', color: '#8B5CF6' },
   ]
 
+  const isLive = secondsAgo < 30
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Activity size={12} className="text-cyan" />
           <span className="text-[10px] font-mono uppercase tracking-widest text-cyan">Multi-Asset Comparison</span>
+          <span className="flex items-center gap-1 ml-2">
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${isLive ? 'bg-teal animate-pulse' : 'bg-amber'}`} />
+            <span className={`text-[9px] font-mono ${isLive ? 'text-teal' : 'text-amber'}`}>
+              {isLive ? 'LIVE' : `${secondsAgo}s ago`}
+            </span>
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-muted">Source: CoinGecko + Yahoo Finance</span>
+          <span className="text-[9px] font-mono text-muted">
+            {secondsAgo < 5 ? 'Just now' : `${secondsAgo}s ago`} · Yahoo Finance + CoinGecko
+          </span>
         </div>
       </div>
 
@@ -124,10 +147,9 @@ export default function MultiAssetChart() {
 
       <div className="flex gap-3 mb-2 flex-wrap">
         {activeSeries.map(s => {
-          const hist = s.history
           const current = s.current
-          const prev = hist.length > 1 ? hist[hist.length - 2]?.value : current
-          const pct = prev ? ((current - prev) / prev * 100) : 0
+          const pct = s.dayChangePct ?? 0
+          const change = s.dayChange ?? 0
           return (
             <div key={s.symbol} className="flex items-center gap-1.5">
               <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
