@@ -351,7 +351,7 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
               ) : (
                 <>
                   {/* Brand row */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-0 mb-5">
+                  <div className="flex flex-col items-start gap-1 mb-5">
                     <div className="text-lg font-bold" style={{ color: '#eafff2', letterSpacing: '-0.01em' }}>
                       Crude<span
                         style={{
