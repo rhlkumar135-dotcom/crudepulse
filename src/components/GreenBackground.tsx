@@ -6,18 +6,16 @@ export function GreenBackground() {
   return (
     <>
       {/* Photo background — dark green, blurred, visible */}
-      <div className="fixed inset-0 z-0 overflow-hidden">
-        <img
-          src="/login-bg.png"
-          alt=""
-          className="w-full h-full object-cover"
-          style={{
-            objectPosition: 'center 40%',
-            filter: 'saturate(0.85) brightness(0.75) blur(1.5px)',
-            animation: 'kenburns 26s ease-in-out infinite alternate',
-          }}
-        />
-      </div>
+      <div
+        className="fixed inset-0 z-0 overflow-hidden"
+        style={{
+          backgroundImage: 'url(/login-bg.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center 40%',
+          filter: 'saturate(0.85) brightness(0.75) blur(1.5px)',
+          animation: 'kenburns 26s ease-in-out infinite alternate',
+        }}
+      />
 
       {/* Green tint overlay — dark with green wash */}
       <div

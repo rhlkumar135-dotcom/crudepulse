@@ -351,7 +351,7 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
               ) : (
                 <>
                   {/* Brand row */}
-                  <div className="flex items-baseline justify-between mb-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-0 mb-5">
                     <div className="text-lg font-bold" style={{ color: '#eafff2', letterSpacing: '-0.01em' }}>
                       Crude<span
                         style={{
@@ -578,20 +578,20 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
                     <div className="flex-1 h-px" style={{ background: 'rgba(62,224,122,0.18)' }} />
                   </div>
 
-                  {/* Guest button — distinct amber/gold to separate from primary green CTA */}
+                  {/* Guest button */}
                   <button
                     onClick={handleGuest}
                     className="w-full flex items-center justify-center gap-2 transition-all group"
                     style={{
-                      background: 'rgba(245,166,35,0.08)',
-                      border: '1px solid rgba(245,166,35,0.35)',
+                      background: 'linear-gradient(90deg, rgba(245,166,35,0.12), rgba(245,166,35,0.06))',
+                      border: '1px solid rgba(245,166,35,0.45)',
                       color: '#F5A623',
                       padding: 11,
                       borderRadius: 10,
                       fontSize: 13,
                       cursor: 'pointer',
                       fontFamily: "'Space Grotesk', sans-serif",
-                      fontWeight: 600,
+                      fontWeight: 500,
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.borderColor = '#F5A623'
@@ -600,8 +600,8 @@ export function AuthCinematic({ onLogin, onGuest }: Props) {
                       e.currentTarget.style.boxShadow = '0 0 20px rgba(245,166,35,0.2)'
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'rgba(245,166,35,0.35)'
-                      e.currentTarget.style.background = 'rgba(245,166,35,0.08)'
+                      e.currentTarget.style.borderColor = 'rgba(245,166,35,0.45)'
+                      e.currentTarget.style.background = 'linear-gradient(90deg, rgba(245,166,35,0.12), rgba(245,166,35,0.06))'
                       e.currentTarget.style.transform = 'translateY(0)'
                       e.currentTarget.style.boxShadow = 'none'
                     }}
