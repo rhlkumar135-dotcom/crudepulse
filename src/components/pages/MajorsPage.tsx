@@ -25,19 +25,27 @@ interface MajorsResponse {
   lastUpdated: string
 }
 
-function FlashPrice({ price, change }: { price: number; change: number }) {
+function FlashPrice({ price, change }: { price: number | null; change: number }) {
   const prevRef = useRef(price)
   const elRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     if (price !== prevRef.current && elRef.current) {
-      const cls = price > prevRef.current ? 'text-[#00ff88]' : 'text-[#ff3366]'
+      const cls = (price ?? 0) > (prevRef.current ?? 0) ? 'text-[#00ff88]' : 'text-[#ff3366]'
       elRef.current.classList.add(cls)
       const t = setTimeout(() => elRef.current?.classList.remove(cls), 600)
       prevRef.current = price
       return () => clearTimeout(t)
     }
   }, [price])
+
+  if (price == null) {
+    return (
+      <span className="text-sm font-bold text-[#94A3B8]/50" style={{ fontFamily: 'Orbitron, monospace' }}>
+        —
+      </span>
+    )
+  }
 
   return (
     <span ref={elRef} className="transition-colors duration-600 text-sm font-bold text-white"

@@ -97,7 +97,7 @@ function GlobalIntelMap({ filters }: { filters: Record<FilterKey, boolean> }) {
   const facilities: Facility[] = v4Data?.facilities || []
   const darkVessels: DarkVessel[] = v4Data?.darkVessels?.recentEvents || []
   const emissions: EmissionEvent[] = v4Data?.emissions?.recentEvents || []
-  const fires: FireHotspot[] = v4Data?.fires?.hotspots || v4Data?.threats?.totalFiresNearFacilities || []
+  const fires: FireHotspot[] = []
   const tradeFlows = (flowData?.routes || []).sort((a: TradeFlow, b: TradeFlow) => b.volume - a.volume).slice(0, 15)
   const maxVol = tradeFlows[0]?.volume || 1
 
