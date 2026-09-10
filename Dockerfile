@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile
 
-ARG CACHE_BUST=1
+ARG CACHE_BUST=2
 COPY . .
 
 ENV DATABASE_URL="file:./prisma/prod.db"
