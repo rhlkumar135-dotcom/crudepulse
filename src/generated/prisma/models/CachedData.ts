@@ -1016,6 +1016,7 @@ export type CachedDataCreateManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * The data used to create many CachedData.
    */
   data: Prisma.CachedDataCreateManyInput | Prisma.CachedDataCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1034,6 +1035,7 @@ export type CachedDataCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Exte
    * The data used to create many CachedData.
    */
   data: Prisma.CachedDataCreateManyInput | Prisma.CachedDataCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
