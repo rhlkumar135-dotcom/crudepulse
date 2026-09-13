@@ -1,8 +1,0 @@
-node_modules
-dist
-.shogo
-.git
-*.md
-prisma/dev.db
-prisma/prod.db
-memory

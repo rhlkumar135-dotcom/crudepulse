@@ -387,7 +387,64 @@ function isCacheFresh(key: string, ttlMs: number): boolean {
 
 // ── Real API fetchers ────────────────────────────────────────────────────────
 
-// GDELT functions removed — unreachable from this server
+let gdeltLock: Promise<unknown[] | null> | null = null
+
+async function fetchGDELT(): Promise<unknown[] | null> {
+  // Deduplicate concurrent GDELT calls — only one in-flight at a time
+  if (gdeltLock) return gdeltLock
+  gdeltLock = fetchGDELTInner()
+  try {
+    return await gdeltLock
+  } finally {
+    gdeltLock = null
+  }
+}
+
+async function fetchGDELTInner(): Promise<unknown[] | null> {
+  try {
+    // Use simpler query and shorter timeout for reliability
+    const query = encodeURIComponent('crude oil')
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&maxrecords=25&format=json&sort=DateDesc`
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) {
+      console.error(`GDELT returned ${res.status}`)
+      return null
+    }
+
+    const text = await res.text()
+    if (!text.startsWith('{')) {
+      console.error('GDELT returned non-JSON:', text.slice(0, 100))
+      return null
+    }
+
+    const data = JSON.parse(text) as { articles?: Array<{ url: string; title: string; seendate: string; sourcecountry: string; domain: string; tone?: number }> }
+
+    if (!data.articles?.length) return null
+
+    return data.articles
+      .map((a, i) => {
+        const parsedDate = parseGDELTD(a.seendate || '')
+        return {
+          id: `gdelt-${i}`,
+          title: a.title,
+          source: a.domain || 'GDELT',
+          time: formatTimeAgo(parsedDate),
+          rawDate: parsedDate,
+          location: a.sourcecountry || 'Global',
+          sentiment: (a.tone ?? 0) > 0.5 ? 'positive' : (a.tone ?? 0) < -0.5 ? 'negative' : 'neutral',
+          score: +(a.tone ?? 0).toFixed(1),
+          category: inferCategory(a.title),
+          severity: Math.min(1, Math.abs(a.tone ?? 0) / 10),
+        }
+      })
+      .filter((a) => isRecent(a.rawDate, 7))
+      .sort((a, b) => b.rawDate.localeCompare(a.rawDate))
+  } catch (e) {
+    console.error('GDELT fetch failed:', e)
+    return null
+  }
+}
 
 async function fetchYahooFinanceCommodities(): Promise<Record<string, number> | null> {
   const symbols = ['CL=F', 'BZ=F', 'NG=F', 'HO=F', 'RB=F', 'GC=F', 'SI=F']
@@ -581,48 +638,89 @@ app.get('/market/news', async (c) => {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source, tier })
   }
 
-  // Skip GDELT (unreachable from this server) — go straight to parallel RSS feeds
-  const [rss1, rss2, rss3] = await Promise.all([
-    fetchGoogleNewsRSS('crude oil price OPEC WTI Brent energy market', 20),
-    fetchGoogleNewsRSS('oil production supply demand crude barrel', 15),
-    fetchGoogleNewsRSS('oil disruption sanctions pipeline geopolitics', 15),
-  ])
+  // Try GDELT first (no key needed), then NewsAPI as supplement
+  const gdeltItems = await fetchGDELT()
+  let newsItems = await fetchNewsAPI()
 
-  // Deduplicate by title similarity
-  const seen = new Set<string>()
-  const allItems: Array<{ id: string; title: string; source: string; time: string; sentiment: string; score: number; category: string }> = []
-  for (const articles of [rss1, rss2, rss3]) {
-    for (const a of articles) {
-      const key = a.title.toLowerCase().slice(0, 50)
-      if (seen.has(key)) continue
-      seen.add(key)
-      allItems.push({
-        id: `gnews-${allItems.length}`,
-        title: a.title,
-        source: a.source,
-        time: formatTimeAgo(a.pubDate),
-        sentiment: 'neutral',
-        score: 0,
-        category: inferCategory(a.title),
-      })
-    }
-  }
-
-  if (allItems.length) {
+  if (gdeltItems?.length) {
+    // GDELT is the primary source — merge with NewsAPI if available
+    const allItems = newsItems?.length ? [...newsItems, ...gdeltItems] : gdeltItems
     setCache('news', { items: allItems }, 'api')
-    return c.json({ items: allItems, lastUpdated: new Date().toISOString(), source: 'gnews', tier })
+    return c.json({ items: allItems, lastUpdated: new Date().toISOString(), source: 'api', tier })
   }
 
+  if (newsItems?.length) {
+    setCache('news', { items: newsItems }, 'api')
+    return c.json({ items: newsItems, lastUpdated: new Date().toISOString(), source: 'gnews', tier })
+  }
+
+  // Serve stale cache if available
   if (cached) {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source, tier, stale: true })
   }
 
-  return c.json({ error: 'All news data sources unavailable.', items: [], sources_tried: ['gnews'] }, 503)
+  return c.json({ error: 'All news data sources unavailable. GDELT, NewsAPI, and Google News RSS all failed.', items: [], sources_tried: ['gdelt', 'newsapi', 'gnews'] }, 503)
 })
 
 // Module B: Disruption Radar
 // Multi-source: GDELT (multiple oil-specific queries) + Google News RSS (parallel feeds) — 30s TTL
-// fetchGDELTMultiQuery removed — GDELT API unreachable from this server
+async function fetchGDELTMultiQuery(): Promise<unknown[]> {
+  const queries = [
+    'crude oil price',
+    'OPEC production cut output',
+    'oil pipeline disruption',
+    'middle east oil conflict',
+    'oil tanker attack sanctions',
+    'oil supply shortage inventories',
+    'Strait of Hormuz shipping',
+    'US oil production refinery',
+  ]
+
+  const allArticles: Array<{ id: string; title: string; source: string; time: string; rawDate: string; location: string; sentiment: string; score: number; category: string; severity: number }> = []
+  const seen = new Set<string>()
+
+  const results = await Promise.allSettled(
+    queries.map(async (q) => {
+      try {
+        const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=25&format=json&sort=DateDesc`
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) })
+        if (!res.ok) return []
+        const text = await res.text()
+        if (!text.startsWith('{')) return []
+        const data = JSON.parse(text) as { articles?: Array<{ url: string; title: string; seendate: string; sourcecountry: string; domain: string; tone?: number }> }
+        return data.articles || []
+      } catch { return [] }
+    })
+  )
+
+  for (const r of results) {
+    if (r.status !== 'fulfilled') continue
+    for (const a of r.value) {
+      const key = a.title.toLowerCase().slice(0, 60)
+      if (seen.has(key)) continue
+      seen.add(key)
+
+      const parsedDate = parseGDELTD(a.seendate || '')
+      if (!isRecent(parsedDate, 7)) continue
+
+      const tone = a.tone ?? 0
+      allArticles.push({
+        id: `gdelt-${allArticles.length}`,
+        title: a.title,
+        source: a.domain || 'GDELT',
+        time: formatTimeAgo(parsedDate),
+        rawDate: parsedDate,
+        location: a.sourcecountry || 'Global',
+        sentiment: tone > 0.5 ? 'positive' : tone < -0.5 ? 'negative' : 'neutral',
+        score: +tone.toFixed(1),
+        category: inferCategory(a.title),
+        severity: Math.min(1, Math.abs(tone) / 10),
+      })
+    }
+  }
+
+  return allArticles.sort((a, b) => b.rawDate.localeCompare(a.rawDate))
+}
 
 async function fetchDisruptionNews(): Promise<unknown[]> {
   const queries = [
@@ -657,12 +755,14 @@ app.get('/market/disruptions', async (c) => {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
-  // Skip GDELT (unreachable) — use only Google News RSS for disruption events
-  const gnewsResults = await Promise.allSettled([
+  // Fetch GDELT multi-query and Google News in parallel
+  const [gdeltResults, gnewsResults] = await Promise.allSettled([
+    fetchGDELTMultiQuery(),
     fetchDisruptionNews(),
   ])
 
-  const gnewsRaw = gnewsResults[0]?.status === 'fulfilled' ? gnewsResults[0].value : []
+  const gdeltEvents = gdeltResults.status === 'fulfilled' ? gdeltResults.value : []
+  const gnewsRaw = gnewsResults.status === 'fulfilled' ? gnewsResults.value : []
 
   // Build Google News events
   const gnewsEvents = gnewsRaw.map((a: any, i: number) => {
@@ -682,10 +782,10 @@ app.get('/market/disruptions', async (c) => {
     }
   })
 
-  // Merge: Google News only (GDELT removed — unreachable from this server)
+  // Merge: GDELT first (has tone scores), then Google News
   const seenTitles = new Set<string>()
   const events: any[] = []
-  for (const e of gnewsEvents) {
+  for (const e of [...gdeltEvents, ...gnewsEvents]) {
     const key = (e as any).title.toLowerCase().slice(0, 60)
     if (seenTitles.has(key)) continue
     seenTitles.add(key)
@@ -1761,10 +1861,12 @@ app.get('/market/multi-zone-events', async (c) => {
 
 // Inline disruptions fetch helper
 async function fetchDisruptions() {
-  const gnewsResults = await Promise.allSettled([
+  const [gdeltResults, gnewsResults] = await Promise.allSettled([
+    fetchGDELTMultiQuery(),
     fetchDisruptionNews(),
   ])
-  const gnewsRaw = gnewsResults[0]?.status === 'fulfilled' ? gnewsResults[0].value : []
+  const gdeltEvents = gdeltResults.status === 'fulfilled' ? gdeltResults.value : []
+  const gnewsRaw = gnewsResults.status === 'fulfilled' ? gnewsResults.value : []
   const gnewsEvents = gnewsRaw.map((a: any, i: number) => ({
     id: `gnews-disr-${i}`, title: a.title, source: a.source,
     time: formatTimeAgo(a.pubDate || new Date().toISOString()),
@@ -1775,7 +1877,7 @@ async function fetchDisruptions() {
   }))
   const seenTitles = new Set<string>()
   const events: any[] = []
-  for (const e of gnewsEvents) {
+  for (const e of [...gdeltEvents, ...gnewsEvents]) {
     const key = (e as any).title.toLowerCase().slice(0, 60)
     if (seenTitles.has(key)) continue
     seenTitles.add(key)
@@ -2539,13 +2641,65 @@ function computeImportanceScore(article: { tone?: number; ageMs: number; mention
   return +(mentionPart + tonePart + recencyPart).toFixed(3)
 }
 
-// fetchGDELTDoc removed — GDELT unreachable from this server
+// Fetch GDELT DOC 2.0 — article list with sourcecountry + socialimage
+async function fetchGDELTDoc(query: string, maxrecords = 50): Promise<Array<{
+  title: string; url: string; seendate: string; domain: string;
+  sourcecountry: string; socialimage: string; tone: number
+}>> {
+  try {
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=${maxrecords}&format=json&sort=DateDesc`
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+    if (!res.ok) return []
+    const text = await res.text()
+    if (!text.startsWith('{')) return []
+    const data = JSON.parse(text)
+    const articles = data.articles || []
+    return articles.map((a: any) => ({
+      title: a.title || '',
+      url: a.url || '',
+      seendate: a.seendate || '',
+      domain: a.domain || '',
+      sourcecountry: a.sourcecountry || '',
+      socialimage: a.socialimage || '',
+      tone: 0,
+    })).filter((a: any) => a.title)
+  } catch { return [] }
+}
 
 // Fetch trending topics by mention velocity — uses GDELT if available, falls back to Google News RSS
 async function fetchTrendingTopics(): Promise<Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>> {
   const queries = ['crude oil', 'OPEC', 'Brent', 'WTI', 'oil price', 'Hormuz', 'oil production', 'sanctions oil']
 
-  // Skip GDELT (unreachable) — count article mentions from Google News RSS over two time windows
+  // Try GDELT first, but it's often unreachable from this server
+  let gdeltAvailable = false
+  try {
+    const testUrl = `https://api.gdeltproject.org/api/v2/doc/doc?query=test&mode=artlist&maxrecords=1&format=json`
+    const testRes = await fetch(testUrl, { signal: AbortSignal.timeout(3000) })
+    gdeltAvailable = testRes.ok
+  } catch { gdeltAvailable = false }
+
+  if (gdeltAvailable) {
+    // Original GDELT velocity-based trending
+    const results = await Promise.allSettled(queries.map(async q => {
+      try {
+        const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=5&format=json&sort=DateDesc&startdatetime=${new Date(Date.now() - 3600_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
+        const urlPrev = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=5&format=json&sort=DateDesc&startdatetime=${new Date(Date.now() - 7200_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}&enddatetime=${new Date(Date.now() - 3600_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
+        const [cur, prev] = await Promise.all([
+          fetch(url, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(urlPrev, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+        ])
+        const curCount = cur?.articles?.length || 0
+        const prevCount = prev?.articles?.length || 0
+        const velocity = prevCount > 0 ? Math.round(((curCount - prevCount) / Math.max(prevCount, 1)) * 100) : curCount * 50
+        return { topic: q, velocity, direction: velocity >= 0 ? 'up' as const : 'down' as const }
+      } catch { return { topic: q, velocity: 0, direction: 'up' as const } }
+    }))
+    return results.map(r => r.status === 'fulfilled' ? r.value : { topic: '', velocity: 0, direction: 'up' as const })
+      .filter(t => t.topic)
+      .sort((a, b) => Math.abs(b.velocity) - Math.abs(a.velocity))
+  }
+
+  // Fallback: count article mentions from Google News RSS over two time windows
   const now = Date.now()
   const results = await Promise.allSettled(queries.map(async q => {
     try {
@@ -2588,9 +2742,22 @@ app.get('/news/atlas', async (c) => {
     fetchGoogleNewsRSS('oil rig drilling Permian shale', 10),
   ])
 
-  // Skip GDELT DOC (unreachable) — go straight to trending topics
+  // GDELT DOC: 2 queries for broader coverage
+  const docResults = await Promise.allSettled([
+    fetchGDELTDoc('crude oil OR OPEC', 30),
+    fetchGDELTDoc('oil supply disruption middle east', 20),
+  ])
 
   const trending = await fetchTrendingTopics().catch(() => [] as Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>)
+
+  // Merge GDELT DOC results
+  const allDocArticles: Array<{
+    title: string; url: string; seendate: string; domain: string;
+    sourcecountry: string; socialimage: string; tone: number
+  }> = []
+  for (const r of docResults) {
+    if (r.status === 'fulfilled') allDocArticles.push(...r.value)
+  }
 
   // Merge Google News results
   const allGnewsArticles: Array<{ title: string; source: string; pubDate: string }> = []
@@ -2609,6 +2776,38 @@ app.get('/news/atlas', async (c) => {
   }> = []
 
   const seenTitles: string[] = []
+
+  // Process GDELT DOC articles (use sourcecountry for geolocation + socialimage)
+  for (const a of allDocArticles) {
+    if (!a.title) continue
+    if (seenTitles.some(s => titleSimilarity(s, a.title) > 0.78)) continue
+    seenTitles.push(a.title)
+
+    const rawDate = parseGDELTD(a.seendate)
+    const ageMs = Date.now() - new Date(rawDate).getTime()
+    // Accept articles up to 90 days old for broader coverage
+    if (ageMs < -24 * 3600_000 || ageMs > 90 * 24 * 3600_000) continue
+
+    const loc = inferNewsLocation(a.title, a.sourcecountry)
+
+    stories.push({
+      id: `doc-${stories.length}`,
+      title: a.title,
+      source: a.domain || 'GDELT',
+      url: a.url,
+      lat: loc.lat + (Math.random() - 0.5) * 1.5,
+      lng: loc.lng + (Math.random() - 0.5) * 1.5,
+      location: loc.name,
+      category: classifyNewsCategory(a.title),
+      tone: a.tone || 0,
+      importanceScore: computeImportanceScore({ tone: a.tone, ageMs, mentionVolume: allDocArticles.filter(g => titleSimilarity(g.title, a.title) > 0.25).length }),
+      ageMs,
+      rawDate,
+      timeAgo: formatTimeAgo(rawDate),
+      imageUrl: a.socialimage || null,
+      topicCount: 1,
+    })
+  }
 
   // Process Google News articles (no lat/lng, infer from title)
   for (const a of allGnewsArticles) {
@@ -2650,7 +2849,7 @@ app.get('/news/atlas', async (c) => {
     categoryCounts[s.category] = (categoryCounts[s.category] || 0) + 1
   }
 
-  const trendingData = Array.isArray(trending) ? trending : []
+  const trendingData = trending.status === 'fulfilled' ? trending.value : []
 
   const atlasData = {
     stories: stories.slice(0, 200),
