@@ -22,9 +22,10 @@ function generateToken(): string {
   return randomBytes(32).toString('hex')
 }
 
-async function getPrisma() {
-  const { prisma } = await import('./src/lib/db')
-  return prisma
+import { prisma as _prisma } from './src/lib/db'
+
+function getPrisma() {
+  return _prisma
 }
 
 async function ensureAdmin() {

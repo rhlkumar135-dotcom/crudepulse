@@ -8,12 +8,16 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const url = process.env.DATABASE_URL
+  if (url && url.startsWith('postgresql://')) {
+    const { PrismaPg } = require('@prisma/adapter-pg') as typeof import('@prisma/adapter-pg')
+    const adapter = new PrismaPg({ connectionString: url })
+    return new PrismaClient({ adapter } as any)
+  }
   if (url && url.startsWith('file:')) {
     const { PrismaLibSql } = require('@prisma/adapter-libsql') as typeof import('@prisma/adapter-libsql')
     const adapter = new PrismaLibSql({ url })
     return new PrismaClient({ adapter } as any)
   }
-  // Always fall back to SQLite file — schema provider is sqlite
   const { PrismaLibSql } = require('@prisma/adapter-libsql') as typeof import('@prisma/adapter-libsql')
   const adapter = new PrismaLibSql({ url: 'file:./prisma/prod.db' })
   return new PrismaClient({ adapter } as any)

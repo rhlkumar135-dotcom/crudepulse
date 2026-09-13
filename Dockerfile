@@ -7,13 +7,13 @@ RUN bun install --frozen-lockfile
 ARG CACHE_BUST=1
 COPY . .
 
-# Use SQLite for production — schema provider is sqlite
-ENV DATABASE_URL="file:./prisma/prod.db"
+# DATABASE_URL comes from Railway's PostgreSQL plugin env var
+# No default — it MUST be set in Railway service variables
 
 RUN bun x prisma generate
 RUN bun run build
 
 EXPOSE 3001
 
-# Run db push with SQLite URL, then start server with same URL
-CMD ["sh", "-c", "export DATABASE_URL='file:./prisma/prod.db' && bun x prisma db push 2>&1 && bun run start"]
+# Push schema to PostgreSQL, then start server
+CMD ["sh", "-c", "bun x prisma db push 2>&1 && bun run start"]
