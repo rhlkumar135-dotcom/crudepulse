@@ -639,16 +639,8 @@ app.get('/market/news', async (c) => {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source, tier })
   }
 
-  // Try GDELT first (no key needed), then NewsAPI as supplement
-  const gdeltItems = await fetchGDELT()
-  let newsItems = await fetchNewsAPI()
-
-  if (gdeltItems?.length) {
-    // GDELT is the primary source — merge with NewsAPI if available
-    const allItems = newsItems?.length ? [...newsItems, ...gdeltItems] : gdeltItems
-    setCache('news', { items: allItems }, 'api')
-    return c.json({ items: allItems, lastUpdated: new Date().toISOString(), source: 'api', tier })
-  }
+  // Skip GDELT (unreachable from Railway) — go straight to RSS
+  const newsItems = await fetchNewsAPI()
 
   if (newsItems?.length) {
     setCache('news', { items: newsItems }, 'api')
@@ -756,13 +748,11 @@ app.get('/market/disruptions', async (c) => {
     return c.json({ ...cached.data, lastUpdated: new Date(cached.fetchedAt).toISOString(), source: cached.source })
   }
 
-  // Fetch GDELT multi-query and Google News in parallel
-  const [gdeltResults, gnewsResults] = await Promise.allSettled([
-    fetchGDELTMultiQuery(),
+  // Skip GDELT (unreachable) — use RSS only
+  const gnewsResults = await Promise.allSettled([
     fetchDisruptionNews(),
   ])
 
-  const gdeltEvents = gdeltResults.status === 'fulfilled' ? gdeltResults.value : []
   const gnewsRaw = gnewsResults.status === 'fulfilled' ? gnewsResults.value : []
 
   // Build Google News events
@@ -783,10 +773,10 @@ app.get('/market/disruptions', async (c) => {
     }
   })
 
-  // Merge: GDELT first (has tone scores), then Google News
+  // Deduplicate RSS events
   const seenTitles = new Set<string>()
   const events: any[] = []
-  for (const e of [...gdeltEvents, ...gnewsEvents]) {
+  for (const e of gnewsEvents) {
     const key = (e as any).title.toLowerCase().slice(0, 60)
     if (seenTitles.has(key)) continue
     seenTitles.add(key)
@@ -1862,11 +1852,9 @@ app.get('/market/multi-zone-events', async (c) => {
 
 // Inline disruptions fetch helper
 async function fetchDisruptions() {
-  const [gdeltResults, gnewsResults] = await Promise.allSettled([
-    fetchGDELTMultiQuery(),
+  const [gnewsResults] = await Promise.allSettled([
     fetchDisruptionNews(),
   ])
-  const gdeltEvents = gdeltResults.status === 'fulfilled' ? gdeltResults.value : []
   const gnewsRaw = gnewsResults.status === 'fulfilled' ? gnewsResults.value : []
   const gnewsEvents = gnewsRaw.map((a: any, i: number) => ({
     id: `gnews-disr-${i}`, title: a.title, source: a.source,
@@ -1878,7 +1866,7 @@ async function fetchDisruptions() {
   }))
   const seenTitles = new Set<string>()
   const events: any[] = []
-  for (const e of [...gdeltEvents, ...gnewsEvents]) {
+  for (const e of gnewsEvents) {
     const key = (e as any).title.toLowerCase().slice(0, 60)
     if (seenTitles.has(key)) continue
     seenTitles.add(key)
@@ -2671,36 +2659,7 @@ async function fetchGDELTDoc(query: string, maxrecords = 50): Promise<Array<{
 async function fetchTrendingTopics(): Promise<Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>> {
   const queries = ['crude oil', 'OPEC', 'Brent', 'WTI', 'oil price', 'Hormuz', 'oil production', 'sanctions oil']
 
-  // Try GDELT first, but it's often unreachable from this server
-  let gdeltAvailable = false
-  try {
-    const testUrl = `https://api.gdeltproject.org/api/v2/doc/doc?query=test&mode=artlist&maxrecords=1&format=json`
-    const testRes = await fetch(testUrl, { signal: AbortSignal.timeout(3000) })
-    gdeltAvailable = testRes.ok
-  } catch { gdeltAvailable = false }
-
-  if (gdeltAvailable) {
-    // Original GDELT velocity-based trending
-    const results = await Promise.allSettled(queries.map(async q => {
-      try {
-        const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=5&format=json&sort=DateDesc&startdatetime=${new Date(Date.now() - 3600_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
-        const urlPrev = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=5&format=json&sort=DateDesc&startdatetime=${new Date(Date.now() - 7200_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}&enddatetime=${new Date(Date.now() - 3600_000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
-        const [cur, prev] = await Promise.all([
-          fetch(url, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch(urlPrev, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])
-        const curCount = cur?.articles?.length || 0
-        const prevCount = prev?.articles?.length || 0
-        const velocity = prevCount > 0 ? Math.round(((curCount - prevCount) / Math.max(prevCount, 1)) * 100) : curCount * 50
-        return { topic: q, velocity, direction: velocity >= 0 ? 'up' as const : 'down' as const }
-      } catch { return { topic: q, velocity: 0, direction: 'up' as const } }
-    }))
-    return results.map(r => r.status === 'fulfilled' ? r.value : { topic: '', velocity: 0, direction: 'up' as const })
-      .filter(t => t.topic)
-      .sort((a, b) => Math.abs(b.velocity) - Math.abs(a.velocity))
-  }
-
-  // Fallback: count article mentions from Google News RSS over two time windows
+  // Skip GDELT (unreachable from Railway) — go straight to RSS-based trending
   const now = Date.now()
   const results = await Promise.allSettled(queries.map(async q => {
     try {
@@ -2743,11 +2702,8 @@ app.get('/news/atlas', async (c) => {
     fetchGoogleNewsRSS('oil rig drilling Permian shale', 10),
   ])
 
-  // GDELT DOC: 2 queries for broader coverage
-  const docResults = await Promise.allSettled([
-    fetchGDELTDoc('crude oil OR OPEC', 30),
-    fetchGDELTDoc('oil supply disruption middle east', 20),
-  ])
+  // Skip GDELT DOC (unreachable) — use RSS only
+  const docResults: any[] = []
 
   const trending = await fetchTrendingTopics().catch(() => [] as Array<{ topic: string; velocity: number; direction: 'up' | 'down' }>)
 
